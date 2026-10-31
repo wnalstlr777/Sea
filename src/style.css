@@ -16,3 +16,11 @@
 }
 
 .bottom>span{background:#072d3999;padding:7px 10px;border-radius:6px}
+
+#joystick{display:none}
+@media(pointer:coarse),(max-width:600px){
+  #joystick{display:flex;position:absolute;bottom:max(80px,env(safe-area-inset-bottom));left:24px;width:112px;height:112px;align-items:center;justify-content:center;border:1px solid #e1fffa66;border-radius:50%;background:#072d3955;touch-action:none;user-select:none;z-index:1}
+  .stick-knob{width:44px;height:44px;border-radius:50%;background:#c3eee1b3;border:1px solid #fff8;pointer-events:none}
+  .stick-label{position:absolute;bottom:8px;font-size:10px;pointer-events:none}
+  .bottom>span:first-child{font-size:0}.bottom>span:first-child::after{content:'왼쪽 패드 · 이동 / 화면 드래그 · 둘러보기';font-size:9px}
+}
