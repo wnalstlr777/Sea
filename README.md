@@ -36,3 +36,9 @@ npm run dev
 - 브라우저 개발자 도구 Performance로 프레임 시간을 확인할 수 있습니다. `window.oceanCruise.renderer.info.render`에서도 호출·삼각형 수를 확인할 수 있습니다.
 - 회전하며 사방 지평선 확인, 곡률 0~4 비교, 네 색상 변경, 항해 속도 0에서 흐름 정지/자연 파도 유지, 모바일 크기에서 회전·줌·패널 확인을 권장합니다.
 - 이 작업에서는 Chromium WebGL(소프트웨어 렌더링)으로 렌더링·콘솔 오류·패널 변경·4방향 카메라·속도 0의 시간 분리·모바일 뷰포트를 확인했습니다. 실제 모바일 기기와 하드웨어 GPU 성능은 별도 검수 대상입니다.
+
+## GitHub Pages 배포
+
+`main` 변경 시 GitHub Actions가 빌드 결과를 `gh-pages` 브랜치에 갱신합니다.
+저장소 Settings → Pages에서 배포 소스를 **Deploy from a branch**, 브랜치를 **gh-pages / (root)**로 지정합니다.
+프로젝트 주소는 `https://wnalstlr777.github.io/Sea/`입니다. Pages가 활성화되고 배포가 완료된 후 접속할 수 있습니다.
