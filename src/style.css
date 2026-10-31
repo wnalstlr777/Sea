@@ -24,3 +24,5 @@
   .stick-label{position:absolute;bottom:8px;font-size:10px;pointer-events:none}
   .bottom>span:first-child{font-size:0}.bottom>span:first-child::after{content:'왼쪽 패드 · 이동 / 화면 드래그 · 둘러보기';font-size:9px}
 }
+
+.time-presets{display:flex;gap:8px}.time-presets button[aria-pressed=true]{background:#6cbab83d;border-color:#a4e4d5}details{max-height:calc(100dvh - 48px);overflow-y:auto}

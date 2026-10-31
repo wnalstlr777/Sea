@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 
-export const SHIP={length:40,width:12,height:6,deckY:6.8};
+export const SHIP={length:80,width:24,height:6,deckY:6.8};
 // Clockwise XZ outline shared by the visible deck, railing and collider.
-export const DECK=[[-4,20],[4,20],[6,15],[6,-10],[4,-17],[0,-20],[-4,-17],[-6,-10],[-6,15]];
+export const DECK=[[-4,20],[4,20],[6,15],[6,-10],[4,-17],[0,-20],[-4,-17],[-6,-10],[-6,15]].map(([x,z])=>[x*2,z*2]);
 export const PLAYER_RADIUS=.42;
 
 export function constrainToDeck(position,radius=PLAYER_RADIUS){
@@ -40,7 +40,7 @@ export function createShip(){
   }
   ship.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(posts),lineMaterial));
   // Flush deck strips suggest planks without adding upper floors or obstacles.
-  const seams=[];for(let z=-18;z<20;z+=1){const left=constrainToDeck({x:-20,y:0,z},.08),right=constrainToDeck({x:20,y:0,z},.08);if(Math.abs(left.z-z)<.01&&Math.abs(right.z-z)<.01)seams.push(new THREE.Vector3(left.x,SHIP.deckY+.008,z),new THREE.Vector3(right.x,SHIP.deckY+.008,z));}
+  const seams=[];for(let z=-38;z<40;z+=1){const left=constrainToDeck({x:-40,y:0,z},.08),right=constrainToDeck({x:40,y:0,z},.08);if(Math.abs(left.z-z)<.01&&Math.abs(right.z-z)<.01)seams.push(new THREE.Vector3(left.x,SHIP.deckY+.008,z),new THREE.Vector3(right.x,SHIP.deckY+.008,z));}
   ship.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(seams),new THREE.LineBasicMaterial({color:'#a99572',transparent:true,opacity:.4})));
   return ship;
 }

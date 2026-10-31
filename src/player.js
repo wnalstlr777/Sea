@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {SHIP,PLAYER_RADIUS,constrainToDeck} from './ship.js';
 
 export function createPlayer(scene,camera,controls){
-  const player=new THREE.Group();player.position.set(0,SHIP.deckY,-8);
+  const player=new THREE.Group();player.position.set(0,SHIP.deckY,-24);
   const capsule=new THREE.Mesh(new THREE.CapsuleGeometry(.38,1.04,6,12),new THREE.MeshStandardMaterial({color:'#e7a05d',roughness:.65}));capsule.position.y=.9;player.add(capsule);
   const visor=new THREE.Mesh(new THREE.BoxGeometry(.38,.14,.08),new THREE.MeshStandardMaterial({color:'#144955'}));visor.position.set(0,1.45,-.36);player.add(visor);scene.add(player);
   controls.target.copy(player.position).add(new THREE.Vector3(0,1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.minDistance=2;controls.maxDistance=100;controls.update();
