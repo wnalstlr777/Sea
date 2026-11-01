@@ -19,6 +19,12 @@ export function celestialDirections(hour){
   const moon=new THREE.Vector3(-.8*Math.cos(phase),.075*Math.sin(phase),-.85).normalize();
   return {sun,moon};
 }
+export function celestialVisibility(hour){
+  // Separate fade windows leave a brief twilight gap: never two discs at once.
+  const sun=THREE.MathUtils.smoothstep(hour,5.6,6.15)*(1.-THREE.MathUtils.smoothstep(hour,18.05,18.65));
+  const moon=hour<12?1.-THREE.MathUtils.smoothstep(hour,4.7,5.3):THREE.MathUtils.smoothstep(hour,19.0,19.7);
+  return {sun,moon};
+}
 export function createLighting(scene,ocean){
   const uniforms={zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0}};
   Object.assign(ocean.uniforms,uniforms);
@@ -50,6 +56,12 @@ export function createLighting(scene,ocean){
   const moonlight=new THREE.DirectionalLight('#82acff',1.5);scene.add(moonlight);
   // A soft sky fill keeps the camera-facing side of the capsule readable.
   const moonFill=new THREE.DirectionalLight('#8ab5ff',0);moonFill.position.set(-40,60,60);scene.add(moonFill);
+  for(const light of [sunlight,moonlight]){
+    light.castShadow=true;light.shadow.mapSize.set(1024,1024);
+    Object.assign(light.shadow.camera,{left:-14,right:14,top:14,bottom:-14,near:1,far:180});
+    light.shadow.bias=-.0002;light.shadow.normalBias=.025;light.shadow.radius=2;
+    scene.add(light.target);
+  }
   let previousHour=-1,displayHour=18;
   function update(hour,dt){
     if(dt!==undefined){
@@ -65,8 +77,9 @@ export function createLighting(scene,ocean){
     const {sun,moon}=celestialDirections(t);
     uniforms.sunDirection.value.copy(sun);
     uniforms.moonDirection.value.copy(moon);
-    uniforms.sunVisible.value=THREE.MathUtils.smoothstep(sun.y,-.075,.025);
-    uniforms.moonVisible.value=THREE.MathUtils.smoothstep(moon.y,-.06,.08)*(1.-THREE.MathUtils.smoothstep(sun.y,-.1,.15));
+    const visibility=celestialVisibility(t);
+    uniforms.sunVisible.value=visibility.sun;uniforms.moonVisible.value=visibility.moon;
+    sunlight.castShadow=visibility.sun>0;moonlight.castShadow=visibility.moon>0;
     uniforms.daylight.value=THREE.MathUtils.lerp(a[4],b[4],f);
     const night=1.-THREE.MathUtils.smoothstep(uniforms.daylight.value,.1,.55);
     ambient.color.copy(uniforms.skyHorizon.value).lerp(new THREE.Color('#6387c6'),night);
@@ -75,5 +88,11 @@ export function createLighting(scene,ocean){
     // Lift the lighting angle above the stylized low moon so deck surfaces receive it.
     moonlight.position.copy(uniforms.moonDirection.value);moonlight.position.y=.65;moonlight.position.normalize().multiplyScalar(100);moonlight.intensity=1.7*uniforms.moonVisible.value;moonFill.intensity=.65*uniforms.moonVisible.value;
   }
-  update(18);return {update,uniforms,moonlight,ambient};
+  function follow(position){
+    for(const [light,direction] of [[sunlight,uniforms.sunDirection.value],[moonlight,uniforms.moonDirection.value]]){
+      const offset=direction.clone();offset.y=Math.max(offset.y,.22);offset.normalize().multiplyScalar(100);
+      light.position.copy(position).add(offset);light.target.position.copy(position);light.target.updateMatrixWorld();
+    }
+  }
+  update(18);return {update,follow,uniforms,sunlight,moonlight,ambient};
 }

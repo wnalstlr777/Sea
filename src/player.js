@@ -3,8 +3,11 @@ import {SHIP,PLAYER_RADIUS,constrainToDeck} from './ship.js';
 
 export function createPlayer(scene,camera,controls){
   const player=new THREE.Group();player.position.set(0,SHIP.deckY,-24);
-  const capsule=new THREE.Mesh(new THREE.CapsuleGeometry(.38,1.04,6,12),new THREE.MeshStandardMaterial({color:'#e7a05d',roughness:.65}));capsule.position.y=.9;player.add(capsule);
-  const visor=new THREE.Mesh(new THREE.BoxGeometry(.38,.14,.08),new THREE.MeshStandardMaterial({color:'#144955'}));visor.position.set(0,1.45,-.36);player.add(visor);scene.add(player);
+  const capsule=new THREE.Mesh(new THREE.CapsuleGeometry(.38,1.04,6,12),new THREE.MeshStandardMaterial({color:'#e7a05d',roughness:.65}));capsule.castShadow=true;capsule.receiveShadow=true;capsule.position.y=.9;player.add(capsule);
+  const visor=new THREE.Mesh(new THREE.BoxGeometry(.38,.14,.08),new THREE.MeshStandardMaterial({color:'#144955'}));visor.castShadow=true;visor.position.set(0,1.45,-.36);player.add(visor);scene.add(player);
+  // Soft contact shading remains underfoot during the twilight lighting gap.
+  const contact=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.5),new THREE.ShaderMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,uniforms:{},vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`varying vec2 vUv;void main(){float r=length((vUv-.5)*2.);gl_FragColor=vec4(0.,0.,0.,(1.-smoothstep(.15,1.,r))*.18);}`}));
+  contact.rotation.x=-Math.PI/2;contact.position.y=.012;player.add(contact);
   controls.target.copy(player.position).add(new THREE.Vector3(0,1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.minDistance=2;controls.maxDistance=100;controls.update();
   const keys=new Set(),stick=new THREE.Vector2(),forward=new THREE.Vector3(),right=new THREE.Vector3(),movement=new THREE.Vector3();
   const movementKeys=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'];

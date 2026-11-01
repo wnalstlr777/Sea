@@ -28,7 +28,7 @@ export function createShip(){
   const hullGeometry=new THREE.BufferGeometry();hullGeometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));hullGeometry.setIndex(indices);hullGeometry.computeVertexNormals();
   ship.add(new THREE.Mesh(hullGeometry,new THREE.MeshStandardMaterial({color:'#e5efec',roughness:.55,side:THREE.DoubleSide})));
   const shape=new THREE.Shape(DECK.map(([x,z])=>new THREE.Vector2(x,-z)));
-  const deck=new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshStandardMaterial({color:'#bcaa85',roughness:.9,side:THREE.DoubleSide}));deck.rotation.x=-Math.PI/2;deck.position.y=SHIP.deckY;ship.add(deck);
+  const deck=new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshStandardMaterial({color:'#bcaa85',roughness:.9,side:THREE.DoubleSide}));deck.receiveShadow=true;deck.rotation.x=-Math.PI/2;deck.position.y=SHIP.deckY;ship.add(deck);
   const railSegments=[];
   for(const y of [SHIP.deckY+.35,SHIP.deckY+1.05])for(let i=0;i<n;i++){
     const a=DECK[i],b=DECK[(i+1)%n];railSegments.push([new THREE.Vector3(a[0],y,a[1]),new THREE.Vector3(b[0],y,b[1])]);
