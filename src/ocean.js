@@ -29,8 +29,8 @@ export function createOcean() {
       }`,
     fragmentShader:`
       uniform float time,travel,height,speed,wake;
-      uniform vec3 horizon,mid,near,deep,skyHorizon,sunColor,sunDirection;
-      uniform float daylight,sunVisible;
+      uniform vec3 horizon,mid,near,deep,skyHorizon,sunColor,sunDirection,moonDirection;
+      uniform float daylight,sunVisible,moonVisible;
       varying vec3 world; varying vec2 water;
       float wave(vec2 p){return sin(p.x*.19+p.y*.11+time*.8)*.46+sin(p.x*-.31+p.y*.23+time*1.15)*.24+sin(p.y*.63+p.x*.37-time*1.5)*.12;}
       void main(){
@@ -52,6 +52,8 @@ export function createOcean() {
         color+=sunColor*glint*sunVisible*1.5;
         float reflection=pow(max(dot(reflect(-view,n),light),0.),60.);
         color+=sunColor*reflection*sunVisible*.6;
+        float moonReflection=pow(max(dot(reflect(-view,n),moonDirection),0.),85.);
+        color+=vec3(.42,.58,.9)*moonReflection*moonVisible*.7;
         // Bow is -Z; stern wake remains in world +Z regardless of orbit.
         float behind=world.z-40.;
         float width=12.+max(behind,0.)*.16;
@@ -63,7 +65,10 @@ export function createOcean() {
         float strength=clamp(speed/8.,0.,1.)*wake;
         color=mix(color,(skyHorizon*mix(.2,1.,daylight)),clamp((trail+sides)*(.25+.5*foam)*strength,0.,.8));
         // Atmospheric fade hides the outer mesh boundary at every azimuth.
-        color=mix(color,skyHorizon,smoothstep(800.,2200.,dist));
+        // Fade before the curved surface's tangent, so sky and water meet in haze.
+        float angularHaze=pow(1.-clamp(-normalize(world-cameraPosition).y/.16,0.,1.),3.);
+        float haze=max(smoothstep(140.,450.,dist),angularHaze*smoothstep(100.,450.,dist));
+        color=mix(color,skyHorizon,haze);
         gl_FragColor=vec4(color,1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
