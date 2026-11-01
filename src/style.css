@@ -26,3 +26,11 @@
 }
 
 .time-presets{display:flex;gap:8px}.time-presets button[aria-pressed=true]{background:#6cbab83d;border-color:#a4e4d5}details{max-height:calc(100dvh - 48px);overflow-y:auto}
+
+@media(max-width:600px){
+  details[open]{width:min(240px,calc(100vw - 32px));max-height:50dvh;overflow:hidden}
+  details[open] summary{height:44px;min-height:44px}
+  details[open] .panel{max-height:calc(50dvh - 44px);overflow-y:auto;overscroll-behavior:contain;padding:0 14px 14px}
+  .panel .section{margin:4px 0 10px;padding-top:10px}
+  .panel label{margin:10px 0}.panel .time-presets button{min-height:36px}
+}

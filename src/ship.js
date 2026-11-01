@@ -29,18 +29,20 @@ export function createShip(){
   ship.add(new THREE.Mesh(hullGeometry,new THREE.MeshStandardMaterial({color:'#e5efec',roughness:.55,side:THREE.DoubleSide})));
   const shape=new THREE.Shape(DECK.map(([x,z])=>new THREE.Vector2(x,-z)));
   const deck=new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshStandardMaterial({color:'#bcaa85',roughness:.9,side:THREE.DoubleSide}));deck.rotation.x=-Math.PI/2;deck.position.y=SHIP.deckY;ship.add(deck);
-  const lineMaterial=new THREE.LineBasicMaterial({color:'#f1faf5'});
-  for(const y of [SHIP.deckY+.35,SHIP.deckY+1.05]){
-    const line=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(DECK.map(([x,z])=>new THREE.Vector3(x,y,z))),lineMaterial);ship.add(line);
+  const railSegments=[];
+  for(const y of [SHIP.deckY+.35,SHIP.deckY+1.05])for(let i=0;i<n;i++){
+    const a=DECK[i],b=DECK[(i+1)%n];railSegments.push([new THREE.Vector3(a[0],y,a[1]),new THREE.Vector3(b[0],y,b[1])]);
   }
-  const posts=[];
   for(let i=0;i<n;i++){
     const a=DECK[i],b=DECK[(i+1)%n],count=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/2.5);
-    for(let j=0;j<count;j++){const x=THREE.MathUtils.lerp(a[0],b[0],j/count),z=THREE.MathUtils.lerp(a[1],b[1],j/count);posts.push(new THREE.Vector3(x,SHIP.deckY,z),new THREE.Vector3(x,SHIP.deckY+1.05,z));}
+    for(let j=0;j<count;j++){const x=THREE.MathUtils.lerp(a[0],b[0],j/count),z=THREE.MathUtils.lerp(a[1],b[1],j/count);railSegments.push([new THREE.Vector3(x,SHIP.deckY,z),new THREE.Vector3(x,SHIP.deckY+1.05,z)]);}
   }
-  ship.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(posts),lineMaterial));
-  // Flush deck strips suggest planks without adding upper floors or obstacles.
-  const seams=[];for(let z=-38;z<40;z+=1){const left=constrainToDeck({x:-40,y:0,z},.08),right=constrainToDeck({x:40,y:0,z},.08);if(Math.abs(left.z-z)<.01&&Math.abs(right.z-z)<.01)seams.push(new THREE.Vector3(left.x,SHIP.deckY+.008,z),new THREE.Vector3(right.x,SHIP.deckY+.008,z));}
-  ship.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(seams),new THREE.LineBasicMaterial({color:'#a99572',transparent:true,opacity:.4})));
+  const rails=new THREE.InstancedMesh(new THREE.CylinderGeometry(.025,.025,1,6),new THREE.MeshStandardMaterial({color:'#a8b8bf',roughness:.65,metalness:.15,emissive:0}),railSegments.length);
+  rails.name='deck-rails';const matrix=new THREE.Matrix4(),rotation=new THREE.Quaternion(),up=new THREE.Vector3(0,1,0);
+  railSegments.forEach(([a,b],i)=>{const direction=b.clone().sub(a);rotation.setFromUnitVectors(up,direction.clone().normalize());matrix.compose(a.clone().add(b).multiplyScalar(.5),rotation,new THREE.Vector3(1,direction.length(),1));rails.setMatrixAt(i,matrix);});rails.instanceMatrix.needsUpdate=true;ship.add(rails);
+  // Flush plank joints also receive lighting instead of glowing like unlit lines.
+  const seams=[];for(let z=-38;z<40;z+=1){const left=constrainToDeck({x:-40,y:0,z},.08),right=constrainToDeck({x:40,y:0,z},.08);if(Math.abs(left.z-z)<.01&&Math.abs(right.z-z)<.01)seams.push([left.x,right.x,z]);}
+  const joints=new THREE.InstancedMesh(new THREE.BoxGeometry(1,.006,.012),new THREE.MeshStandardMaterial({color:'#927b59',roughness:1}),seams.length);
+  seams.forEach(([left,right,z],i)=>{matrix.compose(new THREE.Vector3((left+right)/2,SHIP.deckY+.004,z),new THREE.Quaternion(),new THREE.Vector3(right-left,1,1));joints.setMatrixAt(i,matrix);});joints.instanceMatrix.needsUpdate=true;ship.add(joints);
   return ship;
 }

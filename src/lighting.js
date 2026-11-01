@@ -47,7 +47,9 @@ export function createLighting(scene,ocean){
       }`}));scene.add(sky);
   const ambient=new THREE.HemisphereLight('#ebfcff','#397786',1);scene.add(ambient);
   const sunlight=new THREE.DirectionalLight('#fff3d6',2);scene.add(sunlight);
-  const moonlight=new THREE.DirectionalLight('#9bbaff',.25);scene.add(moonlight);
+  const moonlight=new THREE.DirectionalLight('#82acff',1.5);scene.add(moonlight);
+  // A soft sky fill keeps the camera-facing side of the capsule readable.
+  const moonFill=new THREE.DirectionalLight('#8ab5ff',0);moonFill.position.set(-40,60,60);scene.add(moonFill);
   let previousHour=-1,displayHour=18;
   function update(hour,dt){
     if(dt!==undefined){
@@ -66,9 +68,12 @@ export function createLighting(scene,ocean){
     uniforms.sunVisible.value=THREE.MathUtils.smoothstep(sun.y,-.075,.025);
     uniforms.moonVisible.value=THREE.MathUtils.smoothstep(moon.y,-.06,.08)*(1.-THREE.MathUtils.smoothstep(sun.y,-.1,.15));
     uniforms.daylight.value=THREE.MathUtils.lerp(a[4],b[4],f);
-    ambient.color.copy(uniforms.skyHorizon.value);ambient.groundColor.set('#345266');ambient.intensity=.18+uniforms.daylight.value*2.2;
+    const night=1.-THREE.MathUtils.smoothstep(uniforms.daylight.value,.1,.55);
+    ambient.color.copy(uniforms.skyHorizon.value).lerp(new THREE.Color('#6387c6'),night);
+    ambient.groundColor.set('#223351');ambient.intensity=.35+uniforms.daylight.value*2.2;
     sunlight.color.copy(uniforms.sunColor.value);sunlight.intensity=THREE.MathUtils.lerp(a[5],b[5],f)*uniforms.sunVisible.value;sunlight.position.copy(uniforms.sunDirection.value).multiplyScalar(100);
-    moonlight.position.copy(uniforms.moonDirection.value).multiplyScalar(100);moonlight.intensity=.45*uniforms.moonVisible.value;
+    // Lift the lighting angle above the stylized low moon so deck surfaces receive it.
+    moonlight.position.copy(uniforms.moonDirection.value);moonlight.position.y=.65;moonlight.position.normalize().multiplyScalar(100);moonlight.intensity=1.7*uniforms.moonVisible.value;moonFill.intensity=.65*uniforms.moonVisible.value;
   }
-  update(18);return {update,uniforms};
+  update(18);return {update,uniforms,moonlight,ambient};
 }
