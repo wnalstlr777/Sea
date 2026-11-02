@@ -6,7 +6,7 @@ export function createPlayer(scene,camera,controls){
   const player=new THREE.Group();player.position.set(0,SHIP.deckY,-24);
   const characterId=Math.random()<.5?'hina':'daeun';
   player.userData.characterId=characterId;
-  let avatar=createSurvivor(characterId),enabled=true,sitting=false;
+  let avatar=createSurvivor(characterId),enabled=true,sitting=false,lying=false,bedAnchor=null;
   player.userData.hairColor='black';
   // Survival models face +Z; Sea movement and the existing camera face -Z.
   avatar.mesh.rotation.y=Math.PI;player.add(avatar.mesh);scene.add(player);
@@ -33,7 +33,9 @@ export function createPlayer(scene,camera,controls){
   }
   const sitButton=document.createElement('button');sitButton.id='sit-toggle';sitButton.type='button';sitButton.textContent='앉기';sitButton.setAttribute('aria-pressed','false');document.querySelector('#app').append(sitButton);
   function setSitting(value){sitting=value;player.userData.sitting=value;sitButton.textContent=value?'일어서기':'앉기';sitButton.setAttribute('aria-pressed',String(value));}
-  sitButton.addEventListener('click',()=>setSitting(!sitting));
+  sitButton.addEventListener('click',()=>{if(lying)standUp();setSitting(!sitting);});
+  function lieOn(anchor){if(!enabled)return;setSitting(false);lying=true;bedAnchor=anchor.clone();player.position.set(anchor.x,SHIP.deckY,anchor.z);player.rotation.y=0;avatar.mesh.position.y=anchor.y-SHIP.deckY;avatar.mesh.rotation.set(-Math.PI/2,0,0);contact.visible=false;player.userData.lying=true;resetView();}
+  function standUp(){if(!lying)return;lying=false;bedAnchor=null;player.position.y=SHIP.deckY;avatar.mesh.position.y=0;avatar.mesh.rotation.set(0,Math.PI,0);contact.visible=true;player.userData.lying=false;resetView();}
   function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.update();controls.enableDamping=damping;}
   function setEnabled(value){enabled=value;if(!value){keys.clear();reset();player.userData.moving=false;}}
   function update(dt){
@@ -41,6 +43,7 @@ export function createPlayer(scene,camera,controls){
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
     if(!x&&!z){player.userData.moving=false;avatar.update(dt,false,sitting);return;}
+    if(lying)standUp();
     if(sitting)setSitting(false);
     camera.getWorldDirection(forward);forward.y=0;forward.normalize();right.crossVectors(forward,THREE.Object3D.DEFAULT_UP).normalize();movement.copy(forward).multiplyScalar(z).addScaledVector(right,x);if(movement.length()>1)movement.normalize();movement.multiplyScalar(5.25*dt);
     const previous=player.position.clone();player.position.add(movement);constrainToDeck(player.position,PLAYER_RADIUS+.12);const delta=player.position.clone().sub(previous);
@@ -48,5 +51,5 @@ export function createPlayer(scene,camera,controls){
     player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving);
     camera.position.add(delta);controls.target.add(delta);
   }
-  return {player,update,setCharacter,setEnabled,resetView};
+  return {player,update,setCharacter,setEnabled,resetView,lieOn,standUp,isLying:()=>lying};
 }

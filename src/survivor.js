@@ -7,7 +7,7 @@ import * as THREE from 'three';
 export function appearanceForPlayer(playerId){
   let hash=2166136261;
   for(const ch of String(playerId)){hash=Math.imul(hash^ch.charCodeAt(0),16777619)>>>0;}
-  return {model:['hina','daeun','boy-neat','boy-fluffy'][hash%4],hairColor:['black','brown','gray'][Math.floor(hash/4)%3]};
+  return {model:['hina','daeun','boy-neat','boy-fluffy'][hash%4],hairColor:['black','brown'][Math.floor(hash/4)%2]};
 }
 
 export function createSurvivor(id,hairColor='black'){
@@ -104,15 +104,10 @@ if(id==='boy-neat'||id==='boy-fluffy'){
  // Remove the feminine front bow and skirt; give each boy a simple outfit.
  for(const child of hana.children){
    if(!child.isMesh)continue;
-   if(child.material===ribbon&&child.position.y>1.3)child.visible=false;
-   if(child.material===skirt||child.material===seam)child.visible=false;
+   if((child.material===ribbon||child.material===dark)&&child.position.y>1.3)child.visible=false;
+   if(child.material===seam)child.visible=false;
  }
- // Shorts and two distinct pant legs; the leg pivots remain animated.
- const shorts=mat(id==='boy-neat'?0x405368:0x6a5548);
- part(.67,.20,.43,shorts,0,1.02,0);
- for(const leg of legs){
-   limbCube(leg,.27,.34,.29,shorts,0,-.16,0);
- }
+ // Reuse the original leg rig exactly; only hide the front outfit decorations.
  // Shorter side locks and rear bob. Distinct top silhouettes at distance.
  for(const child of head.children){
    if(!child.isMesh)continue;
@@ -128,13 +123,16 @@ if(id==='boy-neat'||id==='boy-fluffy'){
    for(let i=-2;i<=2;i++){
      const tuft=facepart(.18,.20+(.1*(2-Math.abs(i))),.25,i%2?hairLight:hair,i*.155,.49+(i%2)*.045,-.03);
      tuft.rotation.z=(i%2?-.23:.20);
+     // Stagger crown depth to avoid coplanar faces / z-fighting.
+     tuft.position.z+=i*.018;
+     tuft.position.y+=(i%2)*.016;
    }
    facepart(.24,.18,.15,hair,.22,.22,.34).rotation.z=.15;
  }
 }
 
 // Recolor only the hair meshes, never skin, eyes or clothing.
-const colors={black:[0x24252b,0x34363e],brown:[0x79513b,0x9a7054],gray:[0x9699a3,0xb6b8c1]};
+const colors={black:[0x24252b,0x34363e],brown:[0x79513b,0x9a7054]};
 const chosen=colors[hairColor]||colors.black;
 const hairMaterials=new Map();
 head.traverse(child=>{
