@@ -45,3 +45,6 @@
 
 @media(pointer:coarse),(max-width:600px){#joystick{opacity:0;transition:opacity .15s}#joystick.active{opacity:1}}
 #music-toggle{margin-top:8px;padding:7px 4px;font-size:10px;min-height:30px}
+
+.multiplayer-status{position:absolute;left:36px;top:185px;max-width:260px;padding:10px 12px;border-radius:10px;background:#072d39dc;color:#d9f4f3;font-size:11px;z-index:2}.multiplayer-status button{margin-top:8px}.player-names{position:absolute;inset:0;pointer-events:none;overflow:hidden}.player-name{position:absolute;transform:translate(-50%,-100%);padding:4px 8px;border-radius:6px;background:#062b3bd9;color:#fff;font-size:12px;white-space:nowrap;text-shadow:0 1px 3px #000}[hidden]{display:none!important}
+@media(max-width:600px){.multiplayer-status{left:18px;top:165px;max-width:180px;font-size:10px}.player-name{font-size:11px}}
