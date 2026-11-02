@@ -28,13 +28,14 @@ function setView(overview){
 }
 document.querySelector('#deck-view').onclick=()=>setView(false);
 document.querySelector('#ocean-view').onclick=()=>setView(true);
-if(new URLSearchParams(location.search).get('view')==='ocean')setView(true);
 const ocean=createOcean();scene.add(ocean.mesh);
 const lighting=createLighting(scene,ocean);
 const ship=createShip();scene.add(ship);
 const character=createPlayer(scene,camera,controls);
+controls.maxDistance=320;
+if(new URLSearchParams(location.search).get('view')==='ocean')setView(true);
 const boatMotion=createBoatMotion(camera);
-const params={cameraMotion:matchMedia('(prefers-reduced-motion: reduce)').matches?0:.6,hour:18,curvature:1,height:.55,naturalSpeed:1,speed:8,wake:.65};const defaults={...params};let naturalTime=0,travel=0;
+const params={cameraMotion:matchMedia('(prefers-reduced-motion: reduce)').matches?0:.6,hour:18,curvature:1,height:.55,naturalSpeed:.6,speed:2,wake:.65};const defaults={...params};let naturalTime=0,travel=0;
 const hourInput=document.querySelector('#time-of-day');
 function setHour(hour){params.hour=hour;hourInput.value=hour;const minutes=Math.round(hour*60);document.querySelector('#time-label').value=`${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`;document.querySelectorAll('[data-hour]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.hour)===hour)));}
 hourInput.addEventListener('input',event=>setHour(Number(event.target.value)));

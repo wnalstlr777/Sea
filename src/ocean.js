@@ -47,7 +47,7 @@ export function createOcean(){
   const mirror=new Water(new THREE.PlaneGeometry(1,1),{textureWidth:compact?256:512,textureHeight:compact?256:512});
   mirror.rotation.x=-Math.PI/2;mirror.updateMatrixWorld();
   const uniforms={
-    time:{value:0},travel:{value:0},curvature:{value:1},height:{value:.55},speed:{value:8},wake:{value:.65},
+    time:{value:0},travel:{value:0},curvature:{value:1},height:{value:.55},speed:{value:2},wake:{value:.65},
     horizon:{value:new THREE.Color('#52798b')},mid:{value:new THREE.Color('#17455c')},
     near:{value:new THREE.Color('#105064')},deep:{value:new THREE.Color('#062839')},
     surfaceMap:{value:surfaceMap},mirrorSampler:mirror.material.uniforms.mirrorSampler,
@@ -74,9 +74,9 @@ export function createOcean(){
       void main(){
         water=position.xz-vec2(0.,travel);
         vec3 p=position,dx=vec3(1.,0.,0.),dz=vec3(0.,0.,1.);crest=0.;
-        wave(water,vec2(.85,.35),42.,.95,.65,p,dx,dz,crest);
-        wave(water,vec2(-.3,.95),23.,.48,.6,p,dx,dz,crest);
-        wave(water,vec2(.6,.8),13.,.25,.55,p,dx,dz,crest);
+        wave(water,vec2(.18,1.),42.,.95,.65,p,dx,dz,crest);
+        wave(water,vec2(-.28,1.),23.,.48,.6,p,dx,dz,crest);
+        wave(water,vec2(.35,1.),13.,.25,.55,p,dx,dz,crest);
         wave(water,vec2(-.8,.6),7.1,.14,.5,p,dx,dz,crest);
         wave(water,vec2(.95,-.2),3.9,.065,.45,p,dx,dz,crest);
         wave(water,vec2(.4,.9),2.1,.035,.4,p,dx,dz,crest);
@@ -95,10 +95,10 @@ export function createOcean(){
       varying float crest;
       varying vec4 mirrorCoord;
       vec4 turbulence(vec2 p){
-        vec4 a=texture2D(surfaceMap,p/38.+vec2(time*.012,-time*.009));
-        vec4 b=texture2D(surfaceMap,vec2(-p.y,p.x)/19.+vec2(-time*.014,time*.011));
-        vec4 c=texture2D(surfaceMap,p/7.3+vec2(time*.018,time*.013));
-        return a*.5+b*.32+c*.18;
+        vec4 a=texture2D(surfaceMap,p/38.+vec2(time*.003,-time*.002));
+        vec4 b=texture2D(surfaceMap,vec2(-p.y,p.x)/19.+vec2(-time*.0035,time*.0025));
+        vec4 c=texture2D(surfaceMap,p/12.7+vec2(time*.004,time*.003));
+        return a*.58+b*.32+c*.10;
       }
       float highlight(vec3 n,vec3 v,vec3 l,float roughness){
         vec3 h=normalize(v+l);float nh=max(dot(n,h),0.);
@@ -142,7 +142,7 @@ export function createOcean(){
         color+=sunColor*highlight(n,v,normalize(sunDirection),roughness)*sunVisible*2.6;
         color+=vec3(.64,.76,1.)*highlight(n,v,normalize(moonDirection),roughness)*moonVisible*1.4;
         // Broken foam networks on steep crests rather than solid stripes.
-        vec4 fine=texture2D(surfaceMap,water/5.7+vec2(time*.025,-time*.017));
+        vec4 fine=texture2D(surfaceMap,water/5.7+vec2(time*.006,-time*.004));
         float whitecaps=smoothstep(.12,.27,crest)*smoothstep(.43,.72,tex.b)*smoothstep(.58,.85,fine.a);
         // Stern at +40m: turbulent prop wash, spreading shoulders, and hull contact foam.
         float aft=max(world.z-37.,0.);
