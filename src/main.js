@@ -16,7 +16,7 @@ import {createSunbeds} from './sunbeds.js';
 import {createJellyfish} from './jellyfish.js';
 
 const app=document.querySelector('#app');
-app.innerHTML=`<header class="heading"><h1>OCEAN CRUISE</h1><p>끝없이 펼쳐지는 바다, 항해의 시작.</p><span class="tag">PROTOTYPE / 0.1</span></header><section class="time-control" aria-label="하늘과 시간 조절"><label><span>구름 양 <output id="cloud-label">50%</output></span><input id="cloud-cover" aria-label="구름 양" type="range" min="0" max="1" step="0.01" value="0.5"></label><label><span>시간 <output id="time-label">18:00</output></span><input id="time-of-day" aria-label="하루 시간" type="range" min="0" max="24" step="0.05" value="0"></label></section><button id="music-toggle" type="button" aria-label="재즈와 파도 소리" title="재즈와 파도 소리" aria-pressed="true">♫</button><details><summary aria-label="바다 설정 메뉴"><span class="desktop-menu-title">OCEAN CONTROLS · 바다 설정</span><span class="mobile-menu-title" aria-hidden="true">☰</span></summary><div class="panel"><div class="section">VIEW / 시점</div><div class="time-presets"><button id="deck-view" aria-pressed="true">갑판</button><button id="ocean-view" aria-pressed="false">바다 전체</button></div><div class="section">SKY / 낮과 밤</div><div class="time-presets"><button data-hour="12">낮</button><button data-hour="18">석양</button><button data-hour="0">밤</button></div><div class="section">SURFACE / 수면</div><div id="sliders"></div><label><span>반사 해상도</span><select id="reflection-resolution" aria-label="반사 해상도"><option value="64">64 × 64</option><option value="128">128 × 128</option><option value="256" selected>256 × 256 · 기본</option><option value="512">512 × 512</option><option value="1024">1024 × 1024 · 고화질</option></select></label><div class="section">PALETTE / 거리별 바다색</div><div id="colors"></div><button id="reset">기본값으로 초기화</button><p id="stats" aria-label="렌더링 성능">수면 준비 중</p></div></details>`;
+app.innerHTML=`<header class="heading"><h1>OCEAN CRUISE</h1><p>끝없이 펼쳐지는 바다, 항해의 시작.</p><span class="tag">PROTOTYPE / 0.1</span></header><section class="time-control" aria-label="하늘과 시간 조절"><label><span>구름 양 <output id="cloud-label">50%</output></span><input id="cloud-cover" aria-label="구름 양" type="range" min="0" max="1" step="0.01" value="0.5"></label><label><span>시간 <output id="time-label">18:00</output></span><input id="time-of-day" aria-label="하루 시간" type="range" min="0" max="24" step="0.05" value="0"></label></section><button id="camera-toggle" type="button" aria-label="바다 전체 감상" title="카메라 시점 전환" aria-pressed="false"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13.5" r="3.5"/></svg></button><button id="music-toggle" type="button" aria-label="재즈와 파도 소리" title="재즈와 파도 소리" aria-pressed="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><ellipse cx="6.5" cy="18" rx="2.5" ry="1.6"/><ellipse cx="17.5" cy="16" rx="2.5" ry="1.6"/></svg></button><details><summary aria-label="바다 설정 메뉴"><span class="desktop-menu-title">OCEAN CONTROLS · 바다 설정</span><span class="mobile-menu-title" aria-hidden="true">☰</span></summary><div class="panel"><div class="section">SKY / 낮과 밤</div><div class="time-presets"><button data-hour="12">낮</button><button data-hour="18">석양</button><button data-hour="0">밤</button></div><div class="section">SURFACE / 수면</div><div id="sliders"></div><label><span>반사 해상도</span><select id="reflection-resolution" aria-label="반사 해상도"><option value="64">64 × 64</option><option value="128">128 × 128</option><option value="256" selected>256 × 256 · 기본</option><option value="512">512 × 512</option><option value="1024">1024 × 1024 · 고화질</option></select></label><div class="section">PALETTE / 거리별 바다색</div><div id="colors"></div><button id="reset">기본값으로 초기화</button><p id="stats" aria-label="렌더링 성능">수면 준비 중</p></div></details>`;
 const settingsPanel=document.querySelector('details');
 const mobileViewport=matchMedia('(max-width: 600px)');
 const syncPanel=()=>{settingsPanel.open=false;};
@@ -29,16 +29,26 @@ const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.5,50000);cam
 const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,SHIP.deckY+NETWORK_TO_VISUAL_Y+1.7,-33);controls.enableDamping=true;controls.enablePan=false;controls.minDistance=3;controls.maxDistance=320;controls.minPolarAngle=.15;controls.maxPolarAngle=Math.PI/2-.02;controls.update();
 let intro=null, introFinished=false, overviewActive=false;
 function setView(overview){
-  if(intro){intro=null;introFinished=true;character.setEnabled(true);}
+  if(intro){intro=null;introFinished=true;}
   overviewActive=overview;
-  const scale=Math.min(1.8,Math.max(1,.9/camera.aspect));
-  if(overview){camera.position.set(95*scale,44*scale,SHIP_CENTER_Z+90*scale);controls.target.set(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);controls.update();}
-  else character.resetView();
-  document.querySelector('#deck-view').setAttribute('aria-pressed',String(!overview));
-  document.querySelector('#ocean-view').setAttribute('aria-pressed',String(overview));
+  document.body.classList.toggle('sea-overview',overview);
+  const button=document.querySelector('#camera-toggle');
+  button.setAttribute('aria-pressed',String(overview));
+  button.setAttribute('aria-label',overview?'갑판 시점으로 전환':'바다 전체 감상');
+  button.title=overview?'갑판 시점으로 전환':'바다 전체 감상';
+  character.setEnabled(!overview);
+  if(overview){
+    // Match the existing side-profile intro shot; keep its framing and distance.
+    const mobile=camera.aspect<.8;
+    camera.position.set(mobile?125:90,mobile?36:32,SHIP_CENTER_Z);
+    controls.target.set(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);
+    controls.update();
+  }else{
+    // The player's latest zoomed-out deck pose is the single reset source.
+    character.resetView();
+  }
 }
-document.querySelector('#deck-view').onclick=()=>setView(false);
-document.querySelector('#ocean-view').onclick=()=>setView(true);
+document.querySelector('#camera-toggle').onclick=()=>setView(!overviewActive);
 const ocean=createOcean();scene.add(ocean.mesh);
 const lighting=createLighting(scene,ocean,camera);
 const seaAudio=createSeaAudio(document.querySelector('#music-toggle'));
@@ -88,7 +98,7 @@ let nearbyBed=null;const bedProjection=new THREE.Vector3();
 lieButton.onclick=()=>{if(nearbyBed&&!character.isLying())character.lieOn(nearbyBed.anchor);lieButton.style.display='none';};
 const multiplayer=createMultiplayer({scene,camera,controls,character,url:import.meta.env.VITE_MULTIPLAYER_URL?.trim()});
 controls.maxDistance=320;
-if(new URLSearchParams(location.search).get('view')==='ocean'){overviewActive=true;introFinished=true;setView(true);}
+if(new URLSearchParams(location.search).get('view')==='ocean'){introFinished=true;setView(true);}
 const boatMotion=createBoatMotion(camera);
 const params={cameraMotion:matchMedia('(prefers-reduced-motion: reduce)').matches?0:.6,hour:0,cloudCover:.5,curvature:1,height:.825,reflectionResolution:256,waveSize:1,normalStrength:0,naturalSpeed:.6,speed:16,wake:.65};const defaults={...params};let naturalTime=0,travel=0;
 const cloudInput=document.querySelector('#cloud-cover');
@@ -112,7 +122,7 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updat
 let previous=performance.now(),elapsed=0,frames=0;
 renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();updateIntro(dt);
 nearbyBed=null;
-if(!character.isLying())for(const bed of sunbeds.beds){if(Math.hypot(character.player.position.x-bed.position.x,character.player.position.z-bed.position.z)<1.6){nearbyBed=bed;break;}}
+if(!overviewActive&&!character.isLying())for(const bed of sunbeds.beds){if(Math.hypot(character.player.position.x-bed.position.x,character.player.position.z-bed.position.z)<1.6){nearbyBed=bed;break;}}
 lieButton.style.display='none';
 camera.updateMatrixWorld();if(nearbyBed){bedProjection.copy(nearbyBed.position).add(new THREE.Vector3(0,2.2,0)).project(camera);if(bedProjection.z>0&&bedProjection.z<1){lieButton.style.left=`${(bedProjection.x*.5+.5)*innerWidth}px`;lieButton.style.top=`${(-bedProjection.y*.5+.5)*innerHeight}px`;lieButton.style.display='block';}}camera.updateMatrixWorld();multiplayer.update(dt);lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
 // Read-only diagnostics for smoke checks and performance inspection.

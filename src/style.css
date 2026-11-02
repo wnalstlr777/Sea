@@ -70,3 +70,20 @@
 /* Jump button above the sit control on desktop and mobile. */
 #jump-toggle{position:absolute;right:34px;bottom:max(78px,calc(env(safe-area-inset-bottom) + 54px));width:48px;min-height:38px;border-radius:12px;background:#072d39e8;color:white;font-size:12px;z-index:3;touch-action:manipulation}
 @media(max-width:600px){#jump-toggle{right:24px;bottom:232px;width:48px;min-height:38px}}
+
+
+/* Two-view camera control: camera / music / menu */
+#camera-toggle{position:absolute;top:24px;right:358px;z-index:3;width:48px;height:48px;min-height:0;margin:0;padding:0;background:#072d39e8;color:#fff;border:1px solid #7bb0ba66;border-radius:12px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(16px)}
+#camera-toggle svg,#music-toggle svg{display:block;margin:auto;flex-shrink:0}
+#music-toggle{display:flex;align-items:center;justify-content:center;text-shadow:none}
+#music-toggle[aria-pressed=false]{text-decoration:none}
+#music-toggle[aria-pressed=false] svg{opacity:.6}
+body.sea-overview .player-names,
+body.sea-overview .player-name,
+body.sea-overview #sunbed-interact,
+body.sea-overview #sit-toggle,
+body.sea-overview #jump-toggle{display:none!important}
+@media(max-width:600px){
+  #camera-toggle{top:max(16px,env(safe-area-inset-top));right:128px}
+  #app:has(details[open]) #camera-toggle{right:calc(min(240px,100vw - 32px) + 80px)}
+}
