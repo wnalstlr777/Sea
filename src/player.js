@@ -6,7 +6,7 @@ export function createPlayer(scene,camera,controls){
   const player=new THREE.Group();player.position.set(0,SHIP.deckY,-24);
   const characterId=Math.random()<.5?'hina':'daeun';
   player.userData.characterId=characterId;
-  let avatar=createSurvivor(characterId),enabled=true;
+  let avatar=createSurvivor(characterId),enabled=true,sitting=false;
   // Survival models face +Z; Sea movement and the existing camera face -Z.
   avatar.mesh.rotation.y=Math.PI;player.add(avatar.mesh);scene.add(player);
   // Soft contact shading remains underfoot during the twilight lighting gap.
@@ -30,17 +30,22 @@ export function createPlayer(scene,camera,controls){
     player.remove(avatar.mesh);disposeSurvivor(avatar.mesh);
     avatar=createSurvivor(id);avatar.mesh.rotation.y=Math.PI;player.add(avatar.mesh);player.userData.characterId=id;
   }
+  const sitButton=document.createElement('button');sitButton.id='sit-toggle';sitButton.type='button';sitButton.textContent='앉기';sitButton.setAttribute('aria-pressed','false');document.querySelector('#app').append(sitButton);
+  function setSitting(value){sitting=value;player.userData.sitting=value;sitButton.textContent=value?'일어서기':'앉기';sitButton.setAttribute('aria-pressed',String(value));}
+  sitButton.addEventListener('click',()=>setSitting(!sitting));
+  function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.update();controls.enableDamping=damping;}
   function setEnabled(value){enabled=value;if(!value){keys.clear();reset();player.userData.moving=false;}}
   function update(dt){
-    if(!enabled){player.userData.moving=false;avatar.update(dt,false);return;}
+    if(!enabled){player.userData.moving=false;avatar.update(dt,false,sitting);return;}
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
-    if(!x&&!z){player.userData.moving=false;avatar.update(dt,false);return;}
+    if(!x&&!z){player.userData.moving=false;avatar.update(dt,false,sitting);return;}
+    if(sitting)setSitting(false);
     camera.getWorldDirection(forward);forward.y=0;forward.normalize();right.crossVectors(forward,THREE.Object3D.DEFAULT_UP).normalize();movement.copy(forward).multiplyScalar(z).addScaledVector(right,x);if(movement.length()>1)movement.normalize();movement.multiplyScalar(5.25*dt);
     const previous=player.position.clone();player.position.add(movement);constrainToDeck(player.position,PLAYER_RADIUS+.12);const delta=player.position.clone().sub(previous);
     if(delta.lengthSq()>1e-8)player.rotation.y=Math.atan2(-delta.x,-delta.z);
     player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving);
     camera.position.add(delta);controls.target.add(delta);
   }
-  return {player,update,setCharacter,setEnabled};
+  return {player,update,setCharacter,setEnabled,resetView};
 }

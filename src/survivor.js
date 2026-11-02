@@ -106,18 +106,20 @@ function split(pivot,kind,side){
 const elbows=arms.map((a,i)=>split(a,'arm',i));
 const knees=legs.map((l,i)=>split(l,'leg',i));
 let walkTime=0;
-function update(dt,moving){
+function update(dt,moving,sitting=false){
+  const poseBlend=1-Math.exp(-dt*12);
+  hana.position.y+=((sitting?-.65:0)-hana.position.y)*poseBlend;
   if(moving)walkTime+=dt;
   const poseTime=Math.floor(walkTime*12)/12;
   const weight=Math.min(1,dt*(moving?18:7.2));
   const stride=moving?Math.sin(poseTime*16.8)*.34:0;
   const armSwing=id==='hina'?stride*3:stride*1.5;
   for(let i=0;i<2;i++){
-    const legTarget=i?-stride:stride,armTarget=i?armSwing:-armSwing;
+    const legTarget=sitting?-Math.PI/2:(i?-stride:stride),armTarget=sitting?-.3:(i?armSwing:-armSwing);
     legs[i].rotation.x+= (legTarget-legs[i].rotation.x)*(id==='hina'?weight:1);
     arms[i].rotation.x+= (armTarget-arms[i].rotation.x)*(id==='hina'?weight:1);
     const blend=1-Math.exp(-Math.min(.1,dt)*18);
-    const knee=moving?.58*Math.max(0,Math.sin(legs[i].rotation.x)*2.8):0;
+    const knee=sitting?Math.PI/2:(moving?.58*Math.max(0,Math.sin(legs[i].rotation.x)*2.8):0);
     knees[i].rotation.x+=(knee-knees[i].rotation.x)*blend;
     elbows[i].rotation.x+=((moving?-.10:0)-elbows[i].rotation.x)*blend;
   }

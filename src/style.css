@@ -58,3 +58,11 @@
   #music-toggle{top:max(16px,env(safe-area-inset-top));right:72px}
   #app:has(details[open]) #music-toggle{right:calc(min(240px,100vw - 32px) + 24px)}
 }
+
+#music-toggle{color:#fff;font-family:Arial,sans-serif;font-size:30px;font-weight:900;text-shadow:1px 0 currentColor,-1px 0 currentColor}
+#music-toggle[aria-pressed=false]{text-decoration:line-through}
+#sit-toggle{position:absolute;right:24px;bottom:max(24px,env(safe-area-inset-bottom));width:64px;min-height:44px;border-radius:12px;background:#072d39e8;color:#fff;z-index:2;font-size:13px}
+@media(max-width:600px){
+  .time-control{bottom:max(8px,env(safe-area-inset-bottom));transform:none}
+  #sit-toggle{right:16px;bottom:220px}
+}
