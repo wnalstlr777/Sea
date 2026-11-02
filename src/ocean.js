@@ -44,7 +44,7 @@ export function createOcean(){
   const surfaceMap=createSurfaceTexture();
   // Reuse Three.js Water's mirrored camera and oblique clipping for scene reflections.
   // The capture plane stays flat; the visible mesh retains the curved horizon.
-  const mirror=new Water(new THREE.PlaneGeometry(1,1),{textureWidth:compact?256:512,textureHeight:compact?256:512});
+  const mirror=new Water(new THREE.PlaneGeometry(1,1),{textureWidth:64,textureHeight:64});
   mirror.rotation.x=-Math.PI/2;mirror.updateMatrixWorld();
   const uniforms={
     time:{value:0},travel:{value:0},curvature:{value:1},height:{value:.55},waveSize:{value:1},normalStrength:{value:0},speed:{value:8},wake:{value:.65},
@@ -53,47 +53,59 @@ export function createOcean(){
     surfaceMap:{value:surfaceMap},mirrorSampler:mirror.material.uniforms.mirrorSampler,
     textureMatrix:mirror.material.uniforms.textureMatrix,
   };
+  // Band-limit displacement to the mesh spacing. Shading evaluates the same
+  // waves per pixel, so sparse radial triangles cannot create reflected spokes.
+  const surfaceField=`
+    void wave(vec2 anchor,vec2 direction,float wavelength,float amplitude,float maxSlope,float spacing,inout vec3 p,inout vec3 dx,inout vec3 dz){
+      vec2 d=normalize(direction);float lengthScale=wavelength*waveSize;
+      float k=6.2831853/lengthScale;
+      float resolved=1.-smoothstep(lengthScale/8.,lengthScale/3.,spacing);
+      float a=min(amplitude*height,maxSlope/k)*resolved;
+      float phase=k*dot(d,anchor)-sqrt(9.81*k)*time;
+      float s=sin(phase),c=cos(phase),q=.18;
+      p+=vec3(q*a*d.x*c,a*s,q*a*d.y*c);
+      dx+=vec3(-q*a*k*d.x*d.x*s,a*k*d.x*c,-q*a*k*d.x*d.y*s);
+      dz+=vec3(-q*a*k*d.x*d.y*s,a*k*d.y*c,-q*a*k*d.y*d.y*s);
+    }
+    void sampleSurface(vec2 anchor,vec2 location,float spacing,out vec3 p,out vec3 n){
+      p=vec3(location.x,0.,location.y);
+      vec3 dx=vec3(1.,0.,0.),dz=vec3(0.,0.,1.);
+      wave(anchor,vec2(.18,1.),48.,.95,.28,spacing,p,dx,dz);
+      wave(anchor,vec2(-.28,1.),29.,.40,.15,spacing,p,dx,dz);
+      wave(anchor,vec2(.35,1.),17.,.16,.10,spacing,p,dx,dz);
+      wave(anchor,vec2(-.4,1.),10.,.06,.06,spacing,p,dx,dz);
+      p.y-=dot(p.xz,p.xz)*curvature/120000.;
+      dx.y-=2.*dot(p.xz,dx.xz)*curvature/120000.;
+      dz.y-=2.*dot(p.xz,dz.xz)*curvature/120000.;
+      n=normalize(cross(dz,dx));
+    }
+  `;
   const material=new THREE.ShaderMaterial({name:'OceanSurface',uniforms,side:THREE.DoubleSide,
     vertexShader:`
       uniform float time,travel,curvature,height,waveSize;
       uniform mat4 textureMatrix;
-      varying vec3 world,macroNormal;
+      varying vec3 world;
       varying vec2 water;
-      varying float crest;
       varying vec4 mirrorCoord;
-      void wave(vec2 anchor,vec2 direction,float wavelength,float amplitude,float steepness,inout vec3 p,inout vec3 dx,inout vec3 dz,inout float compression){
-        vec2 d=normalize(direction);float k=6.2831853/(wavelength*waveSize);
-        float phase=k*dot(d,anchor)-sqrt(9.81*k)*time;
-        float a=amplitude*height;
-        float s=sin(phase),c=cos(phase),q=steepness;
-        p+=vec3(q*a*d.x*c,a*s,q*a*d.y*c);
-        dx+=vec3(-q*a*k*d.x*d.x*s,a*k*d.x*c,-q*a*k*d.x*d.y*s);
-        dz+=vec3(-q*a*k*d.x*d.y*s,a*k*d.y*c,-q*a*k*d.y*d.y*s);
-        compression+=q*a*k*s;
-      }
+      ${surfaceField}
       void main(){
         water=position.xz-vec2(0.,travel);
-        vec3 p=position,dx=vec3(1.,0.,0.),dz=vec3(0.,0.,1.);crest=0.;
-        wave(water,vec2(.18,1.),42.,.95,.65,p,dx,dz,crest);
-        wave(water,vec2(-.28,1.),23.,.48,.6,p,dx,dz,crest);
-        wave(water,vec2(.35,1.),13.,.25,.55,p,dx,dz,crest);
-        wave(water,vec2(-.8,.6),7.1,.14,.5,p,dx,dz,crest);
-        wave(water,vec2(.95,-.2),3.9,.065,.45,p,dx,dz,crest);
-        wave(water,vec2(.4,.9),2.1,.035,.4,p,dx,dz,crest);
-        p.y-=dot(p.xz,p.xz)*curvature/120000.;
-        dx.y-=2.*p.x*curvature/120000.;dz.y-=2.*p.z*curvature/120000.;
-        macroNormal=normalize(cross(dz,dx));world=p;
-        mirrorCoord=textureMatrix*vec4(p.x,0.,p.z,1.);
+        float radius=length(position.xz);
+        float radialStep=2.6*18000./${rings.toFixed(1)}*pow(max(radius/18000.,.000001),1.-1./2.6);
+        float angularStep=radius*6.2831853/${sectors.toFixed(1)};
+        vec3 p,unusedNormal;
+        sampleSurface(water,position.xz,max(radialStep,angularStep),p,unusedNormal);
+        world=p;mirrorCoord=textureMatrix*vec4(p.x,0.,p.z,1.);
         gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
       }`,
     fragmentShader:`
-      uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,normalStrength;
+      uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,normalStrength,curvature,waveSize;
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
       uniform sampler2D surfaceMap,mirrorSampler;
-      varying vec3 world,macroNormal;
+      varying vec3 world;
       varying vec2 water;
-      varying float crest;
       varying vec4 mirrorCoord;
+      ${surfaceField}
       vec4 turbulence(vec2 p){
         vec4 a=texture2D(surfaceMap,p/38.+vec2(time*.003,-time*.002));
         vec4 b=texture2D(surfaceMap,vec2(-p.y,p.x)/19.+vec2(-time*.0035,time*.0025));
@@ -116,16 +128,17 @@ export function createOcean(){
         vec4 tex=turbulence(water);
         vec2 ripple=(tex.rg*2.-1.)*.48;
         float rippleGain=mix(.55,1.,clamp(height,0.,1.));
-        vec3 n=normalize(macroNormal+vec3(-ripple.x,0.,-ripple.y)*rippleGain*normalStrength);
+        float pixelSpacing=max(length(dFdx(water)),length(dFdy(water)));
+        vec3 surfacePosition,baseNormal;
+        sampleSurface(water,water+vec2(0.,travel),pixelSpacing,surfacePosition,baseNormal);
+        vec3 n=normalize(baseNormal+vec3(-ripple.x,0.,-ripple.y)*rippleGain*normalStrength);
         vec3 v=normalize(cameraPosition-world),r=reflect(-v,n);
         float nv=max(dot(n,v),0.);
         // Water reflects strongly at low viewing angles while retaining deep body colour.
         float fresnel=.035+.965*pow(1.-nv,5.);
         vec3 sky=mix(skyHorizon,zenith,smoothstep(.015,.65,max(r.y,0.)));
-        float cloud=texture2D(surfaceMap,r.xz/(abs(r.y)+.35)*.13).b;
-        sky=mix(sky,skyHorizon*1.18,smoothstep(.48,.76,cloud)*.2*daylight);
         vec2 uv=mirrorCoord.xy/mirrorCoord.w;
-        uv+=n.xz*.018/(1.+dist*.008);
+        uv+=n.xz*.004/(1.+dist*.008);
         vec3 sceneReflection=texture2D(mirrorSampler,clamp(uv,vec2(.002),vec2(.998))).rgb;
         float valid=step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.)*step(0.,mirrorCoord.w);
         vec3 reflection=mix(sky,sceneReflection,valid*.8);
@@ -141,22 +154,17 @@ export function createOcean(){
         float roughness=clamp(.19+sqrt(variance)*.35,.19,.42);
         color+=sunColor*highlight(n,v,normalize(sunDirection),roughness)*sunVisible*2.6;
         color+=vec3(.64,.76,1.)*highlight(n,v,normalize(moonDirection),roughness)*moonVisible*1.4;
-        // Broken foam networks on steep crests rather than solid stripes.
+        // Only the stern (+Z beyond 41m) produces foam. No hull-side or crest foam.
+        float aft=max(world.z-41.,0.);
+        float width=3.5+aft*.085;
+        float bend=(tex.b-.5)*1.5*(1.-exp(-aft*.03));
+        float core=exp(-pow((world.x+bend)/width,2.));
+        float sternMask=smoothstep(41.,47.,world.z)*(1.-smoothstep(80.,240.,aft));
         vec4 fine=texture2D(surfaceMap,water/5.7+vec2(time*.006,-time*.004));
-        float whitecaps=smoothstep(.12,.27,crest)*smoothstep(.43,.72,tex.b)*smoothstep(.58,.85,fine.a);
-        // Stern at +40m: turbulent prop wash, spreading shoulders, and hull contact foam.
-        float aft=max(world.z-37.,0.);
-        float bend=(tex.b-.5)*5.;
-        float width=5.+aft*.17;
-        float core=exp(-pow((world.x+bend)/(width*.65),2.));
-        float shoulders=exp(-pow((abs(world.x+bend)-8.-aft*.23)/(1.6+aft*.025),2.));
-        float trail=(core*.85+shoulders*.8)*smoothstep(0.,7.,world.z-37.)*(1.-smoothstep(65.,260.,aft));
-        float hullWidth=mix(0.,12.,smoothstep(-40.,-20.,world.z));
-        float contact=exp(-pow((abs(world.x)-hullWidth+(tex.b-.5)*1.8)/1.3,2.))*(1.-smoothstep(32.,43.,abs(world.z)));
-        float bubbles=smoothstep(.32,.69,fine.b*.65+tex.b*.35);
+        float bubbles=smoothstep(.4,.68,fine.b*.65+tex.b*.35);
         float lace=smoothstep(.58,.86,fine.a);
         float propulsion=clamp(speed/8.,0.,1.)*wake;
-        float foam=clamp(whitecaps*.65+(trail*(.2+bubbles*.65+lace*.5)+contact*(.35+bubbles*.65))*propulsion,0.,.96);
+        float foam=clamp(core*sternMask*(.08+bubbles*.55+lace*.2)*propulsion,0.,.7);
         vec3 foamColor=mix(vec3(.07,.12,.2),vec3(.78,.86,.85),daylight);
         foamColor=mix(foamColor,skyHorizon,.18);
         color=mix(color,foamColor,foam);
