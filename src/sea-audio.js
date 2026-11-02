@@ -1,6 +1,6 @@
 // Original procedural jazz and sea ambience. No third-party recordings or melodies.
 export function createSeaAudio(button){
-  let context,musicBus,effectsBus,noiseBuffer,waves,enabled=false,nextNote=0,step=0,scheduler=null;
+  let context,musicBus,effectsBus,noiseBuffer,waves,enabled=true,nextNote=0,step=0,scheduler=null;
   const voices=new Set();
   function init(){
     if(context)return;
@@ -12,10 +12,11 @@ export function createSeaAudio(button){
     for(let i=0;i<samples.length;i++){brown=(brown+(Math.random()*2-1)*.025)/1.025;samples[i]=brown*4;}
     waves=context.createBufferSource();waves.buffer=noiseBuffer;waves.loop=true;
     const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=1400;
-    const waveGain=context.createGain();waveGain.gain.value=.19;
-    const swell=context.createOscillator(),depth=context.createGain();swell.frequency.value=.09;depth.gain.value=.12;
+    const waveGain=context.createGain();waveGain.gain.value=.095;
+    const swell=context.createOscillator(),depth=context.createGain();swell.frequency.value=.09;depth.gain.value=.06;
     swell.connect(depth);depth.connect(waveGain.gain);waves.connect(filter);filter.connect(waveGain);waveGain.connect(musicBus);
     waves.start();swell.start();
+    if(enabled){nextNote=context.currentTime+.08;scheduler=setInterval(update,200);}
   }
   function unlock(){init();if(context?.state==='suspended')context.resume().catch(()=>{});}
   addEventListener('pointerdown',unlock);addEventListener('keydown',e=>{if(!e.repeat)unlock();});
