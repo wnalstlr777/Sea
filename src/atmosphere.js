@@ -71,37 +71,32 @@ export function createAtmosphere(scene,lighting){
   for(let i=0;i<36;i++){const v=Math.pow(1-i/35,2);colors.set([v*.75,v*.86,v],i*3);}
   meteorGeometry.setAttribute('position',new THREE.BufferAttribute(trail,3).setUsage(THREE.DynamicDrawUsage));
   meteorGeometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  // Keep depth testing so the ship can occlude a distant meteor.
   const meteor=new THREE.Line(meteorGeometry,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0,depthTest:true,depthWrite:false,blending:THREE.AdditiveBlending}));
-  meteor.name='shooting-star';meteor.frustumCulled=false;meteor.renderOrder=-7;scene.add(meteor);
+  meteor.name='shooting-star';meteor.frustumCulled=false;meteor.renderOrder=0;scene.add(meteor);
   let age=-1,nextMeteor=5+Math.random()*6;
   const origin=new THREE.Vector3(),velocity=new THREE.Vector3();
+  const direction=new THREE.Vector3(),right=new THREE.Vector3();
   function update(dt){
     time.value+=dt;night.value=1-THREE.MathUtils.smoothstep(lighting.uniforms.daylight.value,.1,.55);
     stars.visible=night.value>0;meteor.visible=night.value>0;
     if(night.value<.2){age=-1;meteor.material.opacity=0;return;}
     nextMeteor-=dt;
     if(age<0&&nextMeteor<=0){
-      // Spawn at a distant point in the actual visible sky, not above the UI.
-      // Screen-space selection is projected onto a far world-space sky plane;
-      // the ship can occlude it via the depth buffer.
-      camera.updateMatrixWorld();
-      const forward=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-      const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);
-      const up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
-      const distance=7000;
-      const halfHeight=Math.tan(THREE.MathUtils.degToRad(camera.fov)*.5)*distance;
-      const halfWidth=halfHeight*camera.aspect;
-      // Favor sky above the horizon, including the area behind the ship.
-      const screenX=(Math.random()*1.5-.75);
-      const screenY=.05+Math.random()*.62;
-      origin.copy(camera.position).addScaledVector(forward,distance)
-        .addScaledVector(right,screenX*halfWidth)
-        .addScaledVector(up,screenY*halfHeight);
-      // Keep the meteor above the real ocean horizon in world space.
-      if(origin.y<250)origin.y=250+Math.random()*250;
-      const direction=Math.random()<.5?-1:1;
-      velocity.copy(right).multiplyScalar(direction*(750+Math.random()*500))
-        .addScaledVector(new THREE.Vector3(0,1,0),-(550+Math.random()*280));
+      // Distant world-space sky above the ocean, behind the ship rather than
+      // offset from the top edge of the camera's viewport.
+      camera.getWorldDirection(direction);
+      direction.y=0;
+      if(direction.lengthSq()<.001)direction.set(0,0,-1);
+      direction.normalize();
+      right.set(-direction.z,0,direction.x);
+      const distance=7500;
+      origin.copy(camera.position).addScaledVector(direction,distance)
+        .addScaledVector(right,(Math.random()-.5)*distance*.8);
+      origin.y=1250+Math.random()*1800;
+      // Descend toward the horizon, with randomized diagonal slant.
+      velocity.copy(right).multiplyScalar((Math.random()<.5?-1:1)*(900+Math.random()*550));
+      velocity.y=-(1050+Math.random()*400);
       age=0;nextMeteor=12+Math.random()*16;
     }
     if(age>=0){
@@ -111,11 +106,10 @@ export function createAtmosphere(scene,lighting){
         trail[i*3]=origin.x+velocity.x*t;trail[i*3+1]=origin.y+velocity.y*t;trail[i*3+2]=origin.z+velocity.z*t;
       }
       meteorGeometry.attributes.position.needsUpdate=true;
-      // Fade before the trail crosses the ocean horizon (world Y=0).
       const headHeight=origin.y+velocity.y*age;
       const horizonFade=THREE.MathUtils.smoothstep(headHeight,0,500);
       meteor.material.opacity=night.value*Math.min(1,age*8)*Math.max(0,1-age/2.4)*horizonFade;
-      if(age>=2.4){age=-1;meteor.material.opacity=0;}
+      if(age>=2.4||headHeight<=0){age=-1;meteor.material.opacity=0;}
     }
   }
   return {update,stars,clouds,meteor};
