@@ -7,12 +7,17 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "server:dev": "wrangler dev --env local --port 8787",
+    "server:deploy": "wrangler deploy --env=",
+    "test:server": "node --test server/tests/*.test.js"
   },
   "dependencies": {
     "three": "^0.180.0"
   },
   "devDependencies": {
-    "vite": "^7.1.0"
+    "miniflare": "^5.20261101.0-beta",
+    "vite": "^7.1.0",
+    "wrangler": "^4.156.1"
   }
 }
