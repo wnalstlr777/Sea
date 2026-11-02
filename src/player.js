@@ -40,7 +40,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
   const jumpButton=document.createElement('button');jumpButton.id='jump-toggle';jumpButton.type='button';jumpButton.textContent='점프';jumpButton.setAttribute('aria-label','점프');document.querySelector('#app').append(jumpButton);
   const JUMP_SPEED=10.6,GRAVITY=13.5,HEAD_HEIGHT=2.95;
   const WATER_SURFACE_Y=0.35, RESPAWN_X=0, RESPAWN_Z=-33;
-  let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;\n  let landingGrace=0;
+  let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
+  let landingGrace=0;
   let lastFloorY=VISUAL_DECK_Y,spawnValidated=false;
   const visualBaseY=SHIP.deckY+NETWORK_TO_VISUAL_Y;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
