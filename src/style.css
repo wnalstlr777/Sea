@@ -38,3 +38,5 @@
 .time-control{position:absolute;left:max(36px,calc(50% - 270px));bottom:70px;width:260px;padding:12px 18px;background:#072d39d9;border:1px solid #c4ffff33;border-radius:14px;backdrop-filter:blur(16px);z-index:1}
 .time-control label{margin:0}.time-control input{height:6px;margin:14px 0 4px}
 @media(max-width:600px){.time-control{left:auto;right:16px;bottom:82px;transform:none;width:min(180px,calc(100vw - 168px));padding:12px}.time-control input{margin-bottom:6px}}
+
+.time-control label+label{margin-top:12px}#horn-toggle{margin-top:12px;padding:7px 4px;font-size:10px;letter-spacing:0;min-height:30px}

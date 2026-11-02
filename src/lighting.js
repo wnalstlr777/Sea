@@ -27,7 +27,7 @@ export function celestialVisibility(hour){
   return {sun,moon};
 }
 export function createLighting(scene,ocean){
-  const uniforms={zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0}};
+  const uniforms={cloudCover:{value:.5},zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0}};
   Object.assign(ocean.uniforms,uniforms);
   const sky=new THREE.Mesh(new THREE.SphereGeometry(24000,32,20),new THREE.ShaderMaterial({uniforms,side:THREE.BackSide,depthWrite:false,
     vertexShader:`varying vec3 dir;void main(){dir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
@@ -35,7 +35,7 @@ export function createLighting(scene,ocean){
       uniform vec3 zenith,skyHorizon,sunColor,sunDirection,moonDirection;uniform float daylight,sunVisible,moonVisible;varying vec3 dir;
       void main(){
         vec3 d=normalize(dir);float h=d.y;
-        vec3 c=mix(skyHorizon,zenith,smoothstep(.015,.6,h));
+        vec3 c=mix(skyHorizon,zenith,smoothstep(.015,.3075,h));
         float angle=acos(clamp(dot(d,sunDirection),-1.,1.));
         float disc=1.-smoothstep(.016,.019,angle);
         float glow=exp(-angle*12.)*.45;

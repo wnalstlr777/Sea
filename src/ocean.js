@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import {Water} from 'three/addons/objects/Water.js';
 import {ImprovedNoise} from 'three/addons/math/ImprovedNoise.js';
 
 // Bake a seamless normal / turbulence map once. Mipmaps filter distant ripples.
@@ -42,16 +41,11 @@ export function createOcean(){
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setIndex(indices);
   const surfaceMap=createSurfaceTexture();
-  // Reuse Three.js Water's mirrored camera and oblique clipping for scene reflections.
-  // The capture plane stays flat; the visible mesh retains the curved horizon.
-  const mirror=new Water(new THREE.PlaneGeometry(1,1),{textureWidth:64,textureHeight:64});
-  mirror.rotation.x=-Math.PI/2;mirror.updateMatrixWorld();
   const uniforms={
     time:{value:0},travel:{value:0},curvature:{value:1},height:{value:.55},waveSize:{value:1},normalStrength:{value:0},speed:{value:8},wake:{value:.65},
     horizon:{value:new THREE.Color('#52798b')},mid:{value:new THREE.Color('#17455c')},
     near:{value:new THREE.Color('#105064')},deep:{value:new THREE.Color('#062839')},
-    surfaceMap:{value:surfaceMap},mirrorSampler:mirror.material.uniforms.mirrorSampler,
-    textureMatrix:mirror.material.uniforms.textureMatrix,
+    surfaceMap:{value:surfaceMap},
   };
   // Band-limit displacement to the mesh spacing. Shading evaluates the same
   // waves per pixel, so sparse radial triangles cannot create reflected spokes.
@@ -83,10 +77,8 @@ export function createOcean(){
   const material=new THREE.ShaderMaterial({name:'OceanSurface',uniforms,side:THREE.DoubleSide,
     vertexShader:`
       uniform float time,travel,curvature,height,waveSize;
-      uniform mat4 textureMatrix;
       varying vec3 world;
       varying vec2 water;
-      varying vec4 mirrorCoord;
       ${surfaceField}
       void main(){
         water=position.xz-vec2(0.,travel);
@@ -95,16 +87,15 @@ export function createOcean(){
         float angularStep=radius*6.2831853/${sectors.toFixed(1)};
         vec3 p,unusedNormal;
         sampleSurface(water,position.xz,max(radialStep,angularStep),p,unusedNormal);
-        world=p;mirrorCoord=textureMatrix*vec4(p.x,0.,p.z,1.);
+        world=p;
         gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
       }`,
     fragmentShader:`
       uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,normalStrength,curvature,waveSize;
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
-      uniform sampler2D surfaceMap,mirrorSampler;
+      uniform sampler2D surfaceMap;
       varying vec3 world;
       varying vec2 water;
-      varying vec4 mirrorCoord;
       ${surfaceField}
       vec4 turbulence(vec2 p){
         vec4 a=texture2D(surfaceMap,p/38.+vec2(time*.003,-time*.002));
@@ -132,16 +123,7 @@ export function createOcean(){
         vec3 surfacePosition,baseNormal;
         sampleSurface(water,water+vec2(0.,travel),pixelSpacing,surfacePosition,baseNormal);
         vec3 n=normalize(baseNormal+vec3(-ripple.x,0.,-ripple.y)*rippleGain*normalStrength);
-        vec3 v=normalize(cameraPosition-world),r=reflect(-v,n);
-        float nv=max(dot(n,v),0.);
-        // Water reflects strongly at low viewing angles while retaining deep body colour.
-        float fresnel=.035+.965*pow(1.-nv,5.);
-        vec3 sky=mix(skyHorizon,zenith,smoothstep(.015,.65,max(r.y,0.)));
-        vec2 uv=mirrorCoord.xy/mirrorCoord.w;
-        uv+=n.xz*.004/(1.+dist*.008);
-        vec3 sceneReflection=texture2D(mirrorSampler,clamp(uv,vec2(.002),vec2(.998))).rgb;
-        float valid=step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.)*step(0.,mirrorCoord.w);
-        vec3 reflection=mix(sky,sceneReflection,valid*.8);
+        vec3 v=normalize(cameraPosition-world);
         vec3 body=mix(deep,near,clamp(.38+world.y*.16+tex.b*.22,0.,1.));
         body=mix(body,mid,smoothstep(100.,1200.,dist)*.32);
         body=mix(body,horizon,smoothstep(900.,7000.,dist)*.22);
@@ -153,7 +135,7 @@ export function createOcean(){
         // Forward scattering illuminates thin wave crests against the light.
         float scatter=pow(max(dot(v,-normalize(sunDirection)),0.),3.)*max(world.y,0.);
         body+=near*scatter*sunVisible*.35;
-        vec3 color=mix(body,reflection,clamp(fresnel+.14,0.,1.));
+        vec3 color=body; // Only the sun/moon specular highlights below reflect on the sea.
         float variance=dot(dFdx(n),dFdx(n))+dot(dFdy(n),dFdy(n));
         float roughness=clamp(.19+sqrt(variance)*.35,.19,.42);
         color+=sunColor*highlight(n,v,normalize(sunDirection),roughness)*sunVisible*2.6;
@@ -173,16 +155,12 @@ export function createOcean(){
         foamColor=mix(foamColor,skyHorizon,.18);
         color=mix(color,foamColor,foam);
         // Keep foreground and mid-distance texture; blend before the curved tangent.
-        float haze=1.-exp(-pow(dist/3800.,1.45));
+        float haze=1.-exp(-pow(dist/7600.,1.45));
         color=mix(color,skyHorizon,haze);
         gl_FragColor=vec4(color,1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`});
   const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;
-  mesh.onBeforeRender=(renderer,scene,camera)=>{
-    mesh.visible=false;
-    try{mirror.onBeforeRender(renderer,scene,camera);}finally{mesh.visible=true;}
-  };
   return {mesh,uniforms};
 }
