@@ -28,7 +28,7 @@ export function createShip(){
       const recolor=material=>{
         if(!material?.name?.toLowerCase().includes('c_boat_red_mat'))return material;
         const gray=material.clone();
-        gray.color.setRGB(.15,.16,.18);
+        gray.color.set('#101114');
         return gray;
       };
       if(Array.isArray(obj.material))obj.material=obj.material.map(recolor);

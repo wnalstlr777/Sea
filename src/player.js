@@ -42,6 +42,9 @@ export function createPlayer(scene,camera,controls,deckCollision){
   const WATER_SURFACE_Y=0.35, RESPAWN_X=0, RESPAWN_Z=-33;
   let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
   let landingGrace=0;
+  let fallVelocity=0,fallDriftX=0,fallDriftZ=0,fallAirborne=false;
+  let lastMoveX=0,lastMoveZ=0;
+  let landingPoint=null;
   let lastFloorY=VISUAL_DECK_Y,spawnValidated=false;
   const visualBaseY=SHIP.deckY+NETWORK_TO_VISUAL_Y;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
@@ -75,16 +78,31 @@ export function createPlayer(scene,camera,controls,deckCollision){
       }
     }catch{/* Audio is optional if the browser blocks playback. */}
   }
+  function startFall(){
+    if(overboard||returnFlight)return;
+    overboard=true;player.userData.inWater=true;
+    fallAirborne=true;waterTime=0;
+    // Start from the current foot height, including an ongoing jump.
+    fallOffset=lastFloorY-visualBaseY+jumpHeight;
+    fallVelocity=jumpVelocity;
+    fallDriftX=lastMoveX;fallDriftZ=lastMoveZ;
+    jumpHeight=0;jumpVelocity=0;headSupport=null;
+    contact.visible=false;
+  }
   function returnToDeck(){
     // Launch from the water in a visible arc, never teleport to the deck.
     const safe=deckCollision.safeSpot(RESPAWN_X,RESPAWN_Z);
     if(!safe)return; // Never send the character to an unsupported point.
     const destinationY=safe.y;
-    returnFlight={elapsed:0,duration:1.75,
+    // Worker accepts 5.25m/s (+small burst credit). Ease-in/out has 1.5x
+    // peak speed, so allow ample time for long return flights.
+    const distance=Math.hypot(safe.x-player.position.x,safe.z-player.position.z);
+    landingPoint=safe;
+    returnFlight={elapsed:0,duration:Math.max(1.75,distance/3.0),
       startX:player.position.x,startZ:player.position.z,
       startY:visualBaseY+fallOffset,
       endX:safe.x,endZ:safe.z,endY:destinationY};
-    overboard=false;
+    overboard=false;fallAirborne=false;
     waterTime=0;
     headSupport=null;jumpVelocity=0;jumpHeight=0;
     playJumpSound();
@@ -109,8 +127,14 @@ export function createPlayer(scene,camera,controls,deckCollision){
     camera.position.y+=y-previousY;controls.target.y+=y-previousY;
     jumpPose+=(1-jumpPose)*(1-Math.exp(-dt*16));
     if(t>=1){
-      returnFlight=null;lastFloorY=f.endY;fallOffset=0;landingGrace=.35;
-      jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lastFloorY-VISUAL_DECK_Y);
+      // Preserve the exact UCX landing height and align the camera with it.
+      const landedY=f.endY;
+      const finalOffset=landedY-visualBaseY;
+      const correction=finalOffset-fallOffset;
+      camera.position.y+=correction;controls.target.y+=correction;
+      fallOffset=finalOffset;
+      returnFlight=null;lastFloorY=landedY;landingGrace=.65;
+      jumpPivot.position.y=NETWORK_TO_VISUAL_Y+finalOffset;
       contact.visible=true;player.userData.inWater=false;
     }
     return true;
@@ -137,11 +161,25 @@ export function createPlayer(scene,camera,controls,deckCollision){
     const step=Math.min(dt,.05);
     if(updateReturnFlight(step))return;
     if(overboard){
-      // No water physics/server changes: animate the avatar locally above the ocean.
-      const desired=WATER_SURFACE_Y-(SHIP.deckY+NETWORK_TO_VISUAL_Y);
+      const desired=WATER_SURFACE_Y-visualBaseY;
       const old=fallOffset;
-      fallOffset=Math.max(desired,fallOffset-GRAVITY*step*2.2);
-      if(fallOffset<=desired+.01){waterTime+=step;fallOffset=desired+Math.sin(waterTime*5.0)*.32 + Math.sin(waterTime*8.1)*.09;}
+      if(fallAirborne){
+        // Continuous ballistic motion from the deck edge (no sudden vertical drop).
+        fallOffset+=fallVelocity*step-.5*GRAVITY*step*step;
+        fallVelocity-=GRAVITY*step;
+        const steering=keys.has('KeyW')||keys.has('KeyA')||keys.has('KeyS')||keys.has('KeyD')||
+          keys.has('ArrowUp')||keys.has('ArrowDown')||keys.has('ArrowLeft')||keys.has('ArrowRight')||stick.lengthSq()>.01;
+        const dx=steering?0:fallDriftX*step,dz=steering?0:fallDriftZ*step;
+        player.position.x+=dx;player.position.z+=dz;
+        camera.position.x+=dx;controls.target.x+=dx;
+        camera.position.z+=dz;controls.target.z+=dz;
+        // Drag gently slows the horizontal momentum in the air.
+        const drag=Math.exp(-step*.38);fallDriftX*=drag;fallDriftZ*=drag;
+        if(fallOffset<=desired){fallOffset=desired;fallAirborne=false;waterTime=0;}
+      }else{
+        waterTime+=step;
+        fallOffset=desired+Math.sin(waterTime*5.0)*.32+Math.sin(waterTime*8.1)*.09;
+      }
       const shift=fallOffset-old;
       camera.position.y+=shift;controls.target.y+=shift;
       jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
@@ -209,6 +247,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.update();controls.enableDamping=damping;}
   function setEnabled(value){enabled=value;if(!value){keys.clear();reset();player.userData.moving=false;}}
   function update(dt){
+    landingGrace=Math.max(0,landingGrace-Math.min(dt,.05));
     updateJump(dt);
     updateLie(dt);
     if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose,overboard);return;}
@@ -225,11 +264,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(!overboard&&!returnFlight&&deckCollision.ready()&&spawnValidated&&!lying){
       const stationaryFloor=deckCollision.floorAt(player.position.x,player.position.z);
       if(stationaryFloor!==null){lastFloorY=stationaryFloor;}
-      else if(jumpHeight<=.03){
-        overboard=true;player.userData.inWater=true;
-        fallOffset=lastFloorY-VISUAL_DECK_Y;
-        jumpHeight=0;jumpVelocity=0;headSupport=null;contact.visible=false;
-      }
+      else if(landingGrace<=0){startFall();}
     }
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
@@ -241,21 +276,29 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(headSupport){headSupport=null;jumpVelocity=-.01;}
     camera.getWorldDirection(forward);forward.y=0;forward.normalize();right.crossVectors(forward,THREE.Object3D.DEFAULT_UP).normalize();movement.copy(forward).multiplyScalar(z).addScaledVector(right,x);if(movement.length()>1)movement.normalize();movement.multiplyScalar(5.25*dt);
     if(returnFlight){avatar.update(dt,false,false,jumpPose);return;}
-    const previous=player.position.clone();player.position.add(movement);
+    const previous=player.position.clone();
+    lastMoveX=dt>0?movement.x/dt:0;lastMoveZ=dt>0?movement.z/dt:0;
+    player.position.add(movement);
     // The exported UCX surfaces, not the old rectangular deck, determine support.
     const floor=deckCollision.floorAt(player.position.x,player.position.z);
     if(!overboard&&floor!==null){lastFloorY=floor;}
     if(!overboard&&spawnValidated&&deckCollision.ready()&&floor===null&&landingGrace<=0){
-      overboard=true;player.userData.inWater=true;
       if(lying)standUp();if(sitting)setSitting(false);
-      fallOffset=lastFloorY-VISUAL_DECK_Y;
-      jumpHeight=0;jumpVelocity=0;headSupport=null;
-      contact.visible=false;
+      startFall();
     }
     const delta=player.position.clone().sub(previous);
     if(delta.lengthSq()>1e-8)player.rotation.y=Math.atan2(-delta.x,-delta.z);
     player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving&&!overboard,sitting,jumpPose,overboard);
     camera.position.add(delta);controls.target.add(delta);
   }
-  return {player,update,setCharacter,setEnabled,resetView,lieOn,standUp,isLying:()=>lying};
+  return {player,update,setCharacter,setEnabled,resetView,lieOn,standUp,isLying:()=>lying,
+    isReturning:()=>Boolean(returnFlight),
+    handleCorrection(state){
+      // Keep the server authoritative; cancel an invalid flight cleanly.
+      if(returnFlight){returnFlight=null;landingGrace=0;landingPoint=null;}
+      const dx=state.x-player.position.x,dz=state.z-player.position.z;
+      player.position.x=state.x;player.position.z=state.z;
+      camera.position.x+=dx;controls.target.x+=dx;
+      camera.position.z+=dz;controls.target.z+=dz;
+    }};
 }
