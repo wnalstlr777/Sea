@@ -40,7 +40,7 @@ function setView(overview){
   if(overview){
     // Match the existing side-profile intro shot; keep its framing and distance.
     const mobile=camera.aspect<.8;
-    camera.position.set(mobile?125:90,mobile?36:32,SHIP_CENTER_Z);
+    camera.position.set(mobile?34:28,mobile?36:32,SHIP_CENTER_Z+(mobile?125:105));
     controls.target.set(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);
     controls.update();
   }else{
@@ -65,7 +65,7 @@ const character=createPlayer(scene,camera,controls,deckCollision);
 const introSide=new THREE.Vector3(),introTarget=new THREE.Vector3(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);
 function beginIntro(){
   const mobile=camera.aspect<.8;
-  introSide.set(mobile?125:90, mobile?36:32, SHIP_CENTER_Z);
+  introSide.set(mobile?34:28, mobile?36:32, SHIP_CENTER_Z+(mobile?125:105));
   intro={elapsed:0,fromPosition:introSide.clone(),fromTarget:introTarget.clone()};
   character.setEnabled(false);
   camera.position.copy(introSide);controls.target.copy(introTarget);controls.update();
