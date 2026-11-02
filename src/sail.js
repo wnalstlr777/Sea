@@ -25,12 +25,12 @@ export function createSail(ship){
         material.onBeforeCompile=shader=>{
           shader.uniforms.sailTime=time;
           shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
-attribute vec4 color;
+attribute vec4 sailMask;
 uniform float sailTime;`);
           shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
 // Vertex colors are authored in sRGB and imported as linear attributes.
 // Red mask is stationary; blue is medium, yellow is strong.
-float r=color.r, g=color.g, b=color.b;
+float r=sailMask.r, g=sailMask.g, b=sailMask.b;
 float fixedWeight=clamp(r*(1.0-g)*(1.0-b),0.0,1.0);
 float strongWeight=clamp(min(r,g)*(1.0-b),0.0,1.0);
 float mediumWeight=clamp(b*(1.0-g),0.0,1.0);
@@ -40,6 +40,10 @@ float wave=sin(sailTime*1.6+position.y*.013+position.x*.008)*.65
 transformed.x+=weight*wave*10.0;
 transformed.z+=weight*sin(sailTime*1.25+position.x*.012)*4.0;`);
         };
+        // Use a dedicated attribute name: Three.js reserves `color` for material vertex colors.
+        const mask=obj.geometry.getAttribute('color');
+        if(mask)obj.geometry.setAttribute('sailMask',mask);
+        else console.warn('[Sea] Sail mesh missing COLOR_0:',obj.name);
         obj.material=material;
         obj.castShadow=true;obj.receiveShadow=true;
       });
@@ -50,6 +54,8 @@ transformed.z+=weight*sin(sailTime*1.25+position.x*.012)*4.0;`);
       if(displayRoot){overviewRoot=root.clone(true);displayRoot.add(overviewRoot);}
       // When overview is active, main.js hides only pre-existing visual meshes;
       // toggle the two sails independently.
+      root.updateMatrixWorld(true);
+      console.info('[Sea] Sail attached:',root.name,'mesh count:',root.getObjectByProperty('isMesh',true)?.name||'check scene graph');
       ship.userData.sailVisual=root;
       ship.userData.sailOverview=overviewRoot;
     }
