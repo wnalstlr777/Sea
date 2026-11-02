@@ -35,7 +35,7 @@ export function createLighting(scene,ocean){
       uniform vec3 zenith,skyHorizon,sunColor,sunDirection,moonDirection;uniform float daylight,sunVisible,moonVisible;varying vec3 dir;
       void main(){
         vec3 d=normalize(dir);float h=d.y;
-        vec3 c=mix(skyHorizon,zenith,smoothstep(.015,.3075,h));
+        vec3 c=mix(skyHorizon,zenith,smoothstep(.015,.6,h));
         float angle=acos(clamp(dot(d,sunDirection),-1.,1.));
         float disc=1.-smoothstep(.016,.019,angle);
         float glow=exp(-angle*12.)*.45;

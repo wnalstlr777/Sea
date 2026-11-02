@@ -39,7 +39,7 @@ const character=createPlayer(scene,camera,controls);
 controls.maxDistance=320;
 if(new URLSearchParams(location.search).get('view')==='ocean')setView(true);
 const boatMotion=createBoatMotion(camera);
-const params={cameraMotion:matchMedia('(prefers-reduced-motion: reduce)').matches?0:.6,hour:18,cloudCover:.5,curvature:1,height:.55,waveSize:1,normalStrength:0,naturalSpeed:.6,speed:8,wake:.65};const defaults={...params};let naturalTime=0,travel=0;
+const params={cameraMotion:matchMedia('(prefers-reduced-motion: reduce)').matches?0:.6,hour:18,cloudCover:.5,curvature:1,height:.55,waveSize:1,normalStrength:0,naturalSpeed:.6,speed:16,wake:.65};const defaults={...params};let naturalTime=0,travel=0;
 const cloudInput=document.querySelector('#cloud-cover');
 function setCloudCover(value){params.cloudCover=value;lighting.uniforms.cloudCover.value=value;cloudInput.value=value;document.querySelector('#cloud-label').value=`${Math.round(value*100)}%`;}
 cloudInput.addEventListener('input',event=>setCloudCover(Number(event.target.value)));
