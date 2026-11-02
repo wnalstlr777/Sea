@@ -41,7 +41,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   const JUMP_SPEED=10.6,GRAVITY=13.5,HEAD_HEIGHT=2.95;
   const WATER_SURFACE_Y=0.35, RESPAWN_X=0, RESPAWN_Z=-33;
   let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
-  let lastFloorY=VISUAL_DECK_Y;
+  let lastFloorY=VISUAL_DECK_Y,spawnValidated=false;
   const visualBaseY=SHIP.deckY+NETWORK_TO_VISUAL_Y;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
   let lieTransition=null;
@@ -76,12 +76,13 @@ export function createPlayer(scene,camera,controls,deckCollision){
   }
   function returnToDeck(){
     // Launch from the water in a visible arc, never teleport to the deck.
-    const floor=deckCollision.floorAt(RESPAWN_X,RESPAWN_Z);
-    const destinationY=floor??VISUAL_DECK_Y;
+    const safe=deckCollision.safeSpot(RESPAWN_X,RESPAWN_Z);
+    if(!safe)return; // Never send the character to an unsupported point.
+    const destinationY=safe.y;
     returnFlight={elapsed:0,duration:1.75,
       startX:player.position.x,startZ:player.position.z,
       startY:visualBaseY+fallOffset,
-      endX:RESPAWN_X,endZ:RESPAWN_Z,endY:destinationY};
+      endX:safe.x,endZ:safe.z,endY:destinationY};
     overboard=false;
     waterTime=0;
     headSupport=null;jumpVelocity=0;jumpHeight=0;
@@ -106,7 +107,11 @@ export function createPlayer(scene,camera,controls,deckCollision){
     camera.position.z+=z-previousZ;controls.target.z+=z-previousZ;
     camera.position.y+=y-previousY;controls.target.y+=y-previousY;
     jumpPose+=(1-jumpPose)*(1-Math.exp(-dt*16));
-    if(t>=1){returnFlight=null;lastFloorY=f.endY;contact.visible=true;}
+    if(t>=1){
+      returnFlight=null;lastFloorY=f.endY;fallOffset=0;
+      jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lastFloorY-VISUAL_DECK_Y);
+      contact.visible=true;player.userData.inWater=false;
+    }
     return true;
   }
   function jump(){
@@ -206,13 +211,30 @@ export function createPlayer(scene,camera,controls,deckCollision){
     updateJump(dt);
     updateLie(dt);
     if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose);return;}
-    if(!overboard&&!returnFlight&&deckCollision.ready()){
+    if(deckCollision.ready()&&!spawnValidated){
+      const safe=deckCollision.safeSpot(player.position.x,player.position.z);
+      if(safe){
+        player.position.x=safe.x;player.position.z=safe.z;
+        lastFloorY=safe.y;spawnValidated=true;resetView();
+      }else if(!window.__seaNoDeckWarning){
+        console.warn('[Sea] UCX has no walkable deck surface near spawn.');
+        window.__seaNoDeckWarning=true;
+      }
+    }
+    if(!overboard&&!returnFlight&&deckCollision.ready()&&spawnValidated&&!lying){
       const stationaryFloor=deckCollision.floorAt(player.position.x,player.position.z);
-      if(stationaryFloor!==null)lastFloorY=stationaryFloor;
+      if(stationaryFloor!==null){lastFloorY=stationaryFloor;}
+      else if(jumpHeight<=.03){
+        overboard=true;player.userData.inWater=true;
+        fallOffset=lastFloorY-VISUAL_DECK_Y;
+        jumpHeight=0;jumpVelocity=0;headSupport=null;contact.visible=false;
+      }
     }
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
-    if(!x&&!z){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose);return;}
+    if((!spawnValidated&&deckCollision.ready())||returnFlight||(!x&&!z)){
+      player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose);return;
+    }
     if(lying)standUp();
     if(sitting)setSitting(false);
     if(headSupport){headSupport=null;jumpVelocity=-.01;}
@@ -222,7 +244,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     // The exported UCX surfaces, not the old rectangular deck, determine support.
     const floor=deckCollision.floorAt(player.position.x,player.position.z);
     if(!overboard&&floor!==null){lastFloorY=floor;}
-    if(!overboard&&deckCollision.ready()&&floor===null){
+    if(!overboard&&spawnValidated&&deckCollision.ready()&&floor===null){
       overboard=true;player.userData.inWater=true;
       if(lying)standUp();if(sitting)setSitting(false);
       fallOffset=lastFloorY-VISUAL_DECK_Y;
