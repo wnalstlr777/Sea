@@ -97,7 +97,10 @@ export function createAtmosphere(scene,lighting){
         trail[i*3]=origin.x+velocity.x*t;trail[i*3+1]=origin.y+velocity.y*t;trail[i*3+2]=origin.z+velocity.z*t;
       }
       meteorGeometry.attributes.position.needsUpdate=true;
-      meteor.material.opacity=night.value*Math.min(1,age*8)*Math.max(0,1-age/2.4);
+      // Fade before the trail crosses the ocean horizon (world Y=0).
+      const headHeight=origin.y+velocity.y*age;
+      const horizonFade=THREE.MathUtils.smoothstep(headHeight,0,500);
+      meteor.material.opacity=night.value*Math.min(1,age*8)*Math.max(0,1-age/2.4)*horizonFade;
       if(age>=2.4){age=-1;meteor.material.opacity=0;}
     }
   }

@@ -25,6 +25,11 @@ export function createMarineLife(scene,camera,audio){
   const splashGeometry=new THREE.BufferGeometry(),drops=new Float32Array(60*3);
   splashGeometry.setAttribute('position',new THREE.BufferAttribute(drops,3).setUsage(THREE.DynamicDrawUsage));
   const splash=new THREE.Points(splashGeometry,new THREE.PointsMaterial({color:'#d4f6ff',size:.3,transparent:true,opacity:.8,depthWrite:false}));splash.visible=false;splash.frustumCulled=false;group.add(splash);
+  const spoutCount=24,spoutPositions=new Float32Array(spoutCount*3);
+  const spoutGeometry=new THREE.BufferGeometry();
+  spoutGeometry.setAttribute('position',new THREE.BufferAttribute(spoutPositions,3).setUsage(THREE.DynamicDrawUsage));
+  const spout=new THREE.Points(spoutGeometry,new THREE.PointsMaterial({color:'#b8eaff',size:1.1,transparent:true,opacity:.65,depthWrite:false}));
+  spout.frustumCulled=false;spout.visible=false;group.add(spout);
   const origin=new THREE.Vector3(),direction=new THREE.Vector3(),right=new THREE.Vector3();
   let next=12,age=-1,current=null,encounters=0,didSplash=false;
   function start(){
@@ -47,16 +52,35 @@ export function createMarineLife(scene,camera,audio){
     age+=dt;const isWhale=current===whale,duration=isWhale?11:4.5,t=age/duration;
     current.root.position.copy(origin).addScaledVector(right,(t-.5)*(isWhale?24:20));
     const arc=Math.sin(Math.PI*Math.min(1,t));
-    current.root.position.y=isWhale?-16+arc*26:-1.4+arc*5.5;
+    current.root.position.y=isWhale?-16+arc*16:-1.4+arc*5.5;
     current.root.rotation.x=isWhale?Math.cos(t*Math.PI)*.08:Math.cos(t*Math.PI)*-.65;
     current.tail.rotation.x=Math.sin(age*(isWhale?2:6))*.22;
+    // A brief breath near the top of the whale's surfacing arc.
+    const breath=isWhale?(age-duration*.37):-1;
+    spout.visible=isWhale&&breath>=0&&breath<2.2;
+    if(spout.visible){
+      // The whale's nose is at local -Z, scaled by ten.
+      spout.position.copy(current.root.position);
+      const nose=new THREE.Vector3(0,5,-39).applyEuler(current.root.rotation);
+      spout.position.add(nose);
+      for(let i=0;i<spoutCount;i++){
+        const phase=(breath*1.8+i/spoutCount)%1;
+        const angle=i*2.39996;
+        const spread=phase*phase*5;
+        spoutPositions[i*3]=Math.cos(angle)*spread;
+        spoutPositions[i*3+1]=phase*12-4*phase*phase;
+        spoutPositions[i*3+2]=Math.sin(angle)*spread;
+      }
+      spoutGeometry.attributes.position.needsUpdate=true;
+      spout.material.opacity=.65*Math.min(1,(2.2-breath)*2);
+    }
     if(t>.72&&!didSplash){didSplash=true;audio.splash();splash.visible=true;}
     if(splash.visible){
       const a=Math.max(0,age-duration*.72);splash.position.copy(current.root.position);splash.position.y=.1;
       for(let i=0;i<60;i++){const angle=i*2.39996,speed=1+(i%7)*.35;drops[i*3]=Math.cos(angle)*speed*a;drops[i*3+1]=Math.max(0,(2+i%4)*a-4*a*a);drops[i*3+2]=Math.sin(angle)*speed*a;}
       splash.geometry.attributes.position.needsUpdate=true;splash.material.opacity=Math.max(0,.8-a*.6);
     }
-    if(t>=1){current.root.visible=false;splash.visible=false;age=-1;next=24+Math.random()*22;}
+    if(t>=1){current.root.visible=false;splash.visible=false;spout.visible=false;age=-1;next=24+Math.random()*22;}
   }
   return {update,group};
 }
