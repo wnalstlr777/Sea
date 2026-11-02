@@ -109,7 +109,7 @@ export function createOcean(){
         gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
       }`,
     fragmentShader:`
-      uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,normalStrength,curvature,waveSize,horizonStrength;
+      uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,moonTint,normalStrength,curvature,waveSize,horizonStrength;
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
       uniform sampler2D surfaceMap,mirrorSampler;
       varying vec3 world;
@@ -167,7 +167,13 @@ export function createOcean(){
         float variance=dot(dFdx(n),dFdx(n))+dot(dFdy(n),dFdy(n));
         float roughness=clamp(.19+sqrt(variance)*.35,.19,.42);
         color+=sunColor*highlight(n,v,normalize(sunDirection),roughness)*sunVisible*2.6;
-        color+=vec3(.64,.76,1.)*highlight(n,v,normalize(moonDirection),roughness)*moonVisible*1.4;
+        // Irregular moon-glitter: break up straight horizontal bands with the
+        // existing moving turbulence, without extra geometry or draw calls.
+        float moonSpec=highlight(n,v,normalize(moonDirection),roughness);
+        float brokenGlitter=.70+.30*smoothstep(.22,.76,tex.b*.65+tex.a*.35);
+        brokenGlitter*=.82+.18*sin(water.x*.31+tex.r*9.+time*.48);
+        vec3 moonColor=mix(vec3(.70,.78,.96),vec3(.52,.70,1.),moonTint);
+        color+=moonColor*moonSpec*moonVisible*1.4*brokenGlitter;
         // Only the stern (+Z beyond 41m) produces foam. No hull-side or crest foam.
         float aft=max(world.z-41.,0.);
         float width=3.5+aft*.085;
@@ -184,6 +190,10 @@ export function createOcean(){
         color=mix(color,foamColor,foam);
         // Keep foreground and mid-distance texture; blend before the curved tangent.
         float haze=1.-exp(-pow(dist/3800.,1.45));
+        // Soft atmospheric scattering at the far horizon, especially at night.
+        float farAir=smoothstep(800.,7000.,dist)*(.08+.12*(1.-daylight));
+        vec3 airColor=mix(skyHorizon,vec3(.11,.19,.33),1.-smoothstep(.05,.6,daylight));
+        color=mix(color,airColor,farAir);
         // Fade into the same sky colour at grazing angles before the curved edge.
         float horizonHaze=(1.-smoothstep(.005,.075,nv))*smoothstep(120.,600.,dist);
         vec3 horizonSky=mix(zenith,skyHorizon,horizonStrength);

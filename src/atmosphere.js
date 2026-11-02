@@ -3,6 +3,7 @@ import * as THREE from 'three';
 // GPU sky effects share the existing time-of-day lighting, with no image downloads.
 export function createAtmosphere(scene,lighting){
   const time={value:0},night={value:0};
+  const camera=lighting.camera;
   const positions=[],phases=[],sizes=[];
   for(let i=0;i<4000;i++){
     const y=.025+Math.random()*.975,a=Math.random()*Math.PI*2,r=Math.sqrt(1-y*y);
@@ -67,8 +68,8 @@ export function createAtmosphere(scene,lighting){
   for(let i=0;i<36;i++){const v=Math.pow(1-i/35,2);colors.set([v*.75,v*.86,v],i*3);}
   meteorGeometry.setAttribute('position',new THREE.BufferAttribute(trail,3).setUsage(THREE.DynamicDrawUsage));
   meteorGeometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
-  const meteor=new THREE.Line(meteorGeometry,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));
-  meteor.name='shooting-star';meteor.frustumCulled=false;meteor.renderOrder=-9;scene.add(meteor);
+  const meteor=new THREE.Line(meteorGeometry,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0,depthTest:false,depthWrite:false,blending:THREE.AdditiveBlending}));
+  meteor.name='shooting-star';meteor.frustumCulled=false;meteor.renderOrder=-7;scene.add(meteor);
   let age=-1,nextMeteor=5+Math.random()*6;
   const origin=new THREE.Vector3(),velocity=new THREE.Vector3();
   function update(dt){
@@ -77,21 +78,27 @@ export function createAtmosphere(scene,lighting){
     if(night.value<.2){age=-1;meteor.material.opacity=0;return;}
     nextMeteor-=dt;
     if(age<0&&nextMeteor<=0){
-      // Place in the forward half of the sky, then fall diagonally toward the horizon.
-      const angle=Math.random()*Math.PI*1.3-Math.PI*.65;
-      origin.set(Math.sin(angle)*7500,3500+Math.random()*3500,-Math.cos(angle)*7500);
-      velocity.set(2200+Math.random()*1600,-2200,600);
+      // Spawn in the camera-visible upper sky rather than an arbitrary world quadrant.
+      // Keep it well above the horizon, and inside the central view on mobile.
+      const forward=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+      const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);
+      const up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
+      origin.copy(camera.position).addScaledVector(forward,7000)
+        .addScaledVector(right,(Math.random()-.5)*2100)
+        .addScaledVector(up,1100+Math.random()*900);
+      velocity.copy(right).multiplyScalar((Math.random()<.5?-1:1)*(1100+Math.random()*400))
+        .addScaledVector(up,-550-Math.random()*200);
       age=0;nextMeteor=12+Math.random()*16;
     }
     if(age>=0){
       age+=dt;
       for(let i=0;i<36;i++){
-        const t=Math.max(0,age-i*.014);
+        const t=Math.max(0,age-i*.028);
         trail[i*3]=origin.x+velocity.x*t;trail[i*3+1]=origin.y+velocity.y*t;trail[i*3+2]=origin.z+velocity.z*t;
       }
       meteorGeometry.attributes.position.needsUpdate=true;
-      meteor.material.opacity=night.value*Math.min(1,age*8)*Math.max(0,1-age/1.5);
-      if(age>=1.5){age=-1;meteor.material.opacity=0;}
+      meteor.material.opacity=night.value*Math.min(1,age*8)*Math.max(0,1-age/2.4);
+      if(age>=2.4){age=-1;meteor.material.opacity=0;}
     }
   }
   return {update,stars,clouds,meteor};

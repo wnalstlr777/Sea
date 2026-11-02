@@ -19,7 +19,7 @@ export function createShip(){
     const a=DECK[i],b=DECK[(i+1)%n],count=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/2.5);
     for(let j=0;j<count;j++){const x=THREE.MathUtils.lerp(a[0],b[0],j/count),z=THREE.MathUtils.lerp(a[1],b[1],j/count);railSegments.push([new THREE.Vector3(x,SHIP.deckY,z),new THREE.Vector3(x,SHIP.deckY+1.05,z)]);}
   }
-  const rails=new THREE.InstancedMesh(new THREE.CylinderGeometry(.025,.025,1,6),new THREE.MeshStandardMaterial({color:'#a8b8bf',roughness:.65,metalness:.15,emissive:0}),railSegments.length);
+  const rails=new THREE.InstancedMesh(new THREE.CylinderGeometry(.05,.05,1,8),new THREE.MeshStandardMaterial({color:'#a8b8bf',roughness:.65,metalness:.15,emissive:0}),railSegments.length);
   rails.name='deck-rails';const matrix=new THREE.Matrix4(),rotation=new THREE.Quaternion(),up=new THREE.Vector3(0,1,0);
   railSegments.forEach(([a,b],i)=>{const direction=b.clone().sub(a);rotation.setFromUnitVectors(up,direction.clone().normalize());matrix.compose(a.clone().add(b).multiplyScalar(.5),rotation,new THREE.Vector3(1,direction.length(),1));rails.setMatrixAt(i,matrix);});rails.instanceMatrix.needsUpdate=true;ship.add(rails);
   // Flush plank joints also receive lighting instead of glowing like unlit lines.

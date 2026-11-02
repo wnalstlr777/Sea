@@ -34,7 +34,7 @@ function setView(overview){
 document.querySelector('#deck-view').onclick=()=>setView(false);
 document.querySelector('#ocean-view').onclick=()=>setView(true);
 const ocean=createOcean();scene.add(ocean.mesh);
-const lighting=createLighting(scene,ocean);
+const lighting=createLighting(scene,ocean,camera);
 const seaAudio=createSeaAudio(document.querySelector('#music-toggle'));
 const seagulls=createSeagulls(scene,camera,seaAudio);
 const marineLife=createMarineLife(scene,camera,seaAudio);

@@ -15,9 +15,9 @@ const stops=[
 export function celestialDirections(hour){
   const direction=angle=>new THREE.Vector3(.64*Math.tan(THREE.MathUtils.degToRad(20))*Math.sin(angle),.64*Math.sin(angle),Math.cos(angle)).normalize();
   // Retrace the near-horizon sunset arc, rather than climbing overhead.
-  // A four-degree peak keeps the whole disc inside the default mobile deck view.
+  // Raise the midnight peak to roughly twice the previous stylized altitude.
   const nightPhase=(hour-18)/12*Math.PI;
-  const moonAngle=Math.PI-.11*Math.sin(nightPhase);
+  const moonAngle=Math.PI-.22*Math.sin(nightPhase);
   return {sun:direction((hour-6)/12*Math.PI),moon:direction(moonAngle)};
 }
 export function celestialVisibility(hour){
@@ -30,13 +30,13 @@ export function celestialVisibility(hour){
 export function horizonGradientStrength(hour){
   return .5+.5*THREE.MathUtils.smoothstep(Math.abs(hour-12),0,1);
 }
-export function createLighting(scene,ocean){
-  const uniforms={horizonStrength:{value:1},cloudCover:{value:.5},zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0}};
+export function createLighting(scene,ocean,camera){
+  const uniforms={horizonStrength:{value:1},cloudCover:{value:.5},zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0},moonTint:{value:0}};
   Object.assign(ocean.uniforms,uniforms);
   const sky=new THREE.Mesh(new THREE.SphereGeometry(24000,32,20),new THREE.ShaderMaterial({uniforms,side:THREE.BackSide,depthWrite:false,
     vertexShader:`varying vec3 dir;void main(){dir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
     fragmentShader:`
-      uniform vec3 zenith,skyHorizon,sunColor,sunDirection,moonDirection;uniform float daylight,sunVisible,moonVisible,horizonStrength;varying vec3 dir;
+      uniform vec3 zenith,skyHorizon,sunColor,sunDirection,moonDirection;uniform float daylight,sunVisible,moonVisible,horizonStrength,moonTint;varying vec3 dir;
       void main(){
         vec3 d=normalize(dir);float h=d.y;
         vec3 c=mix(zenith,skyHorizon,(1.-smoothstep(.015,.6,h))*horizonStrength);
@@ -51,7 +51,7 @@ export function createLighting(scene,ocean){
         vec3 moonUp=cross(moonDirection,moonRight);
         vec2 uv=vec2(dot(d,moonRight),dot(d,moonUp))/.03;
         float texture=.92-.17*exp(-length(uv-vec2(-.3,.25))*5.)-.13*exp(-length(uv-vec2(.35,-.2))*6.);
-        c+=vec3(.64,.76,1.)*(moonDisc*texture+exp(-moonAngle*23.)*.12)*moonVisible*atmosphere;
+        c+=mix(vec3(.72,.79,.95),vec3(.57,.73,1.),moonTint)*(moonDisc*texture+exp(-moonAngle*23.)*.12)*moonVisible*atmosphere;
         gl_FragColor=vec4(c,1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -67,7 +67,7 @@ export function createLighting(scene,ocean){
     light.shadow.bias=-.0002;light.shadow.normalBias=.025;light.shadow.radius=2;
     scene.add(light.target);
   }
-  const atmosphere=createAtmosphere(scene,{uniforms});
+  const atmosphere=createAtmosphere(scene,{uniforms,camera});
   let previousHour=-1,displayHour=18;
   function update(hour,dt){
     if(dt!==undefined){
@@ -87,6 +87,8 @@ export function createLighting(scene,ocean){
     uniforms.moonDirection.value.copy(moon);
     const visibility=celestialVisibility(t);
     uniforms.sunVisible.value=visibility.sun;uniforms.moonVisible.value=visibility.moon;
+    // Cool blue moonlight peaks around midnight and fades toward dawn/dusk.
+    uniforms.moonTint.value=Math.pow(Math.max(0,Math.cos((t%24)*Math.PI/12)),2);
     sunlight.castShadow=visibility.sun>0;moonlight.castShadow=visibility.moon>0;
     uniforms.daylight.value=THREE.MathUtils.lerp(a[4],b[4],f);
     const night=1.-THREE.MathUtils.smoothstep(uniforms.daylight.value,.1,.55);
@@ -94,6 +96,8 @@ export function createLighting(scene,ocean){
     ambient.groundColor.set('#223351');ambient.intensity=.35+uniforms.daylight.value*2.2;
     sunlight.color.copy(uniforms.sunColor.value);sunlight.intensity=THREE.MathUtils.lerp(a[5],b[5],f)*uniforms.sunVisible.value;sunlight.position.copy(uniforms.sunDirection.value).multiplyScalar(100);
     // Lift the lighting angle above the stylized low moon so deck surfaces receive it.
+    moonlight.color.set('#9ebfff').lerp(new THREE.Color('#77a7ff'),uniforms.moonTint.value);
+    moonFill.color.set('#a8c6ff').lerp(new THREE.Color('#83afff'),uniforms.moonTint.value);
     moonlight.position.copy(uniforms.moonDirection.value);moonlight.position.y=.65;moonlight.position.normalize().multiplyScalar(100);moonlight.intensity=1.7*uniforms.moonVisible.value;moonFill.intensity=.65*uniforms.moonVisible.value;
   }
   function follow(position){
