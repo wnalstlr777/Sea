@@ -88,22 +88,14 @@ body.sea-overview #jump-toggle{display:none!important}
   #app:has(details[open]) #camera-toggle{right:calc(min(240px,100vw - 32px) + 80px)}
 }
 
-/* Unified action button dimensions and right alignment. */
-#sit-toggle,#jump-toggle{
-  box-sizing:border-box;
-  width:52px;
-  min-width:52px;
-  max-width:52px;
-  height:44px;
-  min-height:44px;
-  max-height:44px;
-  right:16px;
-  padding:0;
-  text-align:center;
-  font-size:13px;
-  line-height:44px;
-}
-@media(max-width:600px){
-  #sit-toggle{right:16px;bottom:180px}
-  #jump-toggle{right:16px;bottom:232px}
-}
+/* Startup cover: masks the temporary camera until ship GLB and player are ready. */
+#sea-loading{position:fixed;inset:0;z-index:99999;background:linear-gradient(180deg,#163e57 0%,#0b2d43 58%,#071b2d 100%);display:flex;align-items:center;justify-content:center;color:#e8f7fc;opacity:1;transition:opacity .65s ease;pointer-events:auto}
+#sea-loading.sea-loading-done{opacity:0;pointer-events:none}
+.sea-loading-inner{width:min(320px,80vw);text-align:center}
+.sea-loading-mark{font-size:60px;font-weight:200;line-height:1;color:#a3dce7;margin-bottom:18px}
+.sea-loading-title{font-size:22px;letter-spacing:6px;font-weight:300}
+.sea-loading-subtitle{font-size:12px;letter-spacing:1px;opacity:.75;margin:20px 0}
+.sea-loading-track{height:3px;border-radius:5px;background:#ffffff28;overflow:hidden}
+.sea-loading-progress{width:35%;height:100%;border-radius:5px;background:#a8e2ee;animation:sea-loading-slide 1.5s ease-in-out infinite alternate}
+@keyframes sea-loading-slide{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+@media(prefers-reduced-motion:reduce){.sea-loading-progress{animation:none;width:100%}}

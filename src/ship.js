@@ -12,7 +12,7 @@ export const VISUAL_DECK_Y=PREVIOUS_DECK_Y+9; // Ship, UCX and all imported deck
 export const NETWORK_TO_VISUAL_Y=VISUAL_DECK_Y-SHIP.deckY;
 export const SHIP_CENTER_Z=-24;
 export function createShip(){
-  const ship=new THREE.Group();ship.name='imported-ship';
+  const ship=new THREE.Group();ship.name='imported-ship';ship.userData.loadingState='loading';
   new GLTFLoader().load(`${import.meta.env.BASE_URL}models/Ship.glb`,gltf=>{
     const root=gltf.scene;
     root.scale.setScalar(HULL_SCALE);
@@ -50,7 +50,8 @@ export function createShip(){
     ship.userData.overviewDisplay=displayPivot;
     ship.userData.overviewVisualMeshes=[];
     root.traverse(obj=>{if(obj.isMesh&&!obj.name.startsWith('UCX_'))ship.userData.overviewVisualMeshes.push(obj);});
+    ship.userData.loadingState='ready';
     console.info('[Sea] Hull height=30m (5x test), visual deck=',VISUAL_DECK_Y,'UCX meshes=',colliders.length);
-  },undefined,error=>console.error('[Sea] Ship.glb loading failed:',error));
+  },undefined,error=>{ship.userData.loadingState='error';console.error('[Sea] Ship.glb loading failed:',error);});
   return ship;
 }
