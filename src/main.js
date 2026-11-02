@@ -40,7 +40,7 @@ function setView(overview){
   if(overview){
     // Match the existing side-profile intro shot; keep its framing and distance.
     const mobile=camera.aspect<.8;
-    camera.position.set(mobile?125:105,VISUAL_DECK_Y-5+1.0,SHIP_CENTER_Z);
+    camera.position.set(mobile?140:118,VISUAL_DECK_Y-5+1.0,SHIP_CENTER_Z);
     controls.target.set(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);
     controls.update();
   }else{
@@ -68,11 +68,11 @@ function updateOverviewSway(dt,seconds){
   pivot.visible=showing;
   for(const mesh of ship.userData.overviewVisualMeshes)mesh.visible=!showing;
   if(!showing){pivot.position.y=VISUAL_DECK_Y-5;pivot.rotation.set(0,0,0);return;}
-  const phase=seconds*2*Math.PI/5.6;
-  pivot.position.y=VISUAL_DECK_Y-5+overviewSway*(.15*Math.sin(phase));
+  const phase=seconds*2*Math.PI/(5.6/1.5);
+  pivot.position.y=VISUAL_DECK_Y-5+overviewSway*(.18*Math.sin(phase));
   // Ship runs lengthwise along world Z; pitching about X is visible broadside.
-  pivot.rotation.x=overviewSway*THREE.MathUtils.degToRad(1.5)*Math.sin(phase+.5);
-  pivot.rotation.z=overviewSway*THREE.MathUtils.degToRad(.5)*Math.sin(phase*.83+1.3);
+  pivot.rotation.x=overviewSway*THREE.MathUtils.degToRad(1.8)*Math.sin(phase+.5);
+  pivot.rotation.z=overviewSway*THREE.MathUtils.degToRad(.6)*Math.sin(phase*.83+1.3);
 }
 const deckCollision=createDeckCollision(ship);
 const sunbeds=createSunbeds(scene);
