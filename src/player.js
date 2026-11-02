@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {SHIP,PLAYER_RADIUS,constrainToDeck} from './ship.js';
+import {SHIP,PLAYER_RADIUS,isOnDeck} from './ship.js';
 import {NETWORK_TO_VISUAL_Y,VISUAL_DECK_Y} from './ship.js';
 import {createSurvivor,disposeSurvivor} from './survivor.js';
 
@@ -39,6 +39,8 @@ export function createPlayer(scene,camera,controls){
   // current Workers protocol only accepts y === SHIP.deckY.
   const jumpButton=document.createElement('button');jumpButton.id='jump-toggle';jumpButton.type='button';jumpButton.textContent='점프';jumpButton.setAttribute('aria-label','점프');document.querySelector('#app').append(jumpButton);
   const JUMP_SPEED=10.6,GRAVITY=13.5,HEAD_HEIGHT=2.95;
+  const WATER_SURFACE_Y=0.35, RESPAWN_X=0, RESPAWN_Z=-33;
+  let overboard=false, fallOffset=0, waterTime=0;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
   let lieTransition=null;
   const LIE_DURATION=1.6;
@@ -70,8 +72,23 @@ export function createPlayer(scene,camera,controls){
       }
     }catch{/* Audio is optional if the browser blocks playback. */}
   }
+  function returnToDeck(){
+    const previous=player.position.clone();
+    player.position.set(RESPAWN_X,SHIP.deckY,RESPAWN_Z);
+    const delta=player.position.clone().sub(previous);
+    camera.position.add(delta);controls.target.add(delta);
+    // The network root stays at the server-approved deck Y.
+    camera.position.y-=fallOffset;controls.target.y-=fallOffset;
+    overboard=false;fallOffset=0;waterTime=0;
+    jumpHeight=0;jumpVelocity=0;headSupport=null;
+    jumpPivot.position.y=NETWORK_TO_VISUAL_Y;
+    contact.visible=true;
+    player.userData.inWater=false;
+  }
   function jump(){
-    if(!enabled||jumpHeight>.03||jumpVelocity>0)return;
+    if(!enabled)return;
+    if(overboard){returnToDeck();return;}
+    if(jumpHeight>.03||jumpVelocity>0)return;
     if(lying)standUp();if(sitting)setSitting(false);
     headSupport=null;jumpVelocity=JUMP_SPEED;playJumpSound();
   }
@@ -87,6 +104,18 @@ export function createPlayer(scene,camera,controls){
   function updateJump(dt){
     if(!enabled){jumpHeight=0;jumpVelocity=0;jumpPose=0;headSupport=null;jumpPivot.position.y=NETWORK_TO_VISUAL_Y;return;}
     const step=Math.min(dt,.05);
+    if(overboard){
+      // No water physics/server changes: animate the avatar locally above the ocean.
+      const desired=WATER_SURFACE_Y-(SHIP.deckY+NETWORK_TO_VISUAL_Y);
+      const old=fallOffset;
+      fallOffset=Math.max(desired,fallOffset-GRAVITY*step*2.2);
+      if(fallOffset<=desired+.01){waterTime+=step;fallOffset=desired+Math.sin(waterTime*2.4)*.12;}
+      const shift=fallOffset-old;
+      camera.position.y+=shift;controls.target.y+=shift;
+      jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
+      jumpPose+=(0-jumpPose)*(1-Math.exp(-step*16));
+      return;
+    }
     if(jumpVelocity!==0||jumpHeight>0){
       const before=jumpHeight;
       jumpHeight+=jumpVelocity*step-.5*GRAVITY*step*step;
@@ -111,6 +140,7 @@ export function createPlayer(scene,camera,controls){
 
   function lieOn(anchor){
     if(!enabled)return;
+    if(overboard)return;
     jumpHeight=0;jumpVelocity=0;jumpPose=0;headSupport=null;setSitting(false);
     lying=true;bedAnchor={...anchor};
     // Snap to the bed's fixed coordinate system, never the approach direction.
@@ -156,9 +186,17 @@ export function createPlayer(scene,camera,controls){
     if(sitting)setSitting(false);
     if(headSupport){headSupport=null;jumpVelocity=-.01;}
     camera.getWorldDirection(forward);forward.y=0;forward.normalize();right.crossVectors(forward,THREE.Object3D.DEFAULT_UP).normalize();movement.copy(forward).multiplyScalar(z).addScaledVector(right,x);if(movement.length()>1)movement.normalize();movement.multiplyScalar(5.25*dt);
-    const previous=player.position.clone();player.position.add(movement);constrainToDeck(player.position,PLAYER_RADIUS+.12);const delta=player.position.clone().sub(previous);
+    const previous=player.position.clone();player.position.add(movement);
+    // No invisible walls: leaving the deck starts a local fall to the ocean.
+    if(!overboard&&!isOnDeck(player.position,PLAYER_RADIUS*.5)){
+      overboard=true;player.userData.inWater=true;
+      if(lying)standUp();if(sitting)setSitting(false);
+      jumpHeight=0;jumpVelocity=0;headSupport=null;
+      contact.visible=false;
+    }
+    const delta=player.position.clone().sub(previous);
     if(delta.lengthSq()>1e-8)player.rotation.y=Math.atan2(-delta.x,-delta.z);
-    player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving,sitting,jumpPose);
+    player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving&&!overboard,sitting,jumpPose);
     camera.position.add(delta);controls.target.add(delta);
   }
   return {player,update,setCharacter,setEnabled,resetView,lieOn,standUp,isLying:()=>lying};

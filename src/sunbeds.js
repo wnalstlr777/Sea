@@ -9,7 +9,7 @@ export function createSunbeds(scene){
   const beds=[];
   // Five loungers in a single transverse row, rotated 90 degrees clockwise as a set.
   // Rotate both the row positions and bed headings so the loungers do not overlap.
-  const positions=[-4.8,-2.4,0,2.4,4.8].map(dx=>[dx,SHIP_CENTER_Z-9]);
+  const positions=[-4.8,-2.4,0,2.4,4.8].map(dx=>[dx,SHIP_CENTER_Z-5.5]);
   const box=(parent,w,h,d,x,y,z,tilt=0)=>{
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),cushion);
     mesh.position.set(x,y,z);mesh.rotation.x=tilt;
