@@ -8,7 +8,7 @@ export {SHIP,DECK,PLAYER_RADIUS,constrainToDeck,isOnDeck} from './deck.js';
 export const HULL_SCALE=5*6/(650.131-(-497.055));
 // Keep the deck at its previous visual height while enlarging the hull.
 const PREVIOUS_DECK_Y=(355.25-(-497.055))*(6/(650.131-(-497.055)));
-export const VISUAL_DECK_Y=PREVIOUS_DECK_Y+11; // Raise the hull while preserving its 5x scale
+export const VISUAL_DECK_Y=PREVIOUS_DECK_Y+9; // Ship, UCX and all imported deck elements share this deck datum; lowered 2m again.
 export const NETWORK_TO_VISUAL_Y=VISUAL_DECK_Y-SHIP.deckY;
 export const SHIP_CENTER_Z=-24;
 export function createShip(){
