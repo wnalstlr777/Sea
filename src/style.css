@@ -66,3 +66,7 @@
   .time-control{bottom:max(8px,env(safe-area-inset-bottom));transform:none}
   #sit-toggle{right:16px;bottom:180px}
 }
+
+/* Jump button above the sit control on desktop and mobile. */
+#jump-toggle{position:absolute;right:34px;bottom:max(78px,calc(env(safe-area-inset-bottom) + 54px));width:48px;min-height:38px;border-radius:12px;background:#072d39e8;color:white;font-size:12px;z-index:3;touch-action:manipulation}
+@media(max-width:600px){#jump-toggle{right:24px;bottom:232px;width:48px;min-height:38px}}
