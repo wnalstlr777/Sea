@@ -35,17 +35,17 @@ float fixedWeight=clamp(r*(1.0-g)*(1.0-b),0.0,1.0);
 float strongWeight=clamp(min(r,g)*(1.0-b),0.0,1.0);
 float mediumWeight=clamp(b*(1.0-g),0.0,1.0);
 float weight=clamp((mediumWeight*.45+strongWeight)*(1.0-fixedWeight),0.0,1.0);
-float wave=sin(sailTime*1.6+position.y*.013+position.x*.008)*.65
-          +sin(sailTime*2.7+position.y*.028-position.z*.017)*.25;
-transformed.x+=weight*wave*10.0;
-transformed.z+=weight*sin(sailTime*1.25+position.x*.012)*4.0;`);
+float wave=sin(sailTime*2.4+position.y*.013+position.x*.008)*.65
+          +sin(sailTime*3.8+position.y*.028-position.z*.017)*.25;
+transformed.x+=weight*wave*38.0;
+transformed.z+=weight*sin(sailTime*2.1+position.x*.012)*16.0;`);
         };
         // Use a dedicated attribute name: Three.js reserves `color` for material vertex colors.
         const mask=obj.geometry.getAttribute('color');
         if(mask)obj.geometry.setAttribute('sailMask',mask);
         else console.warn('[Sea] Sail mesh missing COLOR_0:',obj.name);
         obj.material=material;
-        obj.castShadow=true;obj.receiveShadow=true;
+        obj.castShadow=false;obj.receiveShadow=false;
       });
       // Render-only overview clone shares materials and uniforms with the deck sail.
       // Reparent into overview displayRoot so it rocks together with the ship.
