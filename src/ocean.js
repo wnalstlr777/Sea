@@ -44,14 +44,24 @@ export function createOcean(){
   const surfaceMap=createSurfaceTexture();
   // Reuse Three.js Water's mirrored camera and oblique clipping for scene reflections.
   // The capture plane stays flat; the visible mesh retains the curved horizon.
-  const mirror=new Water(new THREE.PlaneGeometry(1,1),{textureWidth:64,textureHeight:64});
-  mirror.rotation.x=-Math.PI/2;mirror.updateMatrixWorld();
+  // Water keeps its render target private. Cache the five selectable sizes so
+  // repeated UI changes reuse targets instead of allocating new GPU resources.
+  const reflectionSizes=[64,128,256,512,1024],mirrors=new Map();
+  const mirrorGeometry=new THREE.PlaneGeometry(1,1);
+  function getMirror(size){
+    if(!mirrors.has(size)){
+      const water=new Water(mirrorGeometry,{textureWidth:size,textureHeight:size});
+      water.rotation.x=-Math.PI/2;water.updateMatrixWorld();mirrors.set(size,water);
+    }
+    return mirrors.get(size);
+  }
+  let mirror=getMirror(64);
   const uniforms={
-    time:{value:0},travel:{value:0},curvature:{value:1},height:{value:.55},waveSize:{value:1},normalStrength:{value:0},speed:{value:16},wake:{value:.65},
+    time:{value:0},travel:{value:0},curvature:{value:1},height:{value:.825},waveSize:{value:1},normalStrength:{value:0},speed:{value:16},wake:{value:.65},
     horizon:{value:new THREE.Color('#52798b')},mid:{value:new THREE.Color('#17455c')},
     near:{value:new THREE.Color('#105064')},deep:{value:new THREE.Color('#062839')},
-    surfaceMap:{value:surfaceMap},mirrorSampler:mirror.material.uniforms.mirrorSampler,
-    textureMatrix:mirror.material.uniforms.textureMatrix,
+    surfaceMap:{value:surfaceMap},mirrorSampler:{value:mirror.material.uniforms.mirrorSampler.value},
+    textureMatrix:{value:mirror.material.uniforms.textureMatrix.value},
   };
   // Band-limit displacement to the mesh spacing. Shading evaluates the same
   // waves per pixel, so sparse radial triangles cannot create reflected spokes.
@@ -136,7 +146,8 @@ export function createOcean(){
         float nv=max(dot(n,v),0.);
         // Water reflects strongly at low viewing angles while retaining deep body colour.
         float fresnel=.035+.965*pow(1.-nv,5.);
-        vec3 sky=mix(skyHorizon,zenith,smoothstep(.015,.65,max(r.y,0.)));
+        float horizonStrength=mix(1.,.5,smoothstep(.65,1.,daylight));
+        vec3 sky=mix(zenith,skyHorizon,(1.-smoothstep(.015,.65,max(r.y,0.)))*horizonStrength);
         vec2 uv=mirrorCoord.xy/mirrorCoord.w;
         uv+=n.xz*.004/(1.+dist*.008);
         vec3 sceneReflection=texture2D(mirrorSampler,clamp(uv,vec2(.002),vec2(.998))).rgb;
@@ -144,7 +155,7 @@ export function createOcean(){
         vec3 reflection=mix(sky,sceneReflection,valid*.8);
         vec3 body=mix(deep,near,clamp(.38+world.y*.16+tex.b*.22,0.,1.));
         body=mix(body,mid,smoothstep(100.,1200.,dist)*.32);
-        body=mix(body,horizon,smoothstep(900.,7000.,dist)*.22);
+        body=mix(body,horizon,smoothstep(900.,7000.,dist)*.22*horizonStrength);
         // Saturated blue body colour in daylight; retain the sunset/night palette.
         float blueDay=smoothstep(.65,1.,daylight);
         vec3 dayBlue=mix(vec3(.008,.045,.25),vec3(.015,.22,.48),clamp(.45+world.y*.12+tex.b*.2,0.,1.));
@@ -174,7 +185,7 @@ export function createOcean(){
         color=mix(color,foamColor,foam);
         // Keep foreground and mid-distance texture; blend before the curved tangent.
         float haze=1.-exp(-pow(dist/3800.,1.45));
-        color=mix(color,skyHorizon,haze);
+        color=mix(color,skyHorizon,haze*horizonStrength);
         gl_FragColor=vec4(color,1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -184,5 +195,11 @@ export function createOcean(){
     mesh.visible=false;
     try{mirror.onBeforeRender(renderer,scene,camera);}finally{mesh.visible=true;}
   };
-  return {mesh,uniforms};
+  function setReflectionResolution(size){
+    if(!reflectionSizes.includes(size))return;
+    mirror=getMirror(size);
+    uniforms.mirrorSampler.value=mirror.material.uniforms.mirrorSampler.value;
+    uniforms.textureMatrix.value=mirror.material.uniforms.textureMatrix.value;
+  }
+  return {mesh,uniforms,setReflectionResolution};
 }

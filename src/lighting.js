@@ -35,17 +35,18 @@ export function createLighting(scene,ocean){
       uniform vec3 zenith,skyHorizon,sunColor,sunDirection,moonDirection;uniform float daylight,sunVisible,moonVisible;varying vec3 dir;
       void main(){
         vec3 d=normalize(dir);float h=d.y;
-        vec3 c=mix(skyHorizon,zenith,smoothstep(.015,.6,h));
+        float horizonStrength=mix(1.,.5,smoothstep(.65,1.,daylight));
+        vec3 c=mix(zenith,skyHorizon,(1.-smoothstep(.015,.6,h))*horizonStrength);
         float angle=acos(clamp(dot(d,sunDirection),-1.,1.));
-        float disc=1.-smoothstep(.016,.019,angle);
+        float disc=1.-smoothstep(.024,.0285,angle);
         float glow=exp(-angle*12.)*.45;
         float atmosphere=smoothstep(-.04,.02,h);
         c+=sunColor*(disc*2.2+glow)*sunVisible*atmosphere;
         float moonAngle=acos(clamp(dot(d,moonDirection),-1.,1.));
-        float moonDisc=1.-smoothstep(.019,.021,moonAngle);
+        float moonDisc=1.-smoothstep(.0285,.0315,moonAngle);
         vec3 moonRight=normalize(cross(vec3(0.,1.,0.),moonDirection));
         vec3 moonUp=cross(moonDirection,moonRight);
-        vec2 uv=vec2(dot(d,moonRight),dot(d,moonUp))/.02;
+        vec2 uv=vec2(dot(d,moonRight),dot(d,moonUp))/.03;
         float texture=.92-.17*exp(-length(uv-vec2(-.3,.25))*5.)-.13*exp(-length(uv-vec2(.35,-.2))*6.);
         c+=vec3(.64,.76,1.)*(moonDisc*texture+exp(-moonAngle*23.)*.12)*moonVisible*atmosphere;
         gl_FragColor=vec4(c,1.);
