@@ -50,3 +50,11 @@
 @media(max-width:600px){.multiplayer-status{left:18px;top:165px;max-width:180px;font-size:10px}.player-name{font-size:11px}}
 
 @media(max-width:600px){.time-control{transform:scale(.5);transform-origin:bottom right}}
+
+#stats{margin:16px 0 0;font-size:10px;color:#c1dce1}
+#music-toggle{position:absolute;top:24px;right:302px;z-index:3;width:48px;height:48px;min-height:0;margin:0;padding:0;font-size:23px;background:#072d39e8;border-radius:12px;backdrop-filter:blur(16px)}
+#music-toggle[aria-pressed=false]{opacity:.65}
+@media(max-width:600px){
+  #music-toggle{top:max(16px,env(safe-area-inset-top));right:72px}
+  #app:has(details[open]) #music-toggle{right:calc(min(240px,100vw - 32px) + 24px)}
+}

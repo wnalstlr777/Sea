@@ -3,7 +3,7 @@
 export function createShipHorn(button){
   let context=null,enabled=true,remaining=3;
   const interval=45;
-  function label(){button.textContent=!enabled?'뱃고동 · 꺼짐':context?.state==='running'?'뱃고동 · 45초 간격':'뱃고동 · 화면을 눌러 소리 시작';button.setAttribute('aria-pressed',String(enabled));}
+  function label(){if(!button)return;button.textContent=!enabled?'뱃고동 · 꺼짐':context?.state==='running'?'뱃고동 · 45초 간격':'뱃고동 · 화면을 눌러 소리 시작';button.setAttribute('aria-pressed',String(enabled));}
   function unlock(){
     if(!enabled)return;
     const Audio=window.AudioContext||window.webkitAudioContext;
@@ -14,7 +14,7 @@ export function createShipHorn(button){
   }
   addEventListener('pointerdown',unlock);
   addEventListener('keydown',event=>{if(!event.repeat)unlock();});
-  button.addEventListener('click',()=>{enabled=!enabled;if(enabled){unlock();remaining=3;}else if(context?.state==='running'){context.suspend().catch(()=>{});}label();});
+  button?.addEventListener('click',()=>{enabled=!enabled;if(enabled){unlock();remaining=3;}else if(context?.state==='running'){context.suspend().catch(()=>{});}label();});
   function play(){
     const now=context.currentTime;
     const envelope=context.createGain();envelope.gain.setValueAtTime(0,now);

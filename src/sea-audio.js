@@ -56,7 +56,7 @@ export function createSeaAudio(button){
     if(enabled){step=0;nextNote=context.currentTime+.08;scheduler=setInterval(update,200);}
     else{clearInterval(scheduler);scheduler=null;for(const voice of voices){try{voice.stop();}catch{}}}
     musicBus.gain.setTargetAtTime(enabled?.38:0,context.currentTime,.2);
-    button.textContent=enabled?'재즈 + 파도 · 끄기':'재즈 + 파도 · 켜기';button.setAttribute('aria-pressed',String(enabled));
+    button.textContent=enabled?'🎵':'🔇';button.setAttribute('aria-pressed',String(enabled));
   });
   function update(){
     if(!context)return;
