@@ -35,7 +35,21 @@ export function createShip(){
       else obj.material=recolor(obj.material);
       obj.castShadow=true;obj.receiveShadow=true;
     });
+    // Render-only duplicate: shared geometries/materials, independent transforms.
+    // The original model and UCX remain in their exact existing positions.
+    const displayPivot=new THREE.Group();
+    displayPivot.name='sea-overview-bob';
+    displayPivot.position.set(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);
+    const displayRoot=root.clone(true);
+    displayRoot.position.sub(displayPivot.position);
+    displayRoot.traverse(obj=>{if(obj.isMesh&&obj.name.startsWith('UCX_'))obj.visible=false;});
+    displayPivot.add(displayRoot);
+    displayPivot.visible=false;
+    ship.add(displayPivot);
     ship.add(root);ship.userData.model=root;ship.userData.colliders=colliders;
+    ship.userData.overviewDisplay=displayPivot;
+    ship.userData.overviewVisualMeshes=[];
+    root.traverse(obj=>{if(obj.isMesh&&!obj.name.startsWith('UCX_'))ship.userData.overviewVisualMeshes.push(obj);});
     console.info('[Sea] Hull height=30m (5x test), visual deck=',VISUAL_DECK_Y,'UCX meshes=',colliders.length);
   },undefined,error=>console.error('[Sea] Ship.glb loading failed:',error));
   return ship;

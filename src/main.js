@@ -56,6 +56,24 @@ const seagulls=createSeagulls(scene,camera,seaAudio);
 const marineLife=createMarineLife(scene,camera,seaAudio);
 const horn=createShipHorn();
 const ship=createShip();scene.add(ship);
+// Only the rendered hull rocks. The collision mesh stays motionless.
+let overviewSway=0;
+function updateOverviewSway(dt,seconds){
+  const active=overviewActive||(intro&&!introFinished&&intro.elapsed<2);
+  const target=active?1:0;
+  overviewSway+= (target-overviewSway)*(1-Math.exp(-Math.min(dt,.05)*2.2));
+  const pivot=ship.userData.overviewDisplay;
+  if(!pivot)return; // GLB may still be loading
+  const showing=overviewSway>.002;
+  pivot.visible=showing;
+  for(const mesh of ship.userData.overviewVisualMeshes)mesh.visible=!showing;
+  if(!showing){pivot.position.y=VISUAL_DECK_Y-5;pivot.rotation.set(0,0,0);return;}
+  const phase=seconds*2*Math.PI/5.6;
+  pivot.position.y=VISUAL_DECK_Y-5+overviewSway*(.15*Math.sin(phase));
+  // Ship runs lengthwise along world Z; pitching about X is visible broadside.
+  pivot.rotation.x=overviewSway*THREE.MathUtils.degToRad(1.5)*Math.sin(phase+.5);
+  pivot.rotation.z=overviewSway*THREE.MathUtils.degToRad(.5)*Math.sin(phase*.83+1.3);
+}
 const deckCollision=createDeckCollision(ship);
 const sunbeds=createSunbeds(scene);
 const jellyfish=createJellyfish(scene);
@@ -120,7 +138,7 @@ for(const [key,value] of Object.entries(palette)){const label=document.createEle
 document.querySelector('#reset').onclick=()=>{Object.assign(params,defaults);setHour(defaults.hour);setCloudCover(defaults.cloudCover);setReflectionResolution(defaults.reflectionResolution);document.querySelectorAll('#sliders input').forEach((input,i)=>{input.value=params[settings[i][0]];input.dispatchEvent(new Event('input'));});document.querySelectorAll('#colors input').forEach((input,i)=>{input.value=Object.values(palette)[i];input.dispatchEvent(new Event('input'));});};
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 let previous=performance.now(),elapsed=0,frames=0;
-renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();updateIntro(dt);
+renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();updateIntro(dt);updateOverviewSway(dt,naturalTime);
 nearbyBed=null;
 if(!overviewActive&&!character.isLying())for(const bed of sunbeds.beds){if(Math.hypot(character.player.position.x-bed.position.x,character.player.position.z-bed.position.z)<1.6){nearbyBed=bed;break;}}
 lieButton.style.display='none';
