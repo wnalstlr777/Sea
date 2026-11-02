@@ -29,7 +29,7 @@ export function createPlayer(scene,camera,controls){
   function setCharacter(id,hairColor='black'){
     if(player.userData.characterId===id&&player.userData.hairColor===hairColor)return;
     jumpPivot.remove(avatar.mesh);disposeSurvivor(avatar.mesh);
-    avatar=createSurvivor(id,hairColor);avatar.mesh.rotation.y=Math.PI;jumpPivot.add(avatar.mesh);player.userData.characterId=id;player.userData.hairColor=hairColor;
+    avatar=createSurvivor(id,hairColor);avatar.mesh.rotation.y=Math.PI;jumpPivot.add(avatar.mesh);if(lying){avatar.mesh.position.copy(lieTargetPos);avatar.mesh.quaternion.copy(lieTargetQuat);lieTransition=null;}player.userData.characterId=id;player.userData.hairColor=hairColor;
   }
   const sitButton=document.createElement('button');sitButton.id='sit-toggle';sitButton.type='button';sitButton.textContent='앉기';sitButton.setAttribute('aria-pressed','false');document.querySelector('#app').append(sitButton);
   function setSitting(value){sitting=value;player.userData.sitting=value;sitButton.textContent=value?'일어서기':'앉기';sitButton.setAttribute('aria-pressed',String(value));}
@@ -39,6 +39,11 @@ export function createPlayer(scene,camera,controls){
   const jumpButton=document.createElement('button');jumpButton.id='jump-toggle';jumpButton.type='button';jumpButton.textContent='점프';jumpButton.setAttribute('aria-label','점프');document.querySelector('#app').append(jumpButton);
   const JUMP_SPEED=10.6,GRAVITY=13.5,HEAD_HEIGHT=2.95;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
+  let lieTransition=null;
+  const LIE_DURATION=1.6;
+  const lieTargetQuat=new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI/2,Math.PI,0,'XYZ'));
+  // Upright +Y becomes bed head-end +Z; front (+Z) points toward the sky (+Y).
+  const lieTargetPos=new THREE.Vector3(0,.44,-.53);
   // Original two-part cartoon spring sound (not sampled from any game).
   let jumpAudio=null;
   function playJumpSound(){
@@ -48,7 +53,7 @@ export function createPlayer(scene,camera,controls){
       if(!jumpAudio)jumpAudio=new Ctx();
       if(jumpAudio.state==='suspended')jumpAudio.resume().catch(()=>{});
       const now=jumpAudio.currentTime;
-      for(const [delay,from,to,duration,volume] of [[0,270,650,.15,.13],[.065,510,960,.19,.075]]){
+      for(const [delay,from,to,duration,volume] of [[0,270,650,.15,.18],[.065,510,960,.19,.105]]){
         const osc=jumpAudio.createOscillator(),gain=jumpAudio.createGain();
         osc.type='triangle';osc.frequency.setValueAtTime(from,now+delay);
         osc.frequency.exponentialRampToValueAtTime(to,now+delay+duration);
@@ -104,21 +109,41 @@ export function createPlayer(scene,camera,controls){
     if(!enabled)return;
     jumpHeight=0;jumpVelocity=0;jumpPose=0;headSupport=null;setSitting(false);
     lying=true;bedAnchor=anchor.clone();
-    // The sunbed defines the pose; never derive it from the approach direction.
+    // Snap to the bed's fixed coordinate system, never the approach direction.
     player.position.set(anchor.x,SHIP.deckY,anchor.z);player.rotation.y=0;
-    avatar.mesh.position.set(0,.16,-.35);
-    // Rotate the already forward-facing avatar around its lengthwise orientation:
-    // head toward the raised +Z backrest and face upward, regardless of entry side.
-    const pitch=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),1.30);
-    const face=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI);
-    avatar.mesh.quaternion.copy(pitch).multiply(face);
+    jumpPivot.position.y=0;
+    // Animate from an upright, centered pose to the same bed-aligned resting pose.
+    avatar.mesh.position.set(0,0,0);
+    avatar.mesh.rotation.set(0,Math.PI,0);
+    lieTransition={elapsed:0,startPos:avatar.mesh.position.clone(),startQuat:avatar.mesh.quaternion.clone()};
     contact.visible=false;player.userData.lying=true;resetView();
   }
-  function standUp(){if(!lying)return;lying=false;bedAnchor=null;player.position.y=SHIP.deckY;avatar.mesh.position.set(0,0,0);avatar.mesh.rotation.set(0,Math.PI,0);contact.visible=true;player.userData.lying=false;resetView();}
+  function standUp(){
+    if(!lying)return;
+    lying=false;bedAnchor=null;lieTransition=null;
+    player.position.y=SHIP.deckY;
+    avatar.mesh.position.set(0,0,0);avatar.mesh.rotation.set(0,Math.PI,0);
+    contact.visible=true;player.userData.lying=false;resetView();
+  }
+  function updateLie(dt){
+    if(!lying)return;
+    if(lieTransition){
+      lieTransition.elapsed+=Math.min(dt,.05);
+      const t=Math.min(1,lieTransition.elapsed/LIE_DURATION);
+      const ease=t*t*(3-2*t);
+      avatar.mesh.position.copy(lieTransition.startPos).lerp(lieTargetPos,ease);
+      avatar.mesh.quaternion.copy(lieTransition.startQuat).slerp(lieTargetQuat,ease);
+      if(t>=1)lieTransition=null;
+    }else{
+      avatar.mesh.position.copy(lieTargetPos);
+      avatar.mesh.quaternion.copy(lieTargetQuat);
+    }
+  }
   function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.update();controls.enableDamping=damping;}
   function setEnabled(value){enabled=value;if(!value){keys.clear();reset();player.userData.moving=false;}}
   function update(dt){
     updateJump(dt);
+    updateLie(dt);
     if(!enabled){player.userData.moving=false;avatar.update(dt,false,lying?false:sitting,lying?null:jumpPose);return;}
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;

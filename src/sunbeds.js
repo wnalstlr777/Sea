@@ -7,8 +7,8 @@ export function createSunbeds(scene){
   const cushion=new THREE.MeshStandardMaterial({color:0x24638c,roughness:.88});
   const beds=[];
   // Five loungers in a single transverse row, facing the same direction.
-  // Spacing leaves a small walkway between each cushion.
-  const positions=[-5.2,-2.6,0,2.6,5.2].map(x=>[x,-15]);
+  // Move all five 6m toward the bow (+Z), retaining the single row.
+  const positions=[-5.2,-2.6,0,2.6,5.2].map(x=>[x,-9]);
   const box=(parent,w,h,d,x,y,z,tilt=0)=>{
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),cushion);
     mesh.position.set(x,y,z);mesh.rotation.x=tilt;
