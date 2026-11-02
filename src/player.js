@@ -14,7 +14,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // Soft contact shading remains underfoot during the twilight lighting gap.
   const contact=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.5),new THREE.ShaderMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,uniforms:{},vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`varying vec2 vUv;void main(){float r=length((vUv-.5)*2.);gl_FragColor=vec4(0.,0.,0.,(1.-smoothstep(.15,1.,r))*.18);}`}));
   contact.rotation.x=-Math.PI/2;contact.position.y=NETWORK_TO_VISUAL_Y+.012;player.add(contact);
-  controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,3.4,9.5));controls.minDistance=2;controls.maxDistance=100;controls.update();
+  controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,3.7,12.0));controls.minDistance=2;controls.maxDistance=100;controls.update();
   const keys=new Set(),stick=new THREE.Vector2(),forward=new THREE.Vector3(),right=new THREE.Vector3(),movement=new THREE.Vector3();
   const movementKeys=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'];
   addEventListener('keydown',e=>{if(e.target.closest?.('input,button,summary,textarea,select'))return;if(movementKeys.includes(e.code)){e.preventDefault();keys.add(e.code);}});
@@ -147,7 +147,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       contact.visible=true;player.userData.inWater=false;
       // Restore the original deck-view orbit without resetting the user's angle/zoom.
       // The player's visual feet are at landedY; aim slightly above them.
-      const orbit=new THREE.Vector3(0,3.4,9.5);
+      const orbit=new THREE.Vector3(0,3.7,12.0);
       controls.target.set(player.position.x,landedY+1.3,player.position.z);
       camera.position.copy(controls.target).add(orbit);
       controls.update();
@@ -260,10 +260,10 @@ export function createPlayer(scene,camera,controls,deckCollision){
       avatar.mesh.quaternion.copy(lieTargetQuat);
     }
   }
-  function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,3.4,9.5));controls.update();controls.enableDamping=damping;}
+  function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,3.7,12.0));controls.update();controls.enableDamping=damping;}
   function deckViewPose(){
     const target=player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));
-    const position=target.clone().add(new THREE.Vector3(0,3.4,9.5));
+    const position=target.clone().add(new THREE.Vector3(0,3.7,12.0));
     return {position,target};
   }
   function setEnabled(value){enabled=value;if(!value){keys.clear();reset();player.userData.moving=false;}}
