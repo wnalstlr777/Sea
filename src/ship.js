@@ -15,7 +15,7 @@ export function createShip(){
     const root=gltf.scene;
     root.scale.setScalar(HULL_SCALE);
     // Long source X axis runs along the game's Z axis.
-    root.rotation.y=Math.PI/2;
+    root.rotation.y=-Math.PI/2; // Turn the imported boat 180 degrees; keep world and camera unchanged.
     root.position.set(0,497.055*HULL_SCALE,SHIP_CENTER_Z);
     root.updateMatrixWorld(true);
     const colliders=[];
