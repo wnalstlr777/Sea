@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {SHIP,PLAYER_RADIUS,constrainToDeck} from './ship.js';
+import {NETWORK_TO_VISUAL_Y,VISUAL_DECK_Y} from './ship.js';
 import {createSurvivor,disposeSurvivor} from './survivor.js';
 
 export function createPlayer(scene,camera,controls){
@@ -9,11 +10,11 @@ export function createPlayer(scene,camera,controls){
   let avatar=createSurvivor(characterId),enabled=true,sitting=false,lying=false,bedAnchor=null;
   player.userData.hairColor='black';
   // Survival models face +Z; Sea movement and the existing camera face -Z.
-  avatar.mesh.rotation.y=Math.PI;const jumpPivot=new THREE.Group();jumpPivot.add(avatar.mesh);player.add(jumpPivot);scene.add(player);
+  avatar.mesh.rotation.y=Math.PI;const jumpPivot=new THREE.Group();jumpPivot.add(avatar.mesh);player.add(jumpPivot);jumpPivot.position.y=NETWORK_TO_VISUAL_Y;scene.add(player);
   // Soft contact shading remains underfoot during the twilight lighting gap.
   const contact=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.5),new THREE.ShaderMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,uniforms:{},vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`varying vec2 vUv;void main(){float r=length((vUv-.5)*2.);gl_FragColor=vec4(0.,0.,0.,(1.-smoothstep(.15,1.,r))*.18);}`}));
-  contact.rotation.x=-Math.PI/2;contact.position.y=.012;player.add(contact);
-  controls.target.copy(player.position).add(new THREE.Vector3(0,1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.minDistance=2;controls.maxDistance=100;controls.update();
+  contact.rotation.x=-Math.PI/2;contact.position.y=NETWORK_TO_VISUAL_Y+.012;player.add(contact);
+  controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.minDistance=2;controls.maxDistance=100;controls.update();
   const keys=new Set(),stick=new THREE.Vector2(),forward=new THREE.Vector3(),right=new THREE.Vector3(),movement=new THREE.Vector3();
   const movementKeys=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'];
   addEventListener('keydown',e=>{if(e.target.closest?.('input,button,summary,textarea,select'))return;if(movementKeys.includes(e.code)){e.preventDefault();keys.add(e.code);}});
@@ -84,7 +85,7 @@ export function createPlayer(scene,camera,controls){
     jump();
   }, {capture:true});
   function updateJump(dt){
-    if(!enabled){jumpHeight=0;jumpVelocity=0;jumpPose=0;headSupport=null;jumpPivot.position.y=0;return;}
+    if(!enabled){jumpHeight=0;jumpVelocity=0;jumpPose=0;headSupport=null;jumpPivot.position.y=NETWORK_TO_VISUAL_Y;return;}
     const step=Math.min(dt,.05);
     if(jumpVelocity!==0||jumpHeight>0){
       const before=jumpHeight;
@@ -103,7 +104,7 @@ export function createPlayer(scene,camera,controls){
       if(!headSupport.parent||!near){headSupport=null;jumpVelocity=-.01;}
       else jumpHeight=HEAD_HEIGHT;
     }
-    jumpPivot.position.y=lying?0:jumpHeight;
+    jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lying?0:jumpHeight);
     const targetPose=jumpHeight>.04||jumpVelocity>0?1:0;
     jumpPose+=(targetPose-jumpPose)*(1-Math.exp(-step*16));
   }
@@ -111,10 +112,10 @@ export function createPlayer(scene,camera,controls){
   function lieOn(anchor){
     if(!enabled)return;
     jumpHeight=0;jumpVelocity=0;jumpPose=0;headSupport=null;setSitting(false);
-    lying=true;bedAnchor=anchor.clone();
+    lying=true;bedAnchor={...anchor};
     // Snap to the bed's fixed coordinate system, never the approach direction.
-    player.position.set(anchor.x,SHIP.deckY,anchor.z);player.rotation.y=0;
-    jumpPivot.position.y=0;
+    player.position.set(anchor.x,SHIP.deckY,anchor.z);player.rotation.y=anchor.heading??0;
+    jumpPivot.position.y=NETWORK_TO_VISUAL_Y;
     // Animate from an upright, centered pose to the same bed-aligned resting pose.
     avatar.mesh.position.set(0,0,0);
     avatar.mesh.rotation.set(0,Math.PI,0);
@@ -142,7 +143,7 @@ export function createPlayer(scene,camera,controls){
       avatar.mesh.quaternion.copy(lieTargetQuat);
     }
   }
-  function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.update();controls.enableDamping=damping;}
+  function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.update();controls.enableDamping=damping;}
   function setEnabled(value){enabled=value;if(!value){keys.clear();reset();player.userData.moving=false;}}
   function update(dt){
     updateJump(dt);

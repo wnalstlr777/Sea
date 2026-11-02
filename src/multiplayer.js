@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {createSurvivor,disposeSurvivor,appearanceForPlayer} from './survivor.js';
+import {NETWORK_TO_VISUAL_Y} from './ship.js';
 
 export function createMultiplayer({scene,camera,controls,character,url}){
   const panel=document.createElement('div');panel.className='multiplayer-status';
@@ -24,7 +25,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
     if(state.id===self)return;
     if(remotes.has(state.id)){receive(state);return;}
     const look=appearanceForPlayer(state.id);const avatar=createSurvivor(look.model,look.hairColor),root=new THREE.Group();root.name=`remote-${state.id}`;
-    root.userData.playerId=state.id;avatar.mesh.rotation.y=Math.PI;root.add(avatar.mesh);scene.add(root);
+    root.userData.playerId=state.id;avatar.mesh.rotation.y=Math.PI;avatar.mesh.position.y=NETWORK_TO_VISUAL_Y;root.add(avatar.mesh);scene.add(root);
     root.position.set(state.x,state.y,state.z);root.rotation.y=state.rotation;
     remotes.set(state.id,{root,avatar,label:label(state.nickname),samples:[{...state,time:performance.now()}]});
   }
@@ -93,7 +94,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
     },20000);
   }
   function project(element,position){
-    projected.copy(position);projected.y+=3.15;projected.project(camera);
+    projected.copy(position);projected.y+=NETWORK_TO_VISUAL_Y+3.15;projected.project(camera);
     const visible=projected.z>-1&&projected.z<1&&Math.abs(projected.x)<1.1&&Math.abs(projected.y)<1.1;
     element.hidden=!visible;if(visible){element.style.left=`${(projected.x*.5+.5)*innerWidth}px`;element.style.top=`${(-projected.y*.5+.5)*innerHeight}px`;}
   }
