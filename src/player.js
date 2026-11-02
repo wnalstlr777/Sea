@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import {SHIP,PLAYER_RADIUS,isOnDeck} from './ship.js';
+import {SHIP} from './ship.js';
 import {NETWORK_TO_VISUAL_Y,VISUAL_DECK_Y} from './ship.js';
 import {createSurvivor,disposeSurvivor} from './survivor.js';
 
-export function createPlayer(scene,camera,controls){
+export function createPlayer(scene,camera,controls,deckCollision){
   const player=new THREE.Group();player.position.set(0,SHIP.deckY,-33);
   const characterId=Math.random()<.5?'hina':'daeun';
   player.userData.characterId=characterId;
@@ -40,7 +40,9 @@ export function createPlayer(scene,camera,controls){
   const jumpButton=document.createElement('button');jumpButton.id='jump-toggle';jumpButton.type='button';jumpButton.textContent='점프';jumpButton.setAttribute('aria-label','점프');document.querySelector('#app').append(jumpButton);
   const JUMP_SPEED=10.6,GRAVITY=13.5,HEAD_HEIGHT=2.95;
   const WATER_SURFACE_Y=0.35, RESPAWN_X=0, RESPAWN_Z=-33;
-  let overboard=false, fallOffset=0, waterTime=0;
+  let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
+  let lastFloorY=VISUAL_DECK_Y;
+  const visualBaseY=SHIP.deckY+NETWORK_TO_VISUAL_Y;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
   let lieTransition=null;
   const LIE_DURATION=1.6;
@@ -73,20 +75,43 @@ export function createPlayer(scene,camera,controls){
     }catch{/* Audio is optional if the browser blocks playback. */}
   }
   function returnToDeck(){
-    const previous=player.position.clone();
-    player.position.set(RESPAWN_X,SHIP.deckY,RESPAWN_Z);
-    const delta=player.position.clone().sub(previous);
-    camera.position.add(delta);controls.target.add(delta);
-    // The network root stays at the server-approved deck Y.
-    camera.position.y-=fallOffset;controls.target.y-=fallOffset;
-    overboard=false;fallOffset=0;waterTime=0;
-    jumpHeight=0;jumpVelocity=0;headSupport=null;
-    jumpPivot.position.y=NETWORK_TO_VISUAL_Y;
-    contact.visible=true;
+    // Launch from the water in a visible arc, never teleport to the deck.
+    const floor=deckCollision.floorAt(RESPAWN_X,RESPAWN_Z);
+    const destinationY=floor??VISUAL_DECK_Y;
+    returnFlight={elapsed:0,duration:1.75,
+      startX:player.position.x,startZ:player.position.z,
+      startY:visualBaseY+fallOffset,
+      endX:RESPAWN_X,endZ:RESPAWN_Z,endY:destinationY};
+    overboard=false;
+    waterTime=0;
+    headSupport=null;jumpVelocity=0;jumpHeight=0;
+    playJumpSound();
     player.userData.inWater=false;
+  }
+  function updateReturnFlight(dt){
+    if(!returnFlight)return false;
+    const f=returnFlight;
+    f.elapsed+=Math.min(dt,.05);
+    const t=Math.min(1,f.elapsed/f.duration);
+    const smooth=t*t*(3-2*t);
+    const x=THREE.MathUtils.lerp(f.startX,f.endX,smooth);
+    const z=THREE.MathUtils.lerp(f.startZ,f.endZ,smooth);
+    // Quadratic arch added to the rising travel path; apex clears the rail.
+    const y=THREE.MathUtils.lerp(f.startY,f.endY,smooth)+8*4*t*(1-t);
+    const previousX=player.position.x,previousZ=player.position.z,previousY=visualBaseY+fallOffset;
+    player.position.x=x;player.position.z=z;
+    fallOffset=y-visualBaseY;
+    jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
+    camera.position.x+=x-previousX;controls.target.x+=x-previousX;
+    camera.position.z+=z-previousZ;controls.target.z+=z-previousZ;
+    camera.position.y+=y-previousY;controls.target.y+=y-previousY;
+    jumpPose+=(1-jumpPose)*(1-Math.exp(-dt*16));
+    if(t>=1){returnFlight=null;lastFloorY=f.endY;contact.visible=true;}
+    return true;
   }
   function jump(){
     if(!enabled)return;
+    if(returnFlight)return;
     if(overboard){returnToDeck();return;}
     if(jumpHeight>.03||jumpVelocity>0)return;
     if(lying)standUp();if(sitting)setSitting(false);
@@ -104,6 +129,7 @@ export function createPlayer(scene,camera,controls){
   function updateJump(dt){
     if(!enabled){jumpHeight=0;jumpVelocity=0;jumpPose=0;headSupport=null;jumpPivot.position.y=NETWORK_TO_VISUAL_Y;return;}
     const step=Math.min(dt,.05);
+    if(updateReturnFlight(step))return;
     if(overboard){
       // No water physics/server changes: animate the avatar locally above the ocean.
       const desired=WATER_SURFACE_Y-(SHIP.deckY+NETWORK_TO_VISUAL_Y);
@@ -133,7 +159,8 @@ export function createPlayer(scene,camera,controls){
       if(!headSupport.parent||!near){headSupport=null;jumpVelocity=-.01;}
       else jumpHeight=HEAD_HEIGHT;
     }
-    jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lying?0:jumpHeight);
+    const groundOffset=lastFloorY-VISUAL_DECK_Y;
+    jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lying?0:jumpHeight+groundOffset);
     const targetPose=jumpHeight>.04||jumpVelocity>0?1:0;
     jumpPose+=(targetPose-jumpPose)*(1-Math.exp(-step*16));
   }
@@ -179,6 +206,10 @@ export function createPlayer(scene,camera,controls){
     updateJump(dt);
     updateLie(dt);
     if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose);return;}
+    if(!overboard&&!returnFlight&&deckCollision.ready()){
+      const stationaryFloor=deckCollision.floorAt(player.position.x,player.position.z);
+      if(stationaryFloor!==null)lastFloorY=stationaryFloor;
+    }
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
     if(!x&&!z){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose);return;}
@@ -186,11 +217,15 @@ export function createPlayer(scene,camera,controls){
     if(sitting)setSitting(false);
     if(headSupport){headSupport=null;jumpVelocity=-.01;}
     camera.getWorldDirection(forward);forward.y=0;forward.normalize();right.crossVectors(forward,THREE.Object3D.DEFAULT_UP).normalize();movement.copy(forward).multiplyScalar(z).addScaledVector(right,x);if(movement.length()>1)movement.normalize();movement.multiplyScalar(5.25*dt);
+    if(returnFlight){avatar.update(dt,false,false,jumpPose);return;}
     const previous=player.position.clone();player.position.add(movement);
-    // No invisible walls: leaving the deck starts a local fall to the ocean.
-    if(!overboard&&!isOnDeck(player.position,PLAYER_RADIUS*.5)){
+    // The exported UCX surfaces, not the old rectangular deck, determine support.
+    const floor=deckCollision.floorAt(player.position.x,player.position.z);
+    if(!overboard&&floor!==null){lastFloorY=floor;}
+    if(!overboard&&deckCollision.ready()&&floor===null){
       overboard=true;player.userData.inWater=true;
       if(lying)standUp();if(sitting)setSitting(false);
+      fallOffset=lastFloorY-VISUAL_DECK_Y;
       jumpHeight=0;jumpVelocity=0;headSupport=null;
       contact.visible=false;
     }

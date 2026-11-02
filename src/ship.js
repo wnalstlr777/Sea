@@ -23,7 +23,7 @@ export function createShip(){
     const colliders=[];
     root.traverse(obj=>{
       if(!obj.isMesh)return;
-      if(obj.name.startsWith('UCX_')){obj.visible=false;colliders.push(obj);return;}
+      if(obj.name.startsWith('UCX_')){obj.visible=false;obj.material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide,visible:false});colliders.push(obj);return;}
       obj.castShadow=true;obj.receiveShadow=true;
     });
     ship.add(root);ship.userData.model=root;ship.userData.colliders=colliders;
