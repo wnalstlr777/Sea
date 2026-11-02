@@ -40,7 +40,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   const jumpButton=document.createElement('button');jumpButton.id='jump-toggle';jumpButton.type='button';jumpButton.textContent='점프';jumpButton.setAttribute('aria-label','점프');document.querySelector('#app').append(jumpButton);
   const JUMP_SPEED=10.6,GRAVITY=13.5,HEAD_HEIGHT=2.95;
   const WATER_SURFACE_Y=0.35, RESPAWN_X=0, RESPAWN_Z=-33;
-  let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
+  let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;\n  let landingGrace=0;
   let lastFloorY=VISUAL_DECK_Y,spawnValidated=false;
   const visualBaseY=SHIP.deckY+NETWORK_TO_VISUAL_Y;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
@@ -108,7 +108,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     camera.position.y+=y-previousY;controls.target.y+=y-previousY;
     jumpPose+=(1-jumpPose)*(1-Math.exp(-dt*16));
     if(t>=1){
-      returnFlight=null;lastFloorY=f.endY;fallOffset=0;
+      returnFlight=null;lastFloorY=f.endY;fallOffset=0;landingGrace=.35;
       jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lastFloorY-VISUAL_DECK_Y);
       contact.visible=true;player.userData.inWater=false;
     }
@@ -244,7 +244,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     // The exported UCX surfaces, not the old rectangular deck, determine support.
     const floor=deckCollision.floorAt(player.position.x,player.position.z);
     if(!overboard&&floor!==null){lastFloorY=floor;}
-    if(!overboard&&spawnValidated&&deckCollision.ready()&&floor===null){
+    if(!overboard&&spawnValidated&&deckCollision.ready()&&floor===null&&landingGrace<=0){
       overboard=true;player.userData.inWater=true;
       if(lying)standUp();if(sitting)setSitting(false);
       fallOffset=lastFloorY-VISUAL_DECK_Y;

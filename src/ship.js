@@ -24,6 +24,15 @@ export function createShip(){
     root.traverse(obj=>{
       if(!obj.isMesh)return;
       if(obj.name.startsWith('UCX_')){obj.visible=false;obj.material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide,visible:false});colliders.push(obj);return;}
+      // Recolor only the ship's named red material; leave white/metal/wood intact.
+      const recolor=material=>{
+        if(!material?.name?.toLowerCase().includes('c_boat_red_mat'))return material;
+        const gray=material.clone();
+        gray.color.setRGB(.15,.16,.18);
+        return gray;
+      };
+      if(Array.isArray(obj.material))obj.material=obj.material.map(recolor);
+      else obj.material=recolor(obj.material);
       obj.castShadow=true;obj.receiveShadow=true;
     });
     ship.add(root);ship.userData.model=root;ship.userData.colliders=colliders;

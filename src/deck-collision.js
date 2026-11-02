@@ -25,15 +25,29 @@ export function createDeckCollision(ship){
     }
     return null;
   }
+  // A landing is safe only if the center AND the surrounding foot area
+  // are all supported at approximately the same height.
+  function stableFloor(x,z){
+    const y=floorAt(x,z);
+    if(y===null)return null;
+    for(const r of [.38,.72]){
+      for(let i=0;i<8;i++){
+        const a=i*Math.PI/4;
+        const nearby=floorAt(x+Math.cos(a)*r,z+Math.sin(a)*r);
+        if(nearby===null||Math.abs(nearby-y)>.55)return null;
+      }
+    }
+    return y;
+  }
   function safeSpot(preferredX=0,preferredZ=-33){
     if(!ship.userData.colliders?.length)return null;
-    // Find a genuine UCX-supported landing point, rather than assuming -33 is safe.
+    // Search inward supported areas first, never choose a narrow ledge.
     for(const radius of [0,1,2,3,4,5,7,9,11,14,17]){
       for(let i=0;i<(radius===0?1:24);i++){
         const angle=i*Math.PI/12;
         const x=preferredX+Math.cos(angle)*radius;
         const z=preferredZ+Math.sin(angle)*radius;
-        const y=floorAt(x,z);
+        const y=stableFloor(x,z);
         if(y!==null)return {x,z,y};
       }
     }
