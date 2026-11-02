@@ -55,7 +55,7 @@ export function createOcean(){
     }
     return mirrors.get(size);
   }
-  let mirror=getMirror(64);
+  let mirror=getMirror(256);
   const uniforms={
     time:{value:0},travel:{value:0},curvature:{value:1},height:{value:.825},waveSize:{value:1},normalStrength:{value:0},speed:{value:16},wake:{value:.65},
     horizon:{value:new THREE.Color('#52798b')},mid:{value:new THREE.Color('#17455c')},
@@ -109,7 +109,7 @@ export function createOcean(){
         gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
       }`,
     fragmentShader:`
-      uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,normalStrength,curvature,waveSize;
+      uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,normalStrength,curvature,waveSize,horizonStrength;
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
       uniform sampler2D surfaceMap,mirrorSampler;
       varying vec3 world;
@@ -146,7 +146,6 @@ export function createOcean(){
         float nv=max(dot(n,v),0.);
         // Water reflects strongly at low viewing angles while retaining deep body colour.
         float fresnel=.035+.965*pow(1.-nv,5.);
-        float horizonStrength=mix(1.,.5,smoothstep(.65,1.,daylight));
         vec3 sky=mix(zenith,skyHorizon,(1.-smoothstep(.015,.65,max(r.y,0.)))*horizonStrength);
         vec2 uv=mirrorCoord.xy/mirrorCoord.w;
         uv+=n.xz*.004/(1.+dist*.008);

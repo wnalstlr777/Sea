@@ -19,9 +19,9 @@ export function createPlayer(scene,camera,controls){
   addEventListener('keyup',e=>keys.delete(e.code));
   const pad=document.createElement('div');pad.id='joystick';pad.setAttribute('aria-label','갑판 이동 조이스틱');pad.innerHTML='<span class="stick-knob"></span><span class="stick-label">이동</span>';document.querySelector('#app').append(pad);
   let pointer=null;
-  const reset=()=>{pointer=null;stick.set(0,0);pad.firstElementChild.style.transform='translate(0px,0px)';};
+  const reset=()=>{pad.classList.remove('active');pointer=null;stick.set(0,0);pad.firstElementChild.style.transform='translate(0px,0px)';};
   const setStick=e=>{const r=pad.getBoundingClientRect();stick.set((e.clientX-r.left-r.width/2)/38,(e.clientY-r.top-r.height/2)/38);if(stick.length()>1)stick.normalize();pad.firstElementChild.style.transform=`translate(${stick.x*30}px,${stick.y*30}px)`;};
-  pad.addEventListener('pointerdown',e=>{if(pointer!==null)return;e.preventDefault();pointer=e.pointerId;pad.setPointerCapture(pointer);setStick(e);});
+  pad.addEventListener('pointerdown',e=>{if(pointer!==null)return;e.preventDefault();pointer=e.pointerId;pad.classList.add('active');pad.setPointerCapture(pointer);setStick(e);});
   pad.addEventListener('pointermove',e=>{if(e.pointerId===pointer)setStick(e);});
   for(const event of ['pointerup','pointercancel','lostpointercapture'])pad.addEventListener(event,e=>{if(e.pointerId===pointer)reset();});
   addEventListener('blur',()=>{keys.clear();reset();});document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();reset();}});

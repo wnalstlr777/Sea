@@ -17,7 +17,8 @@ export function celestialDirections(hour){
   const sun=new THREE.Vector3(.7*Math.sin(angle),.64*Math.sin(angle),Math.cos(angle)).normalize();
   const moonAngle=(hour<12?hour+24:hour)-18;
   const phase=moonAngle/12*Math.PI;
-  const moon=new THREE.Vector3(-.8*Math.cos(phase),.075*Math.sin(phase),-.85).normalize();
+  // Keep the visible moon on a high inclined arc (roughly 45–65 degrees).
+  const moon=new THREE.Vector3(-.8*Math.cos(phase),1.2+.4*Math.sin(phase),-.85).normalize();
   return {sun,moon};
 }
 export function celestialVisibility(hour){
@@ -26,16 +27,19 @@ export function celestialVisibility(hour){
   const moon=hour<12?1.-THREE.MathUtils.smoothstep(hour,4.7,5.3):THREE.MathUtils.smoothstep(hour,19.0,19.7);
   return {sun,moon};
 }
+// A narrow, smooth noon window: normal outside 11:00–13:00, half at 12:00.
+export function horizonGradientStrength(hour){
+  return .5+.5*THREE.MathUtils.smoothstep(Math.abs(hour-12),0,1);
+}
 export function createLighting(scene,ocean){
-  const uniforms={cloudCover:{value:.5},zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0}};
+  const uniforms={horizonStrength:{value:1},cloudCover:{value:.5},zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0}};
   Object.assign(ocean.uniforms,uniforms);
   const sky=new THREE.Mesh(new THREE.SphereGeometry(24000,32,20),new THREE.ShaderMaterial({uniforms,side:THREE.BackSide,depthWrite:false,
     vertexShader:`varying vec3 dir;void main(){dir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
     fragmentShader:`
-      uniform vec3 zenith,skyHorizon,sunColor,sunDirection,moonDirection;uniform float daylight,sunVisible,moonVisible;varying vec3 dir;
+      uniform vec3 zenith,skyHorizon,sunColor,sunDirection,moonDirection;uniform float daylight,sunVisible,moonVisible,horizonStrength;varying vec3 dir;
       void main(){
         vec3 d=normalize(dir);float h=d.y;
-        float horizonStrength=mix(1.,.5,smoothstep(.65,1.,daylight));
         vec3 c=mix(zenith,skyHorizon,(1.-smoothstep(.015,.6,h))*horizonStrength);
         float angle=acos(clamp(dot(d,sunDirection),-1.,1.));
         float disc=1.-smoothstep(.024,.0285,angle);
@@ -78,6 +82,7 @@ export function createLighting(scene,ocean){
     const t=THREE.MathUtils.clamp(hour,0,24);let index=0;while(index<stops.length-2&&t>stops[index+1][0])index++;
     const a=stops[index],b=stops[index+1],f=THREE.MathUtils.smoothstep(t,a[0],b[0]);
     for(const [key,column] of [['zenith',1],['skyHorizon',2],['sunColor',3]])uniforms[key].value.set(a[column]).lerp(new THREE.Color(b[column]),f);
+    uniforms.horizonStrength.value=horizonGradientStrength(t);
     const {sun,moon}=celestialDirections(t);
     uniforms.sunDirection.value.copy(sun);
     uniforms.moonDirection.value.copy(moon);

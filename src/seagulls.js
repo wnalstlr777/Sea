@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export function createSeagulls(scene){
+export function createSeagulls(scene,camera,audio){
   const flock=new THREE.Group();flock.name='seagulls';scene.add(flock);
   const white=new THREE.MeshStandardMaterial({color:'#f4f4ed',roughness:.85});
   const black=new THREE.MeshStandardMaterial({color:'#333942',roughness:.9,side:THREE.DoubleSide});
@@ -23,9 +23,10 @@ export function createSeagulls(scene){
     root.scale.setScalar(1.15+(i%3)*.18);flock.add(root);
     birds.push({root,wings,phase:i*2.4,radius:28+i*5,height:23+(i%4)*4,speed:.065+(i%3)*.012});
   }
-  let time=0;
+  let time=0,callIn=0;
+  const projected=new THREE.Vector3();
   function update(dt){
-    time+=dt;
+    time+=Math.min(dt,.2);callIn-=dt;
     for(const bird of birds){
       const a=time*bird.speed+bird.phase;
       bird.root.position.set(Math.cos(a)*bird.radius,bird.height+Math.sin(time*.6+bird.phase)*1.6,-25+Math.sin(a)*bird.radius*.7);
@@ -34,6 +35,11 @@ export function createSeagulls(scene){
       const flapping=Math.sin(time*.7+bird.phase)>.15;
       const flap=flapping?Math.sin(time*5.5+bird.phase)*.48:.10;
       bird.wings[0].rotation.z=-flap;bird.wings[1].rotation.z=flap;
+    }
+    if(callIn<=0&&camera&&audio){
+      camera.updateMatrixWorld();
+      const inView=birds.some(({root})=>{projected.copy(root.position).project(camera);return projected.z>-1&&projected.z<1&&Math.abs(projected.x)<1&&Math.abs(projected.y)<1;});
+      if(inView&&audio.seagull())callIn=12+Math.random()*10;
     }
   }
   update(0);return {update,flock};

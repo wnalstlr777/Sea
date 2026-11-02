@@ -16,3 +16,14 @@ test('sun and moon never coexist, including twilight and midnight wrap',()=>{
   for(let hour=0;hour<=24;hour+=.001){const v=celestialVisibility(hour);assert.ok(!(v.sun>0&&v.moon>0),String(hour));}
   assert.equal(celestialVisibility(12).sun,1);assert.equal(celestialVisibility(0).moon,1);
 });
+
+test('horizon reduction is localized smoothly around noon',async()=>{
+  const {horizonGradientStrength}=await import('../src/lighting.js');
+  for(const hour of [0,6,10,11,13,15,18,24])assert.equal(horizonGradientStrength(hour),1);
+  assert.equal(horizonGradientStrength(12),.5);
+  assert.equal(horizonGradientStrength(11.5),horizonGradientStrength(12.5));
+  for(let hour=11;hour<13;hour+=.01)assert.ok(Math.abs(horizonGradientStrength(hour+.01)-horizonGradientStrength(hour))<.01);
+});
+test('visible moon follows an elevated arc above 45 degrees',()=>{
+  for(let hour=0;hour<24;hour+=.1){if(celestialVisibility(hour).moon>.01)assert.ok(celestialDirections(hour).moon.y>Math.SQRT1_2);}
+});
