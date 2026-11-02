@@ -25,10 +25,10 @@ export function createMarineLife(scene,camera,audio){
   const splashGeometry=new THREE.BufferGeometry(),drops=new Float32Array(60*3);
   splashGeometry.setAttribute('position',new THREE.BufferAttribute(drops,3).setUsage(THREE.DynamicDrawUsage));
   const splash=new THREE.Points(splashGeometry,new THREE.PointsMaterial({color:'#d4f6ff',size:.3,transparent:true,opacity:.8,depthWrite:false}));splash.visible=false;splash.frustumCulled=false;group.add(splash);
-  const spoutCount=24,spoutPositions=new Float32Array(spoutCount*3);
+  const spoutCount=80,spoutPositions=new Float32Array(spoutCount*3);
   const spoutGeometry=new THREE.BufferGeometry();
   spoutGeometry.setAttribute('position',new THREE.BufferAttribute(spoutPositions,3).setUsage(THREE.DynamicDrawUsage));
-  const spout=new THREE.Points(spoutGeometry,new THREE.PointsMaterial({color:'#b8eaff',size:1.1,transparent:true,opacity:.65,depthWrite:false}));
+  const spout=new THREE.Points(spoutGeometry,new THREE.PointsMaterial({color:'#b8eaff',size:3.5,transparent:true,opacity:.65,depthWrite:false}));
   spout.frustumCulled=false;spout.visible=false;group.add(spout);
   const origin=new THREE.Vector3(),direction=new THREE.Vector3(),right=new THREE.Vector3();
   let next=12,age=-1,current=null,encounters=0,didSplash=false;
@@ -66,9 +66,9 @@ export function createMarineLife(scene,camera,audio){
       for(let i=0;i<spoutCount;i++){
         const phase=(breath*1.8+i/spoutCount)%1;
         const angle=i*2.39996;
-        const spread=phase*phase*5;
+        const spread=phase*phase*25;
         spoutPositions[i*3]=Math.cos(angle)*spread;
-        spoutPositions[i*3+1]=phase*12-4*phase*phase;
+        spoutPositions[i*3+1]=phase*60-20*phase*phase;
         spoutPositions[i*3+2]=Math.sin(angle)*spread;
       }
       spoutGeometry.attributes.position.needsUpdate=true;
