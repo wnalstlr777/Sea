@@ -28,17 +28,23 @@ export function createSail(ship){
 attribute vec4 sailMask;
 uniform float sailTime;`);
           shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
-// Vertex colors are authored in sRGB and imported as linear attributes.
-// Red mask is stationary; blue is medium, yellow is strong.
+// Preserve the authored sail shape. Wind adds a subtle, slow billow
+// and a small irregular flutter, strongest only at the free edges.
 float r=sailMask.r, g=sailMask.g, b=sailMask.b;
 float fixedWeight=clamp(r*(1.0-g)*(1.0-b),0.0,1.0);
 float strongWeight=clamp(min(r,g)*(1.0-b),0.0,1.0);
 float mediumWeight=clamp(b*(1.0-g),0.0,1.0);
-float weight=clamp((mediumWeight*.45+strongWeight)*(1.0-fixedWeight),0.0,1.0);
-float wave=sin(sailTime*14.4+position.y*.013+position.x*.008)*.65
-          +sin(sailTime*22.8+position.y*.028-position.z*.017)*.25;
-transformed.x+=weight*wave*13.3;
-transformed.z+=weight*sin(sailTime*12.6+position.x*.012)*5.6;`);
+float weight=clamp((mediumWeight*0.28+strongWeight)*(1.0-fixedWeight),0.0,1.0);
+// Slowly varying breeze, never a full back-and-forth sweep.
+float breeze=0.55+0.25*sin(sailTime*0.43)+0.12*sin(sailTime*0.79+1.7);
+float billow=weight*breeze*3.2;
+// Two traveling ripples at incommensurate frequencies avoid a mechanical loop.
+float rippleA=sin(sailTime*5.8-position.y*0.075+position.x*0.035);
+float rippleB=sin(sailTime*8.3+position.y*0.12+position.z*0.047+1.3);
+float flutter=weight*(rippleA*0.95+rippleB*0.40);
+// Favor a single cloth-normal-ish direction; keep secondary motion subtle.
+transformed.x+=billow+flutter;
+transformed.z+=weight*(0.30*sin(sailTime*4.7-position.y*0.068)+0.18*sin(sailTime*7.1+position.x*0.044));`);
         };
         // Use a dedicated attribute name: Three.js reserves `color` for material vertex colors.
         const mask=obj.geometry.getAttribute('color');
