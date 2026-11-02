@@ -35,10 +35,10 @@ float fixedWeight=clamp(r*(1.0-g)*(1.0-b),0.0,1.0);
 float strongWeight=clamp(min(r,g)*(1.0-b),0.0,1.0);
 float mediumWeight=clamp(b*(1.0-g),0.0,1.0);
 float weight=clamp((mediumWeight*.45+strongWeight)*(1.0-fixedWeight),0.0,1.0);
-float wave=sin(sailTime*2.4+position.y*.013+position.x*.008)*.65
-          +sin(sailTime*3.8+position.y*.028-position.z*.017)*.25;
-transformed.x+=weight*wave*38.0;
-transformed.z+=weight*sin(sailTime*2.1+position.x*.012)*16.0;`);
+float wave=sin(sailTime*7.2+position.y*.013+position.x*.008)*.65
+          +sin(sailTime*11.4+position.y*.028-position.z*.017)*.25;
+transformed.x+=weight*wave*19.0;
+transformed.z+=weight*sin(sailTime*6.3+position.x*.012)*8.0;`);
         };
         // Use a dedicated attribute name: Three.js reserves `color` for material vertex colors.
         const mask=obj.geometry.getAttribute('color');
