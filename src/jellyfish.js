@@ -10,6 +10,8 @@ export function createJellyfish(scene){
   const phases=new Float32Array(count);
   const fades=new Float32Array(count);
   const sizes=new Float32Array(count);
+  const rates=new Float32Array(count);
+  const flickers=new Float32Array(count);
   const seed=i=>{
     const n=Math.sin(i*127.1+19.17)*43758.5453;
     return n-Math.floor(n);
@@ -17,8 +19,12 @@ export function createJellyfish(scene){
   for(let i=0;i<count;i++){
     phases[i]=seed(i+5)*Math.PI*2;
     sizes[i]=.58+seed(i+31)*.58;
+    rates[i]=.55+seed(i+71)*1.35;
+    flickers[i]=seed(i+109)*Math.PI*2;
   }
   geometry.setAttribute('aPhase',new THREE.InstancedBufferAttribute(phases,1));
+  geometry.setAttribute('aRate',new THREE.InstancedBufferAttribute(rates,1));
+  geometry.setAttribute('aFlicker',new THREE.InstancedBufferAttribute(flickers,1));
   const fadeAttribute=new THREE.InstancedBufferAttribute(fades,1);
   fadeAttribute.setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute('aFade',fadeAttribute);
@@ -27,15 +33,19 @@ export function createJellyfish(scene){
     side:THREE.DoubleSide,blending:THREE.AdditiveBlending,
     uniforms:{uTime:{value:0}},
     vertexShader:`attribute float aPhase;attribute float aFade;
+      attribute float aRate;attribute float aFlicker;
       varying vec2 vUv;varying float vFade;varying float vPhase;
+      varying float vRate;varying float vFlicker;
       void main(){
         vUv=uv;vFade=aFade;vPhase=aPhase;
+        vRate=aRate;vFlicker=aFlicker;
         vec4 p=instanceMatrix*vec4(position,1.0);
         gl_Position=projectionMatrix*modelViewMatrix*p;
       }`,
     fragmentShader:`precision mediump float;
       uniform float uTime;
       varying vec2 vUv;varying float vFade;varying float vPhase;
+      varying float vRate;varying float vFlicker;
       void main(){
         vec2 p=(vUv-.5)*2.;
         float r=length(p);
@@ -48,7 +58,11 @@ export function createJellyfish(scene){
           float line=1.-smoothstep(.014,.039,abs(p.x-k*.11-bend));
           threads+=line*smoothstep(-.85,-.60,p.y)*(1.-smoothstep(-.16,-.03,p.y));
         }
-        float pulse=.83+.17*sin(uTime*1.6+vPhase);
+        // Each jellyfish has its own breathing rate and two asynchronous rhythms.
+        float breath=.5+.5*sin(uTime*vRate+vPhase);
+        float slow=.5+.5*sin(uTime*(vRate*.39)+vFlicker);
+        float glimmer=pow(max(0.,sin(uTime*(vRate*2.6)+vFlicker*1.7)),12.);
+        float pulse=.22+.65*breath*breath*(.55+.45*slow)+.22*glimmer;
         float halo=exp(-r*r*5.)*.23;
         float alpha=(halo+bell*.36+rim*.25+threads*.12)*vFade*pulse;
         vec3 cyan=vec3(.12,.88,1.);
@@ -77,11 +91,9 @@ export function createJellyfish(scene){
       const index=i%perSchool;
       const phase=phases[i];
       const [cx,cz]=centers[school];
-      // Different schools appear and dissolve over a long, overlapping cycle.
       const cycle=time*.032+school*2.09;
       const presence=smooth(-.6,.35,Math.sin(cycle))*.85+.15;
-      const fade=night*presence;
-      fades[i]=fade;
+      fades[i]=night*presence;
       const angle=index*2.39996+phase*.22;
       const radius=1.4+Math.sqrt(index+1)*1.55;
       const driftX=Math.sin(time*.12+school*1.9)*3.2;
