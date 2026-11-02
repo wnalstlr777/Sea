@@ -31,7 +31,7 @@ export function horizonGradientStrength(hour){
   return .5+.5*THREE.MathUtils.smoothstep(Math.abs(hour-12),0,1);
 }
 export function createLighting(scene,ocean,camera){
-  const uniforms={horizonStrength:{value:1},cloudCover:{value:.5},zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0},moonTint:{value:0}};
+  const uniforms={horizonStrength:{value:1},cloudCover:{value:.5},cloudSamples:{value:32},cloudDetail:{value:.5},zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0},moonTint:{value:0}};
   Object.assign(ocean.uniforms,uniforms);
   const sky=new THREE.Mesh(new THREE.SphereGeometry(24000,32,20),new THREE.ShaderMaterial({uniforms,side:THREE.BackSide,depthWrite:false,
     vertexShader:`varying vec3 dir;void main(){dir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,

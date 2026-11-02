@@ -28,7 +28,7 @@ export function createAtmosphere(scene,lighting){
     uniforms:{...lighting.uniforms,time},side:THREE.BackSide,transparent:true,depthWrite:false,
     vertexShader:`varying vec3 direction;void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
     fragmentShader:`
-      uniform float time,daylight,sunVisible,cloudCover;uniform vec3 sunDirection,sunColor,skyHorizon;varying vec3 direction;
+      uniform float time,daylight,sunVisible,cloudCover,cloudSamples,cloudDetail;uniform vec3 sunDirection,sunColor,skyHorizon;varying vec3 direction;
       float hash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
       float noise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
         return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
@@ -36,6 +36,8 @@ export function createAtmosphere(scene,lighting){
       float density(vec3 p){
         vec3 q=p*.0025+vec3(time*.012,0.,time*.004);
         float n=noise(q)*.70+noise(q*2.03)*.23+noise(q*4.11)*.07;
+        // High mode adds fine-scale structure without changing the large cloud shapes.
+        n+=cloudDetail*(noise(q*8.17)-.5)*.035;
         float layer=smoothstep(650.,780.,p.y)*(1.-smoothstep(980.,1200.,p.y));
         float threshold=mix(.82,.18,cloudCover);
         return smoothstep(threshold,threshold+.18,n)*layer*cloudCover;
@@ -44,9 +46,10 @@ export function createAtmosphere(scene,lighting){
         vec3 d=normalize(direction);if(d.y<.018||cloudCover<=0.)discard;
         float start=650./d.y,finish=min(1200./d.y,16000.);
         if(finish<=start)discard;
-        float stepSize=(finish-start)/32.;vec3 sum=vec3(0.);float alpha=0.;
+        float stepSize=(finish-start)/cloudSamples;vec3 sum=vec3(0.);float alpha=0.;
         vec3 lightDir=normalize(vec3(sunDirection.x,max(sunDirection.y,.25),sunDirection.z));
-        for(int i=0;i<32;i++){
+        for(int i=0;i<48;i++){
+          if(float(i)>=cloudSamples)break;
           vec3 p=d*(start+(float(i)+.5)*stepSize);
           float den=density(p);float a=1.-exp(-den*stepSize*.006);
           float shade=exp(-density(p+lightDir*150.)*1.8-density(p+lightDir*330.)*.9);
