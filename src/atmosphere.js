@@ -71,7 +71,7 @@ export function createAtmosphere(scene,lighting){
   for(let i=0;i<36;i++){const v=Math.pow(1-i/35,2);colors.set([v*.75,v*.86,v],i*3);}
   meteorGeometry.setAttribute('position',new THREE.BufferAttribute(trail,3).setUsage(THREE.DynamicDrawUsage));
   meteorGeometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
-  const meteor=new THREE.Line(meteorGeometry,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0,depthTest:false,depthWrite:false,blending:THREE.AdditiveBlending}));
+  const meteor=new THREE.Line(meteorGeometry,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0,depthTest:true,depthWrite:false,blending:THREE.AdditiveBlending}));
   meteor.name='shooting-star';meteor.frustumCulled=false;meteor.renderOrder=-7;scene.add(meteor);
   let age=-1,nextMeteor=5+Math.random()*6;
   const origin=new THREE.Vector3(),velocity=new THREE.Vector3();
@@ -81,16 +81,27 @@ export function createAtmosphere(scene,lighting){
     if(night.value<.2){age=-1;meteor.material.opacity=0;return;}
     nextMeteor-=dt;
     if(age<0&&nextMeteor<=0){
-      // Spawn in the camera-visible upper sky rather than an arbitrary world quadrant.
-      // Keep it well above the horizon, and inside the central view on mobile.
+      // Spawn at a distant point in the actual visible sky, not above the UI.
+      // Screen-space selection is projected onto a far world-space sky plane;
+      // the ship can occlude it via the depth buffer.
+      camera.updateMatrixWorld();
       const forward=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
       const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);
       const up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
-      origin.copy(camera.position).addScaledVector(forward,7000)
-        .addScaledVector(right,(Math.random()-.5)*2100)
-        .addScaledVector(up,1100+Math.random()*900);
-      velocity.copy(right).multiplyScalar((Math.random()<.5?-1:1)*(1100+Math.random()*400))
-        .addScaledVector(up,-550-Math.random()*200);
+      const distance=7000;
+      const halfHeight=Math.tan(THREE.MathUtils.degToRad(camera.fov)*.5)*distance;
+      const halfWidth=halfHeight*camera.aspect;
+      // Favor sky above the horizon, including the area behind the ship.
+      const screenX=(Math.random()*1.5-.75);
+      const screenY=.05+Math.random()*.62;
+      origin.copy(camera.position).addScaledVector(forward,distance)
+        .addScaledVector(right,screenX*halfWidth)
+        .addScaledVector(up,screenY*halfHeight);
+      // Keep the meteor above the real ocean horizon in world space.
+      if(origin.y<250)origin.y=250+Math.random()*250;
+      const direction=Math.random()<.5?-1:1;
+      velocity.copy(right).multiplyScalar(direction*(750+Math.random()*500))
+        .addScaledVector(new THREE.Vector3(0,1,0),-(550+Math.random()*280));
       age=0;nextMeteor=12+Math.random()*16;
     }
     if(age>=0){
