@@ -99,3 +99,25 @@ body.sea-overview #jump-toggle{display:none!important}
 .sea-loading-progress{width:35%;height:100%;border-radius:5px;background:#a8e2ee;animation:sea-loading-slide 1.5s ease-in-out infinite alternate}
 @keyframes sea-loading-slide{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
 @media(prefers-reduced-motion:reduce){.sea-loading-progress{animation:none;width:100%}}
+
+/* Match sitting control to the jump button exactly, except vertical position. */
+#sit-toggle,#jump-toggle{
+  box-sizing:border-box;
+  width:48px;
+  min-width:48px;
+  max-width:48px;
+  height:38px;
+  min-height:38px;
+  max-height:38px;
+  padding:0;
+  right:24px;
+  border-radius:12px;
+  border:1px solid #7bb0ba66;
+  background:#072d39e8;
+  color:#fff;
+  font-size:12px;
+  font-weight:normal;
+  line-height:36px;
+  text-align:center;
+  touch-action:manipulation;
+}

@@ -8,7 +8,7 @@ export function createAtmosphere(scene,lighting){
   for(let i=0;i<4000;i++){
     const y=.025+Math.random()*.975,a=Math.random()*Math.PI*2,r=Math.sqrt(1-y*y);
     positions.push(r*Math.cos(a)*16000,y*16000,r*Math.sin(a)*16000);
-    phases.push(Math.random()*Math.PI*2);sizes.push(1.1+Math.random()*2.4);
+    phases.push(Math.random()*Math.PI*2);sizes.push(Math.random()<.045?3.8+Math.random()*2.2:1.1+Math.random()*2.4);
   }
   const starsGeometry=new THREE.BufferGeometry();
   starsGeometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
