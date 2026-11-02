@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import {SHIP,PLAYER_RADIUS,constrainToDeck} from './ship.js';
+import {createSurvivor} from './survivor.js';
 
 export function createPlayer(scene,camera,controls){
   const player=new THREE.Group();player.position.set(0,SHIP.deckY,-24);
-  const capsule=new THREE.Mesh(new THREE.CapsuleGeometry(.38,1.04,6,12),new THREE.MeshStandardMaterial({color:'#e7a05d',roughness:.65}));capsule.castShadow=true;capsule.receiveShadow=true;capsule.position.y=.9;player.add(capsule);
-  const visor=new THREE.Mesh(new THREE.BoxGeometry(.38,.14,.08),new THREE.MeshStandardMaterial({color:'#144955'}));visor.castShadow=true;visor.position.set(0,1.45,-.36);player.add(visor);scene.add(player);
+  const characterId=Math.random()<.5?'hina':'daeun';
+  player.userData.characterId=characterId;
+  const avatar=createSurvivor(characterId);
+  // Survival models face +Z; Sea movement and the existing camera face -Z.
+  avatar.mesh.rotation.y=Math.PI;player.add(avatar.mesh);scene.add(player);
   // Soft contact shading remains underfoot during the twilight lighting gap.
   const contact=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.5),new THREE.ShaderMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,uniforms:{},vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`varying vec2 vUv;void main(){float r=length((vUv-.5)*2.);gl_FragColor=vec4(0.,0.,0.,(1.-smoothstep(.15,1.,r))*.18);}`}));
   contact.rotation.x=-Math.PI/2;contact.position.y=.012;player.add(contact);
@@ -24,10 +28,11 @@ export function createPlayer(scene,camera,controls){
   function update(dt){
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
-    if(!x&&!z)return;
+    if(!x&&!z){avatar.update(dt,false);return;}
     camera.getWorldDirection(forward);forward.y=0;forward.normalize();right.crossVectors(forward,THREE.Object3D.DEFAULT_UP).normalize();movement.copy(forward).multiplyScalar(z).addScaledVector(right,x);if(movement.length()>1)movement.normalize();movement.multiplyScalar(3.5*dt);
     const previous=player.position.clone();player.position.add(movement);constrainToDeck(player.position,PLAYER_RADIUS+.12);const delta=player.position.clone().sub(previous);
     if(delta.lengthSq()>1e-8)player.rotation.y=Math.atan2(-delta.x,-delta.z);
+    avatar.update(dt,delta.lengthSq()>1e-8);
     camera.position.add(delta);controls.target.add(delta);
   }
   return {player,update};
