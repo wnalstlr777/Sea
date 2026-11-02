@@ -174,12 +174,12 @@ export function createOcean(){
         brokenGlitter*=.82+.18*sin(water.x*.31+tex.r*9.+time*.48);
         vec3 moonColor=mix(vec3(.70,.78,.96),vec3(.52,.70,1.),moonTint);
         color+=moonColor*moonSpec*moonVisible*1.4*brokenGlitter;
-        // Only the stern (+Z beyond 41m) produces foam. No hull-side or crest foam.
-        float aft=max(world.z-41.,0.);
-        float width=3.5+aft*.085;
+        // Follow the imported hull stern at world Z about -2 (5x scale, 180-degree heading).
+        float aft=max(world.z+2.,0.);
+        float width=4.0+aft*.085;
         float bend=(tex.b-.5)*1.5*(1.-exp(-aft*.03));
         float core=exp(-pow((world.x+bend)/width,2.));
-        float sternMask=smoothstep(41.,47.,world.z)*(1.-smoothstep(80.,240.,aft));
+        float sternMask=smoothstep(-2.,4.,world.z)*(1.-smoothstep(80.,240.,aft));
         vec4 fine=texture2D(surfaceMap,water/5.7+vec2(time*.006,-time*.004));
         float bubbles=smoothstep(.4,.68,fine.b*.65+tex.b*.35);
         float lace=smoothstep(.58,.86,fine.a);

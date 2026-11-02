@@ -4,7 +4,7 @@ import {NETWORK_TO_VISUAL_Y,VISUAL_DECK_Y} from './ship.js';
 import {createSurvivor,disposeSurvivor} from './survivor.js';
 
 export function createPlayer(scene,camera,controls){
-  const player=new THREE.Group();player.position.set(0,SHIP.deckY,-24);
+  const player=new THREE.Group();player.position.set(0,SHIP.deckY,-33);
   const characterId=Math.random()<.5?'hina':'daeun';
   player.userData.characterId=characterId;
   let avatar=createSurvivor(characterId),enabled=true,sitting=false,lying=false,bedAnchor=null;

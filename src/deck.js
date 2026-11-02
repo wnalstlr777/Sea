@@ -2,7 +2,7 @@ export const SHIP={length:80,width:24,height:12,deckY:13.6};
 // Clockwise XZ outline shared by the visible deck, railing and collider.
 // Walkable conservative rectangle inside the three UCX deck regions.
 // Network Y remains 13.6 until a server protocol migration.
-export const DECK=[[-1.45,-20.95],[1.45,-20.95],[1.45,-27.05],[-1.45,-27.05]];
+export const DECK=[[-6.2,-11],[6.2,-11],[6.2,-37],[-6.2,-37]]; // 5x ship: conservative walkable deck
 export const PLAYER_RADIUS=.42;
 
 export function constrainToDeck(position,radius=PLAYER_RADIUS){
