@@ -145,6 +145,10 @@ export function createOcean(){
         vec3 body=mix(deep,near,clamp(.38+world.y*.16+tex.b*.22,0.,1.));
         body=mix(body,mid,smoothstep(100.,1200.,dist)*.32);
         body=mix(body,horizon,smoothstep(900.,7000.,dist)*.22);
+        // Saturated blue body colour in daylight; retain the sunset/night palette.
+        float blueDay=smoothstep(.65,1.,daylight);
+        vec3 dayBlue=mix(vec3(.008,.045,.25),vec3(.015,.22,.48),clamp(.45+world.y*.12+tex.b*.2,0.,1.));
+        body=mix(body,dayBlue,blueDay*.65);
         body*=mix(.12,1.,daylight)*(.65+.45*max(dot(n,normalize(sunDirection)),0.));
         // Forward scattering illuminates thin wave crests against the light.
         float scatter=pow(max(dot(v,-normalize(sunDirection)),0.),3.)*max(world.y,0.);

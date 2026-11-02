@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const SHIP={length:80,width:24,height:6,deckY:6.8};
+export const SHIP={length:80,width:24,height:12,deckY:13.6};
 // Clockwise XZ outline shared by the visible deck, railing and collider.
 export const DECK=[[-4,20],[4,20],[6,15],[6,-10],[4,-17],[0,-20],[-4,-17],[-6,-10],[-6,15]].map(([x,z])=>[x*2,z*2]);
 export const PLAYER_RADIUS=.42;
@@ -23,7 +23,7 @@ export function isOnDeck(position,radius=PLAYER_RADIUS){
 export function createShip(){
   const ship=new THREE.Group();
   const vertices=[],indices=[],n=DECK.length;
-  for(const [scale,y] of [[.72,.3],[1,5.8],[1,SHIP.deckY]])for(const [x,z] of DECK)vertices.push(x*scale,y,z*scale);
+  for(const [scale,y] of [[.72,.3],[1,SHIP.deckY-1],[1,SHIP.deckY]])for(const [x,z] of DECK)vertices.push(x*scale,y,z*scale);
   for(let ring=0;ring<2;ring++)for(let i=0;i<n;i++){const a=ring*n+i,b=ring*n+(i+1)%n;indices.push(a,b,a+n,b,b+n,a+n);}
   const hullGeometry=new THREE.BufferGeometry();hullGeometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));hullGeometry.setIndex(indices);hullGeometry.computeVertexNormals();
   ship.add(new THREE.Mesh(hullGeometry,new THREE.MeshStandardMaterial({color:'#e5efec',roughness:.55,side:THREE.DoubleSide})));

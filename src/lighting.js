@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {createAtmosphere} from './atmosphere.js';
 
 const stops=[
   [0,'#060e24','#18263c','#a6c7ff',.07,.23],
@@ -62,6 +63,7 @@ export function createLighting(scene,ocean){
     light.shadow.bias=-.0002;light.shadow.normalBias=.025;light.shadow.radius=2;
     scene.add(light.target);
   }
+  const atmosphere=createAtmosphere(scene,{uniforms});
   let previousHour=-1,displayHour=18;
   function update(hour,dt){
     if(dt!==undefined){
@@ -70,6 +72,7 @@ export function createLighting(scene,ocean){
       if(Math.abs(delta)<.0001)displayHour=hour;
     }else displayHour=hour;
     hour=displayHour;
+    atmosphere.update(dt??0);
     if(hour===previousHour)return;previousHour=hour;
     const t=THREE.MathUtils.clamp(hour,0,24);let index=0;while(index<stops.length-2&&t>stops[index+1][0])index++;
     const a=stops[index],b=stops[index+1],f=THREE.MathUtils.smoothstep(t,a[0],b[0]);

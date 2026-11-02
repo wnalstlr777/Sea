@@ -2,13 +2,13 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOcean} from './ocean.js';
 import './style.css';
-import {createShip} from './ship.js';
+import {createShip,SHIP} from './ship.js';
 import {createPlayer} from './player.js';
 import {createLighting} from './lighting.js';
 import {createBoatMotion} from './camera-motion.js';
 
 const app=document.querySelector('#app');
-app.innerHTML=`<header class="heading"><div class="eyebrow">A STUDY IN STILLNESS & MOTION</div><h1>OCEAN CRUISE</h1><p>끝없이 펼쳐지는 바다, 항해의 시작.</p><span class="tag">PROTOTYPE / 0.1</span></header><details open><summary aria-label="바다 설정 메뉴"><span class="desktop-menu-title">OCEAN CONTROLS · 바다 설정</span><span class="mobile-menu-title" aria-hidden="true">☰</span></summary><div class="panel"><div class="section">VIEW / 시점</div><div class="time-presets"><button id="deck-view" aria-pressed="true">갑판</button><button id="ocean-view" aria-pressed="false">바다 전체</button></div><div class="section">SKY / 낮과 밤</div><div class="time-presets"><button data-hour="12">낮</button><button data-hour="18">석양</button><button data-hour="0">밤</button></div><label><span>시간 <output id="time-label">18:00</output></span><input id="time-of-day" aria-label="하루 시간" type="range" min="0" max="24" step="0.05" value="18"></label><div class="section">SURFACE / 수면</div><div id="sliders"></div><div class="section">PALETTE / 거리별 바다색</div><div id="colors"></div><button id="reset">기본값으로 초기화</button></div></details><footer class="bottom"><span>WASD / 방향키 · 이동 &nbsp; 드래그 · 둘러보기 &nbsp; 스크롤 · 줌</span><span id="stats">수면 준비 중</span></footer>`;
+app.innerHTML=`<header class="heading"><div class="eyebrow">A STUDY IN STILLNESS & MOTION</div><h1>OCEAN CRUISE</h1><p>끝없이 펼쳐지는 바다, 항해의 시작.</p><span class="tag">PROTOTYPE / 0.1</span></header><section class="time-control" aria-label="시간 조절"><label><span>시간 <output id="time-label">18:00</output></span><input id="time-of-day" aria-label="하루 시간" type="range" min="0" max="24" step="0.05" value="18"></label></section><details open><summary aria-label="바다 설정 메뉴"><span class="desktop-menu-title">OCEAN CONTROLS · 바다 설정</span><span class="mobile-menu-title" aria-hidden="true">☰</span></summary><div class="panel"><div class="section">VIEW / 시점</div><div class="time-presets"><button id="deck-view" aria-pressed="true">갑판</button><button id="ocean-view" aria-pressed="false">바다 전체</button></div><div class="section">SKY / 낮과 밤</div><div class="time-presets"><button data-hour="12">낮</button><button data-hour="18">석양</button><button data-hour="0">밤</button></div><div class="section">SURFACE / 수면</div><div id="sliders"></div><div class="section">PALETTE / 거리별 바다색</div><div id="colors"></div><button id="reset">기본값으로 초기화</button></div></details><footer class="bottom"><span>WASD / 방향키 · 이동 &nbsp; 드래그 · 둘러보기 &nbsp; 스크롤 · 줌</span><span id="stats">수면 준비 중</span></footer>`;
 const settingsPanel=document.querySelector('details');
 const mobileViewport=matchMedia('(max-width: 600px)');
 const syncPanel=()=>{settingsPanel.open=!mobileViewport.matches;};
@@ -17,12 +17,12 @@ addEventListener('keydown',event=>{if(event.key==='Escape'&&mobileViewport.match
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor('#a3d1db');app.prepend(renderer.domElement);
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();
-const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.5,50000);camera.position.set(0,8.8,-12);
-const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,8.5,-20);controls.enableDamping=true;controls.enablePan=false;controls.minDistance=3;controls.maxDistance=320;controls.minPolarAngle=.15;controls.maxPolarAngle=Math.PI/2-.02;controls.update();
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.5,50000);camera.position.set(0,SHIP.deckY+2,-12);
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,SHIP.deckY+1.7,-20);controls.enableDamping=true;controls.enablePan=false;controls.minDistance=3;controls.maxDistance=320;controls.minPolarAngle=.15;controls.maxPolarAngle=Math.PI/2-.02;controls.update();
 function setView(overview){
   const scale=Math.min(1.8,Math.max(1,.9/camera.aspect));
-  camera.position.set(...(overview?[100*scale,65*scale,125*scale]:[0,8.8,-12]));
-  controls.target.set(...(overview?[0,0,0]:[0,8.5,-20]));controls.update();
+  camera.position.set(...(overview?[100*scale,65*scale,125*scale]:[0,SHIP.deckY+2,-12]));
+  controls.target.set(...(overview?[0,0,0]:[0,SHIP.deckY+1.7,-20]));controls.update();
   document.querySelector('#deck-view').setAttribute('aria-pressed',String(!overview));
   document.querySelector('#ocean-view').setAttribute('aria-pressed',String(overview));
 }

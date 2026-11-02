@@ -11,4 +11,4 @@ test('sustained walking into bow, stern and sides cannot escape; edge movement s
   const p=constrainToDeck({x:12,y:0,z:0},.54);const x=p.x;p.z-=1;constrainToDeck(p,.54);assert.equal(p.x,x);assert.equal(p.z,-1);
 });
 
-test("ship footprint doubles while deck and railing height stay fixed",()=>{assert.equal(SHIP.length,80);assert.equal(SHIP.width,24);assert.equal(SHIP.deckY,6.8);});
+test("cruiser keeps its footprint with doubled hull and deck height",()=>{assert.equal(SHIP.length,80);assert.equal(SHIP.width,24);assert.equal(SHIP.height,12);assert.equal(SHIP.deckY,13.6);});
