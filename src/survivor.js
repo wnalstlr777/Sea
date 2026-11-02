@@ -2,9 +2,17 @@ import * as THREE from 'three';
 
 // Geometry, palette and basic gait ported from hina-survival/index.html.
 // Only the visible character rig is retained; no survival state or UI.
-export function createSurvivor(id){
+// Deterministic appearance from the server-assigned player ID. All clients
+// independently derive the same model and hair color without changing Workers.
+export function appearanceForPlayer(playerId){
+  let hash=2166136261;
+  for(const ch of String(playerId)){hash=Math.imul(hash^ch.charCodeAt(0),16777619)>>>0;}
+  return {model:['hina','daeun','boy-neat','boy-fluffy'][hash%4],hairColor:['black','brown','gray'][Math.floor(hash/4)%3]};
+}
+
+export function createSurvivor(id,hairColor='black'){
 const hana=new THREE.Group();
-hana.name=id==='hina'?'Hina':'Daeun';
+hana.name=({hina:'Hina',daeun:'Daeun','boy-neat':'BoyNeat','boy-fluffy':'BoyFluffy'})[id]||'Hina';
 hana.userData.characterId=id;
 const mat=color=>new THREE.MeshLambertMaterial({color});
 const skin=mat(0xf4c8b7),hair=mat(0x29232b),hairLight=mat(0x3a3037),shirt=mat(0xf5f0ee),skirt=mat(0x39333d),dark=mat(0x302c35),shoe=mat(0x242027),sock=mat(0x282630),eye=mat(0x342932),eyeShine=mat(0xffffff),blush=mat(0xe9a6a4),ribbon=mat(0x302b34),seam=mat(0x54434d);
@@ -89,6 +97,57 @@ if(id==='daeun'){
  }
 
 }
+
+
+if(id==='boy-neat'||id==='boy-fluffy'){
+ // Keep the same lightweight rig, face, limb pivots and gait.
+ // Remove the feminine front bow and skirt; give each boy a simple outfit.
+ for(const child of hana.children){
+   if(!child.isMesh)continue;
+   if(child.material===ribbon&&child.position.y>1.3)child.visible=false;
+   if(child.material===skirt||child.material===seam)child.visible=false;
+ }
+ // Shorts and two distinct pant legs; the leg pivots remain animated.
+ const shorts=mat(id==='boy-neat'?0x405368:0x6a5548);
+ part(.67,.20,.43,shorts,0,1.02,0);
+ for(const leg of legs){
+   limbCube(leg,.27,.34,.29,shorts,0,-.16,0);
+ }
+ // Shorter side locks and rear bob. Distinct top silhouettes at distance.
+ for(const child of head.children){
+   if(!child.isMesh)continue;
+   const {x,y,z}=child.position;
+   if((z<-.25&&y<-.10)||(Math.abs(x)>.36&&y<-.06))child.visible=false;
+ }
+ if(id==='boy-neat'){
+   // Side-swept short fringe, cropped at the ears.
+   facepart(.27,.13,.15,hair,-.21,.24,.34).rotation.z=-.18;
+   facepart(.27,.12,.15,hair,.08,.28,.33).rotation.z=-.10;
+ }else{
+   // Fluffy crown with several staggered, angular tufts.
+   for(let i=-2;i<=2;i++){
+     const tuft=facepart(.18,.20+(.1*(2-Math.abs(i))),.25,i%2?hairLight:hair,i*.155,.49+(i%2)*.045,-.03);
+     tuft.rotation.z=(i%2?-.23:.20);
+   }
+   facepart(.24,.18,.15,hair,.22,.22,.34).rotation.z=.15;
+ }
+}
+
+// Recolor only the hair meshes, never skin, eyes or clothing.
+const colors={black:[0x24252b,0x34363e],brown:[0x79513b,0x9a7054],gray:[0x9699a3,0xb6b8c1]};
+const chosen=colors[hairColor]||colors.black;
+const hairMaterials=new Map();
+head.traverse(child=>{
+  if(!child.isMesh||!child.material?.color)return;
+  const hex=child.material.color.getHex();
+  if(![0x29232b,0x3a3037,0x49313b,0x66505b].includes(hex))return;
+  if(!hairMaterials.has(child.material)){
+    const recolored=child.material.clone();
+    recolored.color.setHex([0x3a3037,0x66505b].includes(hex)?chosen[1]:chosen[0]);
+    hairMaterials.set(child.material,recolored);
+  }
+  child.material=hairMaterials.get(child.material);
+});
 
 // Keep the source's elbow/knee articulation without its action system.
 function split(pivot,kind,side){

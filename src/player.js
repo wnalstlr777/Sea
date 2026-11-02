@@ -7,6 +7,7 @@ export function createPlayer(scene,camera,controls){
   const characterId=Math.random()<.5?'hina':'daeun';
   player.userData.characterId=characterId;
   let avatar=createSurvivor(characterId),enabled=true,sitting=false;
+  player.userData.hairColor='black';
   // Survival models face +Z; Sea movement and the existing camera face -Z.
   avatar.mesh.rotation.y=Math.PI;player.add(avatar.mesh);scene.add(player);
   // Soft contact shading remains underfoot during the twilight lighting gap.
@@ -25,10 +26,10 @@ export function createPlayer(scene,camera,controls){
   pad.addEventListener('pointermove',e=>{if(e.pointerId===pointer)setStick(e);});
   for(const event of ['pointerup','pointercancel','lostpointercapture'])pad.addEventListener(event,e=>{if(e.pointerId===pointer)reset();});
   addEventListener('blur',()=>{keys.clear();reset();});document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();reset();}});
-  function setCharacter(id){
-    if(player.userData.characterId===id)return;
+  function setCharacter(id,hairColor='black'){
+    if(player.userData.characterId===id&&player.userData.hairColor===hairColor)return;
     player.remove(avatar.mesh);disposeSurvivor(avatar.mesh);
-    avatar=createSurvivor(id);avatar.mesh.rotation.y=Math.PI;player.add(avatar.mesh);player.userData.characterId=id;
+    avatar=createSurvivor(id,hairColor);avatar.mesh.rotation.y=Math.PI;player.add(avatar.mesh);player.userData.characterId=id;player.userData.hairColor=hairColor;
   }
   const sitButton=document.createElement('button');sitButton.id='sit-toggle';sitButton.type='button';sitButton.textContent='앉기';sitButton.setAttribute('aria-pressed','false');document.querySelector('#app').append(sitButton);
   function setSitting(value){sitting=value;player.userData.sitting=value;sitButton.textContent=value?'일어서기':'앉기';sitButton.setAttribute('aria-pressed',String(value));}

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {createSurvivor,disposeSurvivor} from './survivor.js';
+import {createSurvivor,disposeSurvivor,appearanceForPlayer} from './survivor.js';
 
 export function createMultiplayer({scene,camera,controls,character,url}){
   const panel=document.createElement('div');panel.className='multiplayer-status';
@@ -15,7 +15,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   function clear(){for(const id of [...remotes.keys()])remove(id);localLabel?.remove();localLabel=null;}
   function occupancy(){message(`함께 항해 중 · ${remotes.size+1}/5명`);}
   function setLocal(state){
-    character.setCharacter(state.characterId);
+    const look=appearanceForPlayer(state.id);character.setCharacter(look.model,look.hairColor);
     const delta=new THREE.Vector3(state.x,state.y,state.z).sub(character.player.position);
     character.player.position.add(delta);character.player.rotation.y=state.rotation;
     camera.position.add(delta);controls.target.add(delta);controls.update();
@@ -23,7 +23,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   function add(state){
     if(state.id===self)return;
     if(remotes.has(state.id)){receive(state);return;}
-    const avatar=createSurvivor(state.characterId),root=new THREE.Group();root.name=`remote-${state.id}`;
+    const look=appearanceForPlayer(state.id);const avatar=createSurvivor(look.model,look.hairColor),root=new THREE.Group();root.name=`remote-${state.id}`;
     root.userData.playerId=state.id;avatar.mesh.rotation.y=Math.PI;root.add(avatar.mesh);scene.add(root);
     root.position.set(state.x,state.y,state.z);root.rotation.y=state.rotation;
     remotes.set(state.id,{root,avatar,label:label(state.nickname),samples:[{...state,time:performance.now()}]});
