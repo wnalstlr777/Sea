@@ -64,5 +64,5 @@
 #sit-toggle{position:absolute;right:24px;bottom:max(24px,env(safe-area-inset-bottom));width:64px;min-height:44px;border-radius:12px;background:#072d39e8;color:#fff;z-index:2;font-size:13px}
 @media(max-width:600px){
   .time-control{bottom:max(8px,env(safe-area-inset-bottom));transform:none}
-  #sit-toggle{right:16px;bottom:220px}
+  #sit-toggle{right:16px;bottom:180px}
 }
