@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOcean} from './ocean.js';
 import './style.css';
-import {createShip,SHIP,NETWORK_TO_VISUAL_Y} from './ship.js';
+import {createShip,SHIP,NETWORK_TO_VISUAL_Y,SHIP_CENTER_Z,VISUAL_DECK_Y} from './ship.js';
 import {createPlayer} from './player.js';
 import {createMultiplayer} from './multiplayer.js';
 import {createLighting} from './lighting.js';
@@ -27,9 +27,12 @@ renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.5,50000);camera.position.set(0,SHIP.deckY+NETWORK_TO_VISUAL_Y+2,-12);
 const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,SHIP.deckY+NETWORK_TO_VISUAL_Y+1.7,-33);controls.enableDamping=true;controls.enablePan=false;controls.minDistance=3;controls.maxDistance=320;controls.minPolarAngle=.15;controls.maxPolarAngle=Math.PI/2-.02;controls.update();
+let intro=null, introFinished=false, overviewActive=false;
 function setView(overview){
+  if(intro){intro=null;introFinished=true;character.setEnabled(true);}
+  overviewActive=overview;
   const scale=Math.min(1.8,Math.max(1,.9/camera.aspect));
-  if(overview){camera.position.set(100*scale,65*scale,125*scale);controls.target.set(0,0,0);controls.update();}
+  if(overview){camera.position.set(95*scale,44*scale,SHIP_CENTER_Z+90*scale);controls.target.set(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);controls.update();}
   else character.resetView();
   document.querySelector('#deck-view').setAttribute('aria-pressed',String(!overview));
   document.querySelector('#ocean-view').setAttribute('aria-pressed',String(overview));
@@ -47,12 +50,45 @@ const deckCollision=createDeckCollision(ship);
 const sunbeds=createSunbeds(scene);
 const jellyfish=createJellyfish(scene);
 const character=createPlayer(scene,camera,controls,deckCollision);
+// Start the side-profile intro only after the UCX ship and player spawn are ready.
+// Camera motion is owned by this one state machine, not competing frame handlers.
+const introSide=new THREE.Vector3(),introTarget=new THREE.Vector3(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);
+function beginIntro(){
+  const mobile=camera.aspect<.8;
+  introSide.set(mobile?125:90, mobile?36:32, SHIP_CENTER_Z);
+  intro={elapsed:0,fromPosition:introSide.clone(),fromTarget:introTarget.clone()};
+  character.setEnabled(false);
+  camera.position.copy(introSide);controls.target.copy(introTarget);controls.update();
+}
+function finishIntro(){
+  intro=null;introFinished=true;character.setEnabled(true);
+  const pose=character.deckViewPose();camera.position.copy(pose.position);
+  controls.target.copy(pose.target);controls.update();
+}
+function updateIntro(dt){
+  if(introFinished||overviewActive)return;
+  if(!intro){if(deckCollision.ready()&&character.isSpawnReady())beginIntro();return;}
+  intro.elapsed+=dt;
+  if(intro.elapsed>=5){finishIntro();return;}
+  const pose=character.deckViewPose();
+  const t=Math.max(0,Math.min(1,(intro.elapsed-2)/3));
+  const eased=t*t*(3-2*t);
+  camera.position.copy(intro.fromPosition).lerp(pose.position,eased);
+  controls.target.copy(intro.fromTarget).lerp(pose.target,eased);
+  controls.update();
+}
+addEventListener('keydown',e=>{
+  if(intro&&['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)){
+    e.preventDefault();finishIntro();
+  }
+},{capture:true});
+renderer.domElement.addEventListener('pointerdown',()=>{if(intro)finishIntro();});
 const lieButton=document.createElement('button');lieButton.id='sunbed-interact';lieButton.type='button';lieButton.textContent='🛏️';lieButton.title='선베드에 눕기';lieButton.setAttribute('aria-label','선베드에 눕기');lieButton.style.cssText='position:fixed;z-index:30;display:none;width:44px;height:44px;min-width:44px;max-width:44px;min-height:44px;line-height:1;padding:0;font-size:23px;border:1px solid #ffffffaa;border-radius:50%;background:#07313ddd;color:white;cursor:pointer;transform:translate(-50%,-100%);box-shadow:0 2px 12px #0005';document.querySelector('#app').append(lieButton);
 let nearbyBed=null;const bedProjection=new THREE.Vector3();
 lieButton.onclick=()=>{if(nearbyBed&&!character.isLying())character.lieOn(nearbyBed.anchor);lieButton.style.display='none';};
 const multiplayer=createMultiplayer({scene,camera,controls,character,url:import.meta.env.VITE_MULTIPLAYER_URL?.trim()});
 controls.maxDistance=320;
-if(new URLSearchParams(location.search).get('view')==='ocean')setView(true);
+if(new URLSearchParams(location.search).get('view')==='ocean'){overviewActive=true;introFinished=true;setView(true);}
 const boatMotion=createBoatMotion(camera);
 const params={cameraMotion:matchMedia('(prefers-reduced-motion: reduce)').matches?0:.6,hour:0,cloudCover:.5,curvature:1,height:.825,reflectionResolution:256,waveSize:1,normalStrength:0,naturalSpeed:.6,speed:16,wake:.65};const defaults={...params};let naturalTime=0,travel=0;
 const cloudInput=document.querySelector('#cloud-cover');
@@ -74,7 +110,7 @@ for(const [key,value] of Object.entries(palette)){const label=document.createEle
 document.querySelector('#reset').onclick=()=>{Object.assign(params,defaults);setHour(defaults.hour);setCloudCover(defaults.cloudCover);setReflectionResolution(defaults.reflectionResolution);document.querySelectorAll('#sliders input').forEach((input,i)=>{input.value=params[settings[i][0]];input.dispatchEvent(new Event('input'));});document.querySelectorAll('#colors input').forEach((input,i)=>{input.value=Object.values(palette)[i];input.dispatchEvent(new Event('input'));});};
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 let previous=performance.now(),elapsed=0,frames=0;
-renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();
+renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();updateIntro(dt);
 nearbyBed=null;
 if(!character.isLying())for(const bed of sunbeds.beds){if(Math.hypot(character.player.position.x-bed.position.x,character.player.position.z-bed.position.z)<1.6){nearbyBed=bed;break;}}
 lieButton.style.display='none';

@@ -14,7 +14,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // Soft contact shading remains underfoot during the twilight lighting gap.
   const contact=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.5),new THREE.ShaderMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,uniforms:{},vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`varying vec2 vUv;void main(){float r=length((vUv-.5)*2.);gl_FragColor=vec4(0.,0.,0.,(1.-smoothstep(.15,1.,r))*.18);}`}));
   contact.rotation.x=-Math.PI/2;contact.position.y=NETWORK_TO_VISUAL_Y+.012;player.add(contact);
-  controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.minDistance=2;controls.maxDistance=100;controls.update();
+  controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,3.4,9.5));controls.minDistance=2;controls.maxDistance=100;controls.update();
   const keys=new Set(),stick=new THREE.Vector2(),forward=new THREE.Vector3(),right=new THREE.Vector3(),movement=new THREE.Vector3();
   const movementKeys=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'];
   addEventListener('keydown',e=>{if(e.target.closest?.('input,button,summary,textarea,select'))return;if(movementKeys.includes(e.code)){e.preventDefault();keys.add(e.code);}});
@@ -39,7 +39,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // current Workers protocol only accepts y === SHIP.deckY.
   const jumpButton=document.createElement('button');jumpButton.id='jump-toggle';jumpButton.type='button';jumpButton.textContent='점프';jumpButton.setAttribute('aria-label','점프');document.querySelector('#app').append(jumpButton);
   const JUMP_SPEED=10.6,GRAVITY=13.5,HEAD_HEIGHT=2.95;
-  const WATER_SURFACE_Y=0.35, RESPAWN_X=0, RESPAWN_Z=-33;
+  const WATER_SURFACE_Y=-1.35, RESPAWN_X=0, RESPAWN_Z=-33;
   let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
   let landingGrace=0;
   let fallVelocity=0,fallDriftX=0,fallDriftZ=0,fallAirborne=false;
@@ -78,6 +78,13 @@ export function createPlayer(scene,camera,controls,deckCollision){
         osc.onended=()=>{osc.disconnect();gain.disconnect();};
       }
     }catch{/* Audio is optional if the browser blocks playback. */}
+  }
+  // Water camera follows horizontal motion but stays above the surface.
+  function followWaterHeight(shift){
+    const desiredTarget=Math.max(3.0,controls.target.y+shift);
+    const delta=desiredTarget-controls.target.y;
+    controls.target.y=desiredTarget;
+    camera.position.y+=delta;
   }
   function startFall(){
     if(overboard||returnFlight)return;
@@ -119,28 +126,28 @@ export function createPlayer(scene,camera,controls,deckCollision){
     const x=THREE.MathUtils.lerp(f.startX,f.endX,t);
     const z=THREE.MathUtils.lerp(f.startZ,f.endZ,t);
     // Quadratic arch added to the rising travel path; apex clears the rail.
-    const y=THREE.MathUtils.lerp(f.startY,f.endY,smooth)+8*4*t*(1-t);
+    const y=THREE.MathUtils.lerp(f.startY,f.endY,t)+8*4*t*(1-t);
     const previousX=player.position.x,previousZ=player.position.z,previousY=visualBaseY+fallOffset;
     player.position.x=x;player.position.z=z;
     fallOffset=y-visualBaseY;
     jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
     camera.position.x+=x-previousX;controls.target.x+=x-previousX;
     camera.position.z+=z-previousZ;controls.target.z+=z-previousZ;
-    camera.position.y+=y-previousY;controls.target.y+=y-previousY;
+    followWaterHeight(y-previousY);
     jumpPose+=(1-jumpPose)*(1-Math.exp(-dt*16));
     if(t>=1){
       // Preserve the exact UCX landing height and align the camera with it.
       const landedY=f.endY;
       const finalOffset=landedY-visualBaseY;
       const correction=finalOffset-fallOffset;
-      camera.position.y+=correction;controls.target.y+=correction;
+      followWaterHeight(correction);
       fallOffset=finalOffset;
       returnFlight=null;lastFloorY=landedY;landingGrace=.65;
       jumpPivot.position.y=NETWORK_TO_VISUAL_Y+finalOffset;
       contact.visible=true;player.userData.inWater=false;
       // Restore the original deck-view orbit without resetting the user's angle/zoom.
       // The player's visual feet are at landedY; aim slightly above them.
-      const orbit=deckCameraOffset||camera.position.clone().sub(controls.target);
+      const orbit=new THREE.Vector3(0,3.4,9.5);
       controls.target.set(player.position.x,landedY+1.3,player.position.z);
       camera.position.copy(controls.target).add(orbit);
       controls.update();
@@ -190,7 +197,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
         fallOffset=desired+Math.sin(waterTime*5.0)*.32+Math.sin(waterTime*8.1)*.09;
       }
       const shift=fallOffset-old;
-      camera.position.y+=shift;controls.target.y+=shift;
+      followWaterHeight(shift);
       jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
       jumpPose+=(0-jumpPose)*(1-Math.exp(-step*16));
       return;
@@ -253,7 +260,12 @@ export function createPlayer(scene,camera,controls,deckCollision){
       avatar.mesh.quaternion.copy(lieTargetQuat);
     }
   }
-  function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,2.2,7));controls.update();controls.enableDamping=damping;}
+  function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,3.4,9.5));controls.update();controls.enableDamping=damping;}
+  function deckViewPose(){
+    const target=player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));
+    const position=target.clone().add(new THREE.Vector3(0,3.4,9.5));
+    return {position,target};
+  }
   function setEnabled(value){enabled=value;if(!value){keys.clear();reset();player.userData.moving=false;}}
   function update(dt){
     landingGrace=Math.max(0,landingGrace-Math.min(dt,.05));
@@ -300,7 +312,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving&&!overboard,sitting,jumpPose,overboard);
     camera.position.add(delta);controls.target.add(delta);
   }
-  return {player,update,setCharacter,setEnabled,resetView,lieOn,standUp,isLying:()=>lying,
+  return {player,update,setCharacter,setEnabled,resetView,deckViewPose,isSpawnReady:()=>spawnValidated,lieOn,standUp,isLying:()=>lying,
     isReturning:()=>Boolean(returnFlight),
     handleCorrection(state){
       // Keep the server authoritative; cancel an invalid flight cleanly.
