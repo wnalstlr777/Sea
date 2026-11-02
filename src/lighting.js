@@ -14,7 +14,11 @@ const stops=[
 // A 20-degree tilt from vertical; moon retraces the sunset path in reverse.
 export function celestialDirections(hour){
   const direction=angle=>new THREE.Vector3(.64*Math.tan(THREE.MathUtils.degToRad(20))*Math.sin(angle),.64*Math.sin(angle),Math.cos(angle)).normalize();
-  return {sun:direction((hour-6)/12*Math.PI),moon:direction((30-hour)/12*Math.PI)};
+  // Retrace the near-horizon sunset arc, rather than climbing overhead.
+  // A four-degree peak keeps the whole disc inside the default mobile deck view.
+  const nightPhase=(hour-18)/12*Math.PI;
+  const moonAngle=Math.PI-.11*Math.sin(nightPhase);
+  return {sun:direction((hour-6)/12*Math.PI),moon:direction(moonAngle)};
 }
 export function celestialVisibility(hour){
   // Separate fade windows leave a brief twilight gap: never two discs at once.
