@@ -45,6 +45,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   let fallVelocity=0,fallDriftX=0,fallDriftZ=0,fallAirborne=false;
   let lastMoveX=0,lastMoveZ=0;
   let landingPoint=null;
+  let deckCameraOffset=null;
   let lastFloorY=VISUAL_DECK_Y,spawnValidated=false;
   const visualBaseY=SHIP.deckY+NETWORK_TO_VISUAL_Y;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
@@ -80,6 +81,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
   }
   function startFall(){
     if(overboard||returnFlight)return;
+    // Remember the camera orbit before the water sequence changes its height.
+    deckCameraOffset=camera.position.clone().sub(controls.target);
     overboard=true;player.userData.inWater=true;
     fallAirborne=true;waterTime=0;
     // Start from the current foot height, including an ongoing jump.
@@ -94,11 +97,11 @@ export function createPlayer(scene,camera,controls,deckCollision){
     const safe=deckCollision.safeSpot(RESPAWN_X,RESPAWN_Z);
     if(!safe)return; // Never send the character to an unsupported point.
     const destinationY=safe.y;
-    // Worker accepts 5.25m/s (+small burst credit). Ease-in/out has 1.5x
-    // peak speed, so allow ample time for long return flights.
+    // The Worker allows 5.25m/s. Use constant horizontal speed (4.8m/s)
+    // instead of slow smoothstep travel; retain the visual vertical arc.
     const distance=Math.hypot(safe.x-player.position.x,safe.z-player.position.z);
     landingPoint=safe;
-    returnFlight={elapsed:0,duration:Math.max(1.75,distance/3.0),
+    returnFlight={elapsed:0,duration:Math.max(1.0,distance/4.8),
       startX:player.position.x,startZ:player.position.z,
       startY:visualBaseY+fallOffset,
       endX:safe.x,endZ:safe.z,endY:destinationY};
@@ -113,9 +116,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
     const f=returnFlight;
     f.elapsed+=Math.min(dt,.05);
     const t=Math.min(1,f.elapsed/f.duration);
-    const smooth=t*t*(3-2*t);
-    const x=THREE.MathUtils.lerp(f.startX,f.endX,smooth);
-    const z=THREE.MathUtils.lerp(f.startZ,f.endZ,smooth);
+    const x=THREE.MathUtils.lerp(f.startX,f.endX,t);
+    const z=THREE.MathUtils.lerp(f.startZ,f.endZ,t);
     // Quadratic arch added to the rising travel path; apex clears the rail.
     const y=THREE.MathUtils.lerp(f.startY,f.endY,smooth)+8*4*t*(1-t);
     const previousX=player.position.x,previousZ=player.position.z,previousY=visualBaseY+fallOffset;
@@ -136,6 +138,13 @@ export function createPlayer(scene,camera,controls,deckCollision){
       returnFlight=null;lastFloorY=landedY;landingGrace=.65;
       jumpPivot.position.y=NETWORK_TO_VISUAL_Y+finalOffset;
       contact.visible=true;player.userData.inWater=false;
+      // Restore the original deck-view orbit without resetting the user's angle/zoom.
+      // The player's visual feet are at landedY; aim slightly above them.
+      const orbit=deckCameraOffset||camera.position.clone().sub(controls.target);
+      controls.target.set(player.position.x,landedY+1.3,player.position.z);
+      camera.position.copy(controls.target).add(orbit);
+      controls.update();
+      deckCameraOffset=null;
     }
     return true;
   }
