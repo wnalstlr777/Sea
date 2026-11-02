@@ -163,7 +163,7 @@ function split(pivot,kind,side){
 const elbows=arms.map((a,i)=>split(a,'arm',i));
 const knees=legs.map((l,i)=>split(l,'leg',i));
 let walkTime=0,sitBlend=0;
-function update(dt,moving,sitting=false){
+function update(dt,moving,sitting=false,jumpPhase=null){
   const poseBlend=1-Math.exp(-dt*12);
   sitBlend+=((sitting?1:0)-sitBlend)*poseBlend;
   hana.position.y=-.60*sitBlend**3;
@@ -181,6 +181,18 @@ function update(dt,moving,sitting=false){
     const knee=moving?.58*Math.max(0,Math.sin(legs[i].rotation.x)*2.8)*(1-sitBlend):0;
     knees[i].rotation.x+=(knee-knees[i].rotation.x)*blend;
     elbows[i].rotation.x+=((moving?-.10:0)-elbows[i].rotation.x)*blend;
+  }
+  // Airborne pose: one raised fist, the other arm forward, tucked knees.
+  // Blend back to the existing walk/idle pose on landing.
+  const jumpBlend=jumpPhase===null?0:Math.min(1,Math.max(0,jumpPhase));
+  const poseWeight=1-Math.exp(-Math.min(.1,dt)*20);
+  for(let i=0;i<2;i++){
+    const armPose=i===0?-2.35:-1.15;
+    const legPose=i===0?-.68:.48;
+    arms[i].rotation.x+=(armPose*jumpBlend-arms[i].rotation.x*jumpBlend)*poseWeight;
+    legs[i].rotation.x+=(legPose*jumpBlend-legs[i].rotation.x*jumpBlend)*poseWeight;
+    elbows[i].rotation.x+=((i===0?-.25:-.75)*jumpBlend-elbows[i].rotation.x)*poseWeight;
+    knees[i].rotation.x+=(1.05*jumpBlend-knees[i].rotation.x)*poseWeight;
   }
   body.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.016:0;
   head.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.020:0;
