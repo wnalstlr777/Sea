@@ -19,6 +19,8 @@ export function createSeaAudio(button){
     if(enabled){nextNote=context.currentTime+.08;scheduler=setInterval(update,200);}
   }
   function unlock(){init();if(context?.state==='suspended')context.resume().catch(()=>{});}
+  // Attempt autoplay; browsers may require the first user gesture to unlock audio.
+  unlock();
   addEventListener('pointerdown',unlock);addEventListener('keydown',e=>{if(!e.repeat)unlock();});
   function tone(frequency,at,duration,volume,bus,type='sine',endFrequency=frequency){
     if(!context)return;
