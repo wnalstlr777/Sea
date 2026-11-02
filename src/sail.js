@@ -1,72 +1,76 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 
-// Vertex colors are animation weights, NOT visible albedo:
-// red = fixed, blue = medium, yellow = strongest.
+// Red: fixed / blue: medium / yellow: strong. Vertex colors are masks, not albedo.
 export function createSail(ship){
   const time={value:0};
   let root=null,overviewRoot=null;
-  const loader=new GLTFLoader();
-  loader.load(`${import.meta.env.BASE_URL}models/Ship_Sail.glb`,gltf=>{
+  new GLTFLoader().load(`${import.meta.env.BASE_URL}models/Ship_Sail.glb`,gltf=>{
     root=gltf.scene;
-    const boat=ship.userData.model;
-    if(!boat){
-      // Ship and sail load asynchronously; wait until ship is available.
-      ship.userData.pendingSail=()=>attach(boatReady());
-    }else attach(boat);
-    function boatReady(){return ship.userData.model;}
-    function attach(boatModel){
-      if(!boatModel)return;
-      // Local coordinates are the same original Blender coordinates as Ship.glb.
-      boatModel.add(root);
+    const attach=boat=>{
+      if(!boat)return;
+      boat.add(root);
+      let meshes=0;
       root.traverse(obj=>{
         if(!obj.isMesh)return;
-        const material=new THREE.MeshStandardMaterial({color:'#101114',roughness:.89,metalness:0,side:THREE.DoubleSide});
+        meshes++;
+        const geo=obj.geometry;
+        const colors=geo.getAttribute('color');
+        if(!geo.getAttribute('normal'))geo.computeVertexNormals();
+        // Use a guaranteed vec3 attribute, independent of GLB RGB/RGBA layout.
+        const count=geo.getAttribute('position').count;
+        const weights=new Float32Array(count);
+        let fixed=0,medium=0,strong=0;
+        for(let i=0;i<count;i++){
+          let w=0;
+          if(colors){
+            const red=colors.getX(i),green=colors.getY(i),blue=colors.getZ(i);
+            // Compare channels instead of assuming sRGB values are exactly 0 or 1.
+            const yellow=Math.min(red,green)*(1-blue);
+            const blueMask=blue*(1-green);
+            const redMask=red*(1-green)*(1-blue);
+            w=THREE.MathUtils.clamp((yellow+blueMask*.48)*(1-redMask),0,1);
+          }
+          weights[i]=w;
+          if(w>.55)strong++;else if(w>.04)medium++;else fixed++;
+        }
+        geo.setAttribute('sailWeight',new THREE.BufferAttribute(weights,1));
+        const material=new THREE.MeshStandardMaterial({
+          color:'#101114',roughness:.89,metalness:0,side:THREE.DoubleSide
+        });
         material.onBeforeCompile=shader=>{
           shader.uniforms.sailTime=time;
           shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
-attribute vec4 sailMask;
+attribute float sailWeight;
 uniform float sailTime;`);
           shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
-// Preserve the authored sail shape. Wind adds a subtle, slow billow
-// and a small irregular flutter, strongest only at the free edges.
-float r=sailMask.r, g=sailMask.g, b=sailMask.b;
-float fixedWeight=clamp(r*(1.0-g)*(1.0-b),0.0,1.0);
-float strongWeight=clamp(min(r,g)*(1.0-b),0.0,1.0);
-float mediumWeight=clamp(b*(1.0-g),0.0,1.0);
-float weight=clamp((mediumWeight*0.28+strongWeight)*(1.0-fixedWeight),0.0,1.0);
-// Slowly varying breeze, never a full back-and-forth sweep.
-float breeze=0.55+0.25*sin(sailTime*0.43)+0.12*sin(sailTime*0.79+1.7);
-float billow=weight*breeze*16.0;
-// Two traveling ripples at incommensurate frequencies avoid a mechanical loop.
-float rippleA=sin(sailTime*5.8-position.y*0.075+position.x*0.035);
-float rippleB=sin(sailTime*8.3+position.y*0.12+position.z*0.047+1.3);
-float flutter=weight*(rippleA*4.75+rippleB*2.0);
-// Favor a single cloth-normal-ish direction; keep secondary motion subtle.
-transformed.x+=billow+flutter;
-transformed.z+=weight*(1.50*sin(sailTime*4.7-position.y*0.068)+0.90*sin(sailTime*7.1+position.x*0.044));`);
+float w=clamp(sailWeight,0.0,1.0);
+// Displace along the actual mesh normal instead of arbitrary ship axes.
+// Low-frequency breathing + irregular traveling ripples.
+float slow=0.65+0.20*sin(sailTime*0.65+position.y*0.018);
+float ripple=sin(sailTime*5.2-position.y*0.095+position.x*0.021)*0.9
+           +sin(sailTime*7.7+position.y*0.063-position.z*0.041+1.3)*0.38;
+float displacement=w*(slow*11.0+ripple*5.0);
+transformed+=normalize(normal)*displacement;`);
         };
-        // Use a dedicated attribute name: Three.js reserves `color` for material vertex colors.
-        const mask=obj.geometry.getAttribute('color');
-        if(mask)obj.geometry.setAttribute('sailMask',mask);
-        else console.warn('[Sea] Sail mesh missing COLOR_0:',obj.name);
         obj.material=material;
-        obj.castShadow=false;obj.receiveShadow=false;
+        obj.castShadow=false;
+        obj.receiveShadow=false;
+        console.info('[Sea] Sail weights:',obj.name,{vertices:count,fixed,medium,strong});
+        if(!colors)console.warn('[Sea] Sail mesh has no vertex colors:',obj.name);
       });
-      // Render-only overview clone shares materials and uniforms with the deck sail.
-      // Reparent into overview displayRoot so it rocks together with the ship.
-      const pivot=ship.userData.overviewDisplay;
-      const displayRoot=pivot?.children[0];
+      const displayRoot=ship.userData.overviewDisplay?.children[0];
       if(displayRoot){overviewRoot=root.clone(true);displayRoot.add(overviewRoot);}
-      // When overview is active, main.js hides only pre-existing visual meshes;
-      // toggle the two sails independently.
-      root.updateMatrixWorld(true);
-      console.info('[Sea] Sail attached:',root.name,'mesh count:',root.getObjectByProperty('isMesh',true)?.name||'check scene graph');
       ship.userData.sailVisual=root;
       ship.userData.sailOverview=overviewRoot;
-    }
+      console.info('[Sea] Sail ready, meshes:',meshes);
+    };
+    if(ship.userData.model)attach(ship.userData.model);
+    else ship.userData.pendingSail=()=>attach(ship.userData.model);
   },undefined,error=>console.error('[Sea] Ship_Sail.glb loading failed:',error));
-  return {update(t){time.value=t;const overview=ship.userData.overviewDisplay?.visible??false;
+  return {update(t){
+    time.value=t;
+    const overview=ship.userData.overviewDisplay?.visible??false;
     if(root)root.visible=!overview;
     if(overviewRoot)overviewRoot.visible=overview;
   }};
