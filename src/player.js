@@ -9,7 +9,7 @@ export function createPlayer(scene,camera,controls){
   let avatar=createSurvivor(characterId),enabled=true,sitting=false,lying=false,bedAnchor=null;
   player.userData.hairColor='black';
   // Survival models face +Z; Sea movement and the existing camera face -Z.
-  avatar.mesh.rotation.y=Math.PI;player.add(avatar.mesh);scene.add(player);
+  avatar.mesh.rotation.y=Math.PI;const jumpPivot=new THREE.Group();jumpPivot.add(avatar.mesh);player.add(jumpPivot);scene.add(player);
   // Soft contact shading remains underfoot during the twilight lighting gap.
   const contact=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.5),new THREE.ShaderMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,uniforms:{},vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`varying vec2 vUv;void main(){float r=length((vUv-.5)*2.);gl_FragColor=vec4(0.,0.,0.,(1.-smoothstep(.15,1.,r))*.18);}`}));
   contact.rotation.x=-Math.PI/2;contact.position.y=.012;player.add(contact);
@@ -28,8 +28,8 @@ export function createPlayer(scene,camera,controls){
   addEventListener('blur',()=>{keys.clear();reset();});document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();reset();}});
   function setCharacter(id,hairColor='black'){
     if(player.userData.characterId===id&&player.userData.hairColor===hairColor)return;
-    player.remove(avatar.mesh);disposeSurvivor(avatar.mesh);
-    avatar=createSurvivor(id,hairColor);avatar.mesh.rotation.y=Math.PI;player.add(avatar.mesh);player.userData.characterId=id;player.userData.hairColor=hairColor;
+    jumpPivot.remove(avatar.mesh);disposeSurvivor(avatar.mesh);
+    avatar=createSurvivor(id,hairColor);avatar.mesh.rotation.y=Math.PI;jumpPivot.add(avatar.mesh);player.userData.characterId=id;player.userData.hairColor=hairColor;
   }
   const sitButton=document.createElement('button');sitButton.id='sit-toggle';sitButton.type='button';sitButton.textContent='앉기';sitButton.setAttribute('aria-pressed','false');document.querySelector('#app').append(sitButton);
   function setSitting(value){sitting=value;player.userData.sitting=value;sitButton.textContent=value?'일어서기':'앉기';sitButton.setAttribute('aria-pressed',String(value));}
@@ -45,12 +45,16 @@ export function createPlayer(scene,camera,controls){
     headSupport=null;jumpVelocity=JUMP_SPEED;
   }
   jumpButton.addEventListener('click',jump);
+  // Space jumps even after clicking UI buttons. Only editable fields retain Space.
   addEventListener('keydown',e=>{
-    if(e.code!=='Space'||e.repeat||e.target.closest?.('input,button,summary,textarea,select'))return;
-    e.preventDefault();jump();
-  });
+    if((e.code!=='Space'&&e.key!==' ')||e.repeat||e.altKey||e.ctrlKey||e.metaKey)return;
+    const target=e.target;
+    if(target?.isContentEditable||target?.closest?.('input,textarea,select,[contenteditable]'))return;
+    e.preventDefault();
+    jump();
+  }, {capture:true});
   function updateJump(dt){
-    if(!enabled){jumpHeight=0;jumpVelocity=0;headSupport=null;avatar.mesh.position.y=lying?.16:0;return;}
+    if(!enabled){jumpHeight=0;jumpVelocity=0;headSupport=null;jumpPivot.position.y=0;return;}
     const step=Math.min(dt,.05);
     if(jumpVelocity!==0||jumpHeight>0){
       const before=jumpHeight;
@@ -69,7 +73,7 @@ export function createPlayer(scene,camera,controls){
       if(!headSupport.parent||!near){headSupport=null;jumpVelocity=-.01;}
       else jumpHeight=HEAD_HEIGHT;
     }
-    if(!lying)avatar.mesh.position.y=jumpHeight;
+    jumpPivot.position.y=lying?0:jumpHeight;
   }
 
   function lieOn(anchor){if(!enabled)return;jumpHeight=0;jumpVelocity=0;headSupport=null;setSitting(false);lying=true;bedAnchor=anchor.clone();player.position.set(anchor.x,SHIP.deckY,anchor.z);player.rotation.y=0;avatar.mesh.position.set(0,.16,-.98);avatar.mesh.rotation.set(1.30,Math.PI,0);contact.visible=false;player.userData.lying=true;resetView();}
