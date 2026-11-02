@@ -29,7 +29,7 @@ export function createOcean() {
       }`,
     fragmentShader:`
       uniform float time,travel,height,speed,wake;
-      uniform vec3 horizon,mid,near,deep,skyHorizon,sunColor,sunDirection,moonDirection;
+      uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
       uniform float daylight,sunVisible,moonVisible;
       varying vec3 world; varying vec2 water;
       // Filter each directional wave using its screen-space footprint.
@@ -49,23 +49,37 @@ export function createOcean() {
         float detail=1.-smoothstep(65.,350.,dist);
         vec2 p=world.xz-vec2(0.,travel);
         vec2 slope=filteredSlope(p,vec2(.19,.11),time*.8,.46)+filteredSlope(p,vec2(-.31,.23),time*1.15,.24);
-        vec2 ripples=filteredSlope(p,vec2(.83,.41),time*.9,.018)+filteredSlope(p,vec2(-.37,1.13),-time*.7,.012);
-        vec3 n=normalize(vec3(-slope.x*height*detail-ripples.x*detail,1.,-slope.y*height*detail-ripples.y*detail));
+        vec2 ripples=filteredSlope(p,vec2(.83,.41),time*1.4,.045)
+          +filteredSlope(p,vec2(-.37,1.13),-time*1.7,.032)
+          +filteredSlope(p,vec2(2.13,.73),time*2.1,.012)
+          +filteredSlope(p,vec2(-1.21,2.71),-time*2.6,.008);
+        float rippleDetail=1.-smoothstep(120.,900.,dist);
+        vec3 n=normalize(vec3(-slope.x*height*detail-ripples.x*rippleDetail,1.,-slope.y*height*detail-ripples.y*rippleDetail));
         vec3 view=normalize(cameraPosition-world),light=normalize(sunDirection);
-        float fresnel=pow(1.-max(dot(n,view),0.),3.);
+        float fresnel=.02+.98*pow(1.-max(dot(n,view),0.),5.);
+        vec3 reflected=reflect(-view,n);
+        vec3 skyReflection=mix(skyHorizon,zenith,smoothstep(.015,.6,max(reflected.y,0.)));
         vec3 color=mix(deep,near,.50+.10*filteredWave(p,vec2(.19,.11),time*.8));
         color=mix(color,mid,smoothstep(60.,650.,dist));
         color=mix(color,horizon,smoothstep(200.,1200.,dist));
-        color=mix(color,skyHorizon,fresnel*.23);
-        float variance=dot(dFdx(n),dFdx(n))+dot(dFdy(n),dFdy(n));
-        float sharpness=1./(.025+variance*3.);
-        float glint=pow(max(dot(n,normalize(view+light)),0.),sharpness);
         color*=mix(.10,1.,daylight);
-        color+=sunColor*glint*sunVisible*1.5;
-        float reflection=pow(max(dot(reflect(-view,n),light),0.),sharpness*.7);
-        color+=sunColor*reflection*sunVisible*.6;
-        float moonReflection=pow(max(dot(reflect(-view,n),moonDirection),0.),sharpness*.8);
-        color+=vec3(.42,.58,.9)*moonReflection*moonVisible*.7;
+        color=mix(color,skyReflection,fresnel);
+        // Screen-space normal variance broadens distant highlights, preventing shimmer.
+        float variance=dot(dFdx(n),dFdx(n))+dot(dFdy(n),dFdy(n));
+        float roughness=clamp(.055+sqrt(variance)*.7,.055,.32);
+        float alpha2=pow(roughness,4.);
+        vec3 sunHalf=normalize(view+light);
+        float sunNdotH=max(dot(n,sunHalf),0.);
+        float sunDenom=1.-sunNdotH*sunNdotH+sunNdotH*sunNdotH*alpha2;
+        float sunLobe=alpha2/max(sunDenom*sunDenom,.0000001);
+        vec3 moonHalf=normalize(view+normalize(moonDirection));
+        float moonNdotH=max(dot(n,moonHalf),0.);
+        float moonDenom=1.-moonNdotH*moonNdotH+moonNdotH*moonNdotH*alpha2;
+        float moonLobe=alpha2/max(moonDenom*moonDenom,.0000001);
+        float sunFacing=smoothstep(-.02,.08,light.y)*max(dot(n,light),0.);
+        float moonFacing=smoothstep(-.02,.06,moonDirection.y)*max(dot(n,moonDirection),0.);
+        color+=sunColor*min(sunLobe*.035,7.)*sunFacing*sunVisible*(.2+.8*fresnel);
+        color+=vec3(.64,.76,1.)*min(moonLobe*.025,4.)*moonFacing*moonVisible*(.2+.8*fresnel);
         // Bow is -Z; stern wake remains in world +Z regardless of orbit.
         float behind=world.z-40.;
         float width=12.+max(behind,0.)*.16;
@@ -79,7 +93,7 @@ export function createOcean() {
         // Atmospheric fade hides the outer mesh boundary at every azimuth.
         // Fade before the curved surface's tangent, so sky and water meet in haze.
         float angularHaze=pow(1.-clamp(-normalize(world-cameraPosition).y/.16,0.,1.),3.);
-        float haze=max(smoothstep(140.,450.,dist),angularHaze*smoothstep(100.,450.,dist));
+        float haze=max(smoothstep(600.,2200.,dist),angularHaze*smoothstep(350.,1600.,dist));
         color=mix(color,skyHorizon,haze);
         gl_FragColor=vec4(color,1.);
         #include <tonemapping_fragment>
