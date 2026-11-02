@@ -8,7 +8,7 @@ test('sun has lateral movement and crosses sunset horizon continuously',()=>{
   for(let h=0;h<24;h+=.01){const a=celestialDirections(h),b=celestialDirections(h+.01);assert.ok(a.sun.distanceTo(b.sun)<.01);assert.ok(a.moon.distanceTo(b.moon)<.01);}
 });
 test('moon is above front horizon at midnight; cycle wraps continuously',()=>{
-  assert.ok(celestialDirections(0).moon.y>.06);assert.ok(celestialDirections(0).moon.z<0);
+  assert.ok(celestialDirections(0).moon.y>.06);assert.ok(Math.abs(celestialDirections(0).moon.z)<1e-6);
   for(const key of ['sun','moon'])assert.ok(celestialDirections(0)[key].distanceTo(celestialDirections(24)[key])<1e-6);
 });
 
@@ -24,6 +24,12 @@ test('horizon reduction is localized smoothly around noon',async()=>{
   assert.equal(horizonGradientStrength(11.5),horizonGradientStrength(12.5));
   for(let hour=11;hour<13;hour+=.01)assert.ok(Math.abs(horizonGradientStrength(hour+.01)-horizonGradientStrength(hour))<.01);
 });
-test('visible moon follows an elevated arc above 45 degrees',()=>{
-  for(let hour=0;hour<24;hour+=.1){if(celestialVisibility(hour).moon>.01)assert.ok(celestialDirections(hour).moon.y>Math.SQRT1_2);}
+test('sun sets 20 degrees from vertical and moon retraces the same path',()=>{
+  const near=celestialDirections(17.9).sun;
+  const tilt=Math.atan2(Math.abs(near.x),near.y)*180/Math.PI;
+  assert.ok(tilt>=15&&tilt<=25);
+  assert.ok(celestialDirections(18).sun.distanceTo(celestialDirections(18).moon)<1e-6);
+  for(let hours=0;hours<=6;hours+=.1){
+    assert.ok(celestialDirections(18-hours).sun.distanceTo(celestialDirections(18+hours).moon)<1e-6);
+  }
 });

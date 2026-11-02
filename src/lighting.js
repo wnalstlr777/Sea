@@ -11,20 +11,15 @@ const stops=[
   [21,'#060e24','#18263c','#a6c7ff',.07,.23],
   [24,'#060e24','#18263c','#a6c7ff',.07,.23],
 ];
-// Inclined arcs include lateral travel instead of the old X=0 vertical path.
+// A 20-degree tilt from vertical; moon retraces the sunset path in reverse.
 export function celestialDirections(hour){
-  const angle=(hour-6)/12*Math.PI;
-  const sun=new THREE.Vector3(.7*Math.sin(angle),.64*Math.sin(angle),Math.cos(angle)).normalize();
-  const moonAngle=(hour<12?hour+24:hour)-18;
-  const phase=moonAngle/12*Math.PI;
-  // Keep the visible moon on a high inclined arc (roughly 45–65 degrees).
-  const moon=new THREE.Vector3(-.8*Math.cos(phase),1.2+.4*Math.sin(phase),-.85).normalize();
-  return {sun,moon};
+  const direction=angle=>new THREE.Vector3(.64*Math.tan(THREE.MathUtils.degToRad(20))*Math.sin(angle),.64*Math.sin(angle),Math.cos(angle)).normalize();
+  return {sun:direction((hour-6)/12*Math.PI),moon:direction((30-hour)/12*Math.PI)};
 }
 export function celestialVisibility(hour){
   // Separate fade windows leave a brief twilight gap: never two discs at once.
   const sun=THREE.MathUtils.smoothstep(hour,5.6,6.15)*(1.-THREE.MathUtils.smoothstep(hour,18.05,18.65));
-  const moon=hour<12?1.-THREE.MathUtils.smoothstep(hour,4.7,5.3):THREE.MathUtils.smoothstep(hour,19.0,19.7);
+  const moon=hour<12?1.-THREE.MathUtils.smoothstep(hour,4.7,5.3):THREE.MathUtils.smoothstep(hour,18.65,19.2);
   return {sun,moon};
 }
 // A narrow, smooth noon window: normal outside 11:00–13:00, half at 12:00.

@@ -184,7 +184,12 @@ export function createOcean(){
         color=mix(color,foamColor,foam);
         // Keep foreground and mid-distance texture; blend before the curved tangent.
         float haze=1.-exp(-pow(dist/3800.,1.45));
-        color=mix(color,skyHorizon,haze*horizonStrength);
+        // Fade into the same sky colour at grazing angles before the curved edge.
+        float horizonHaze=(1.-smoothstep(.005,.075,nv))*smoothstep(120.,600.,dist);
+        vec3 horizonSky=mix(zenith,skyHorizon,horizonStrength);
+        float sunAngle=acos(clamp(dot(-v,sunDirection),-1.,1.));
+        horizonSky+=sunColor*exp(-sunAngle*12.)*.45*sunVisible*smoothstep(-.04,.02,-v.y);
+        color=mix(color,horizonSky,max(haze*horizonStrength,horizonHaze));
         gl_FragColor=vec4(color,1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>

@@ -2,6 +2,7 @@ import {DurableObject} from 'cloudflare:workers';
 import {SHIP,isOnDeck} from '../src/deck.js';
 
 const CAPACITY=5,PROTOCOL=1;
+const NICKNAMES=['파도타는감자','낭만해파리','졸린선장','춤추는멸치','바다의김밥','수줍은문어','재즈듣는고등어','선글라스갈매기','갑판위고양이','노젓는오리','해먹속물개','길잃은참치','석양맛새우','느긋한복어','파도위붕어빵','산책하는고래','뱃멀미펭귄','휴가온오징어','바람난소라게','별보는해삼'];
 const json=(body,status=200)=>Response.json(body,{status});
 export default {
   async fetch(request,env){
@@ -42,7 +43,8 @@ export class SeaRoom extends DurableObject {
     }
     const occupied=new Set(existing.map(p=>p.slot));let slot=0;while(occupied.has(slot))slot++;
     const id=crypto.randomUUID();
-    const player={id,slot,nickname:`승객-${id.slice(0,6)}`,characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot-2)*2,y:SHIP.deckY,z:-24,rotation:0,moving:false};
+    const names=NICKNAMES.filter(name=>!existing.some(player=>player.nickname===name));
+    const player={id,slot,nickname:names[crypto.getRandomValues(new Uint32Array(1))[0]%names.length],characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot-2)*2,y:SHIP.deckY,z:-24,rotation:0,moving:false};
     server.serializeAttachment({player,seq:-1,updatedAt:Date.now(),rateAt:Date.now(),tokens:8,credit:.65});
     this.send(server,{type:'welcome',protocol:PROTOCOL,you:id,players:this.players(),capacity:CAPACITY});
     this.broadcast({type:'join',player},server);

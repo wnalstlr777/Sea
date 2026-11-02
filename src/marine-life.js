@@ -21,7 +21,7 @@ export function createMarineLife(scene,camera,audio){
     }
     root.visible=false;group.add(root);return {root,tail};
   }
-  const dolphin=animal(false),whale=animal(true);
+  const dolphin=animal(false),whale=animal(true);whale.root.scale.setScalar(10);
   const splashGeometry=new THREE.BufferGeometry(),drops=new Float32Array(60*3);
   splashGeometry.setAttribute('position',new THREE.BufferAttribute(drops,3).setUsage(THREE.DynamicDrawUsage));
   const splash=new THREE.Points(splashGeometry,new THREE.PointsMaterial({color:'#d4f6ff',size:.3,transparent:true,opacity:.8,depthWrite:false}));splash.visible=false;splash.frustumCulled=false;group.add(splash);
@@ -32,9 +32,10 @@ export function createMarineLife(scene,camera,audio){
     camera.getWorldDirection(direction);direction.y=0;direction.normalize();right.crossVectors(direction,THREE.Object3D.DEFAULT_UP).normalize();
     // Beyond the bow, to either side, within the current viewing direction.
     const side=Math.random()<.5?-1:1;
-    origin.copy(camera.position).addScaledVector(direction,65).addScaledVector(right,side*26);origin.y=0;
+    origin.copy(camera.position).addScaledVector(direction,current===whale?170:65).addScaledVector(right,side*(current===whale?70:26));origin.y=0;
     // Guarantee clearance from the fixed ship footprint, even when looking aft.
-    if(Math.abs(origin.x)<20&&Math.abs(origin.z)<55)origin.x=side*25;
+    const clearance=current===whale?85:20;
+    if(Math.abs(origin.x)<clearance&&Math.abs(origin.z)<(current===whale?120:55))origin.x=side*(clearance+5);
     current.root.rotation.y=Math.atan2(-right.x,-right.z);
     if(current===whale)audio.whale();else audio.dolphin();
     group.userData.lastEncounter=current===whale?'whale':'dolphin';
@@ -46,7 +47,7 @@ export function createMarineLife(scene,camera,audio){
     age+=dt;const isWhale=current===whale,duration=isWhale?11:4.5,t=age/duration;
     current.root.position.copy(origin).addScaledVector(right,(t-.5)*(isWhale?24:20));
     const arc=Math.sin(Math.PI*Math.min(1,t));
-    current.root.position.y=isWhale?-1.6+arc*2.6:-1.4+arc*5.5;
+    current.root.position.y=isWhale?-16+arc*26:-1.4+arc*5.5;
     current.root.rotation.x=isWhale?Math.cos(t*Math.PI)*.08:Math.cos(t*Math.PI)*-.65;
     current.tail.rotation.x=Math.sin(age*(isWhale?2:6))*.22;
     if(t>.72&&!didSplash){didSplash=true;audio.splash();splash.visible=true;}
