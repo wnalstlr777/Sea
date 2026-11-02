@@ -140,7 +140,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       const desired=WATER_SURFACE_Y-(SHIP.deckY+NETWORK_TO_VISUAL_Y);
       const old=fallOffset;
       fallOffset=Math.max(desired,fallOffset-GRAVITY*step*2.2);
-      if(fallOffset<=desired+.01){waterTime+=step;fallOffset=desired+Math.sin(waterTime*2.4)*.12;}
+      if(fallOffset<=desired+.01){waterTime+=step;fallOffset=desired+Math.sin(waterTime*5.0)*.32 + Math.sin(waterTime*8.1)*.09;}
       const shift=fallOffset-old;
       camera.position.y+=shift;controls.target.y+=shift;
       jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
@@ -210,7 +210,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   function update(dt){
     updateJump(dt);
     updateLie(dt);
-    if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose);return;}
+    if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose,overboard);return;}
     if(deckCollision.ready()&&!spawnValidated){
       const safe=deckCollision.safeSpot(player.position.x,player.position.z);
       if(safe){
@@ -233,7 +233,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
     if((!spawnValidated&&deckCollision.ready())||returnFlight||(!x&&!z)){
-      player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose);return;
+      player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose,overboard);return;
     }
     if(lying)standUp();
     if(sitting)setSitting(false);
@@ -253,7 +253,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     }
     const delta=player.position.clone().sub(previous);
     if(delta.lengthSq()>1e-8)player.rotation.y=Math.atan2(-delta.x,-delta.z);
-    player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving&&!overboard,sitting,jumpPose);
+    player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving&&!overboard,sitting,jumpPose,overboard);
     camera.position.add(delta);controls.target.add(delta);
   }
   return {player,update,setCharacter,setEnabled,resetView,lieOn,standUp,isLying:()=>lying};

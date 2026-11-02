@@ -163,7 +163,27 @@ function split(pivot,kind,side){
 const elbows=arms.map((a,i)=>split(a,'arm',i));
 const knees=legs.map((l,i)=>split(l,'leg',i));
 let walkTime=0,sitBlend=0;
-function update(dt,moving,sitting=false,jumpPhase=null){
+function update(dt,moving,sitting=false,jumpPhase=null,inWater=false){
+  if(inWater){
+    // Treading water: alternating arms, kicking legs and a slight torso sway.
+    walkTime+=dt;
+    const phase=walkTime*8.5;
+    const blend=1-Math.exp(-Math.min(.1,dt)*12);
+    sitBlend=0;hana.position.y=0;
+    for(let i=0;i<2;i++){
+      const alternate=i===0?1:-1;
+      const armTarget=-.65+alternate*Math.sin(phase)*.75;
+      const legTarget=alternate*Math.sin(phase+1.2)*.65;
+      arms[i].rotation.x+=(armTarget-arms[i].rotation.x)*blend;
+      arms[i].rotation.z+=((i===0?-.85:.85)-arms[i].rotation.z)*blend;
+      elbows[i].rotation.x+=(-.9-elbows[i].rotation.x)*blend;
+      legs[i].rotation.x+=(legTarget-legs[i].rotation.x)*blend;
+      knees[i].rotation.x+=((.25+.3*Math.max(0,Math.sin(phase+i*Math.PI)))-knees[i].rotation.x)*blend;
+    }
+    body.rotation.z=Math.sin(phase*.5)*.12;
+    head.rotation.z=-body.rotation.z*.45;
+    return;
+  }
   const jump=Math.max(0,Math.min(1,jumpPhase??0));
   const blend=1-Math.exp(-Math.min(.1,dt)*18);
   // Airborne pose takes exclusive priority over walk/sit, including the first jump frame.
