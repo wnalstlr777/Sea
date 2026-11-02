@@ -47,9 +47,11 @@ export function createShip(){
     displayPivot.visible=false;
     ship.add(displayPivot);
     ship.add(root);ship.userData.model=root;ship.userData.colliders=colliders;
+
     ship.userData.overviewDisplay=displayPivot;
     ship.userData.overviewVisualMeshes=[];
     root.traverse(obj=>{if(obj.isMesh&&!obj.name.startsWith('UCX_'))ship.userData.overviewVisualMeshes.push(obj);});
+    if(ship.userData.pendingSail){ship.userData.pendingSail();delete ship.userData.pendingSail;}
     ship.userData.loadingState='ready';
     console.info('[Sea] Hull height=30m (5x test), visual deck=',VISUAL_DECK_Y,'UCX meshes=',colliders.length);
   },undefined,error=>{ship.userData.loadingState='error';console.error('[Sea] Ship.glb loading failed:',error);});

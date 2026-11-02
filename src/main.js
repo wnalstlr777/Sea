@@ -4,6 +4,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOcean} from './ocean.js';
 import './style.css';
 import {createShip,SHIP,NETWORK_TO_VISUAL_Y,SHIP_CENTER_Z,VISUAL_DECK_Y} from './ship.js';
+import {createSail} from './sail.js';
 import {createPlayer} from './player.js';
 import {createMultiplayer} from './multiplayer.js';
 import {createLighting} from './lighting.js';
@@ -64,6 +65,7 @@ const seagulls=createSeagulls(scene,camera,seaAudio);
 const marineLife=createMarineLife(scene,camera,seaAudio);
 const horn=createShipHorn();
 const ship=createShip();scene.add(ship);
+const sail=createSail(ship);
 // Only the rendered hull rocks. The collision mesh stays motionless.
 let overviewSway=0;
 function updateOverviewSway(dt,seconds){
@@ -177,7 +179,7 @@ function updateLoadingCover(){
     loadingCover.addEventListener('transitionend',()=>loadingCover.remove(),{once:true});
   }
 }
-renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();updateIntro(dt);updateLoadingCover();updateOverviewSway(dt,naturalTime);
+renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();updateIntro(dt);updateLoadingCover();updateOverviewSway(dt,naturalTime);sail.update(naturalTime);
 nearbyBed=null;
 if(!overviewActive&&!character.isLying())for(const bed of sunbeds.beds){if(Math.hypot(character.player.position.x-bed.position.x,character.player.position.z-bed.position.z)<1.6){nearbyBed=bed;break;}}
 lieButton.style.display='none';
