@@ -1,12 +1,104 @@
 import * as THREE from 'three';
 
-// Surface-projected glow and silhouettes: the ocean itself remains opaque.
+// Night-only bioluminescent schools. One instanced draw call, no lights/shadows.
 export function createJellyfish(scene){
-  const group=new THREE.Group();group.name='underwater-jellyfish-glow';scene.add(group);
-  const geometry=new THREE.PlaneGeometry(5.2,5.2);
-  const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:true,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,uniforms:{time:{value:0},visibility:{value:1}},vertexShader:`varying vec2 uv0;void main(){uv0=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`varying vec2 uv0;uniform float time;uniform float visibility;void main(){vec2 p=(uv0-.5)*2.;float r=length(p);float glow=exp(-r*r*5.);float bell=1.-smoothstep(.3,.46,length(vec2(p.x,p.y*.8)));float tentacles=0.;for(int i=0;i<5;i++){float x=(float(i)-2.)*.10+.03*sin(time*1.2+float(i)+p.y*9.);float strand=(1.-smoothstep(.015,.04,abs(p.x-x)))*(1.-smoothstep(-.15,.0,p.y))*smoothstep(-.9,-.65,p.y);tentacles+=strand;}float alpha=(glow*.35+bell*.24+tentacles*.16)*visibility;gl_FragColor=vec4(.17,.85,.9,alpha);}`});
-  const positions=[[-20,-30],[22,-25],[-24,0],[22,16],[-18,35]];
-  const items=positions.map(([x,z],i)=>{const mesh=new THREE.Mesh(geometry,material);mesh.rotation.x=-Math.PI/2;mesh.position.set(x,1.7,z);mesh.scale.setScalar(.85+(i%3)*.13);mesh.renderOrder=2;group.add(mesh);return {mesh,x,z,phase:i*1.7};});
+  const group=new THREE.Group();
+  group.name='night-jellyfish-schools';
+  scene.add(group);
+  const count=42, perSchool=14;
+  const geometry=new THREE.PlaneGeometry(3.2,3.2);
+  const phases=new Float32Array(count);
+  const fades=new Float32Array(count);
+  const sizes=new Float32Array(count);
+  const seed=i=>{
+    const n=Math.sin(i*127.1+19.17)*43758.5453;
+    return n-Math.floor(n);
+  };
+  for(let i=0;i<count;i++){
+    phases[i]=seed(i+5)*Math.PI*2;
+    sizes[i]=.58+seed(i+31)*.58;
+  }
+  geometry.setAttribute('aPhase',new THREE.InstancedBufferAttribute(phases,1));
+  const fadeAttribute=new THREE.InstancedBufferAttribute(fades,1);
+  fadeAttribute.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute('aFade',fadeAttribute);
+  const material=new THREE.ShaderMaterial({
+    transparent:true,depthWrite:false,depthTest:true,
+    side:THREE.DoubleSide,blending:THREE.AdditiveBlending,
+    uniforms:{uTime:{value:0}},
+    vertexShader:`attribute float aPhase;attribute float aFade;
+      varying vec2 vUv;varying float vFade;varying float vPhase;
+      void main(){
+        vUv=uv;vFade=aFade;vPhase=aPhase;
+        vec4 p=instanceMatrix*vec4(position,1.0);
+        gl_Position=projectionMatrix*modelViewMatrix*p;
+      }`,
+    fragmentShader:`precision mediump float;
+      uniform float uTime;
+      varying vec2 vUv;varying float vFade;varying float vPhase;
+      void main(){
+        vec2 p=(vUv-.5)*2.;
+        float r=length(p);
+        float bell=1.-smoothstep(.29,.49,length(vec2(p.x,p.y*1.13)));
+        float rim=exp(-pow((length(vec2(p.x,p.y*1.13))-.34)*11.,2.));
+        float threads=0.;
+        for(int j=0;j<5;j++){
+          float k=float(j)-2.;
+          float bend=.033*sin(uTime*1.5+vPhase+k*1.4+p.y*9.);
+          float line=1.-smoothstep(.014,.039,abs(p.x-k*.11-bend));
+          threads+=line*smoothstep(-.85,-.60,p.y)*(1.-smoothstep(-.16,-.03,p.y));
+        }
+        float pulse=.83+.17*sin(uTime*1.6+vPhase);
+        float halo=exp(-r*r*5.)*.23;
+        float alpha=(halo+bell*.36+rim*.25+threads*.12)*vFade*pulse;
+        vec3 cyan=vec3(.12,.88,1.);
+        vec3 violet=vec3(.50,.44,1.);
+        vec3 color=mix(cyan,violet,.24+.18*sin(vPhase*2.));
+        gl_FragColor=vec4(color,alpha);
+      }`
+  });
+  const mesh=new THREE.InstancedMesh(geometry,material,count);
+  mesh.name='jellyfish-one-drawcall';
+  mesh.frustumCulled=false;
+  mesh.castShadow=false;mesh.receiveShadow=false;
+  mesh.renderOrder=2;
+  group.add(mesh);
+  const dummy=new THREE.Object3D();
+  const centers=[[-19,-24],[20,-10],[-15,14]];
+  const smooth=(a,b,x)=>{const t=THREE.MathUtils.clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
   let time=0;
-  return {group,update(dt,hour){time+=dt;material.uniforms.time.value=time;const night=hour>=19||hour<=5?1:hour>17?(hour-17)/2:(7-hour)/2;material.uniforms.visibility.value=THREE.MathUtils.clamp(night,0,1);for(const item of items){item.mesh.position.x=item.x+Math.sin(time*.16+item.phase)*2;item.mesh.position.z=item.z+Math.cos(time*.13+item.phase)*2;item.mesh.position.y=1.7+Math.sin(time*.9+item.phase)*.12;}}};
+  return {group,update(dt,hour){
+    time+=Math.min(dt,.1);
+    material.uniforms.uTime.value=time;
+    const h=((hour%24)+24)%24;
+    const night=h>=18?smooth(18,20,h):h<7?1-smooth(5,7,h):0;
+    for(let i=0;i<count;i++){
+      const school=Math.floor(i/perSchool);
+      const index=i%perSchool;
+      const phase=phases[i];
+      const [cx,cz]=centers[school];
+      // Different schools appear and dissolve over a long, overlapping cycle.
+      const cycle=time*.032+school*2.09;
+      const presence=smooth(-.6,.35,Math.sin(cycle))*.85+.15;
+      const fade=night*presence;
+      fades[i]=fade;
+      const angle=index*2.39996+phase*.22;
+      const radius=1.4+Math.sqrt(index+1)*1.55;
+      const driftX=Math.sin(time*.12+school*1.9)*3.2;
+      const driftZ=Math.cos(time*.095+school*2.1)*4.0;
+      dummy.position.set(
+        cx+Math.cos(angle)*radius+driftX+Math.sin(time*.23+phase)*.55,
+        1.72+Math.sin(time*.8+phase)*.09,
+        cz+Math.sin(angle)*radius+driftZ+Math.cos(time*.19+phase)*.65
+      );
+      dummy.rotation.set(-Math.PI/2,0,0);
+      const size=sizes[i]*(1+.045*Math.sin(time*1.4+phase));
+      dummy.scale.set(size,size,size);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i,dummy.matrix);
+    }
+    fadeAttribute.needsUpdate=true;
+    mesh.instanceMatrix.needsUpdate=true;
+    mesh.visible=night>.002;
+  }};
 }
