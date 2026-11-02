@@ -41,9 +41,12 @@ export function createPlayer(scene,camera,controls){
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
   let lieTransition=null;
   const LIE_DURATION=1.6;
-  const lieTargetQuat=new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI/2,Math.PI,0,'XYZ'));
+  // Character local +Y (head) -> bed +Z (backrest); local +Z (face) -> world +Y (sky).
+  // Compose rotations explicitly to avoid Euler order ambiguity and upside-down faces.
+  const lieTargetQuat=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2)
+    .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI));
   // Upright +Y becomes bed head-end +Z; front (+Z) points toward the sky (+Y).
-  const lieTargetPos=new THREE.Vector3(0,.44,-.53);
+  const lieTargetPos=new THREE.Vector3(0,.58,-1.08);
   // Original two-part cartoon spring sound (not sampled from any game).
   let jumpAudio=null;
   function playJumpSound(){
@@ -144,10 +147,10 @@ export function createPlayer(scene,camera,controls){
   function update(dt){
     updateJump(dt);
     updateLie(dt);
-    if(!enabled){player.userData.moving=false;avatar.update(dt,false,lying?false:sitting,lying?null:jumpPose);return;}
+    if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose);return;}
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
-    if(!x&&!z){player.userData.moving=false;avatar.update(dt,false,lying?false:sitting,lying?null:jumpPose);return;}
+    if(!x&&!z){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose);return;}
     if(lying)standUp();
     if(sitting)setSitting(false);
     if(headSupport){headSupport=null;jumpVelocity=-.01;}
