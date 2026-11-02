@@ -1,7 +1,15 @@
 import {DurableObject} from 'cloudflare:workers';
-import {SHIP,isOnDeck} from '../src/deck.js';
+import {SHIP} from '../src/deck.js';
 
 const CAPACITY=5,PROTOCOL=1;
+// The old rectangular DECK polygon only covered the middle of the enlarged hull.
+// The client uses the exported UCX surfaces to decide deck vs. water.
+// The server keeps a broad finite safety boundary without creating an invisible wall at the bow.
+const SEA_LIMIT_RADIUS=200;
+const SEA_CENTER_Z=-24;
+function withinSeaBounds(position){
+  return Math.hypot(position.x,position.z-SEA_CENTER_Z)<=SEA_LIMIT_RADIUS;
+}
 const NICKNAMES=['파도타는감자','낭만해파리','졸린선장','춤추는멸치','바다의김밥','수줍은문어','재즈듣는고등어','선글라스갈매기','갑판위고양이','노젓는오리','해먹속물개','길잃은참치','석양맛새우','느긋한복어','파도위붕어빵','산책하는고래','뱃멀미펭귄','휴가온오징어','바람난소라게','별보는해삼'];
 const json=(body,status=200)=>Response.json(body,{status});
 export default {
@@ -64,7 +72,7 @@ export class SeaRoom extends DurableObject {
     data.seq=packet.seq;
     const elapsed=Math.max(0,(now-data.updatedAt)/1000);
     const distance=Math.hypot(packet.x-data.player.x,packet.z-data.player.z);
-    if(Math.abs(packet.y-SHIP.deckY)>.02||!isOnDeck(packet,.54)||Math.abs(packet.rotation)>Math.PI*100||distance>Math.min(1.7,data.credit+5.25*elapsed)+.03){
+    if(Math.abs(packet.y-SHIP.deckY)>.02||!withinSeaBounds(packet)||Math.abs(packet.rotation)>Math.PI*100||distance>Math.min(1.7,data.credit+5.25*elapsed)+.03){
       ws.serializeAttachment(data);this.send(ws,{type:'correction',player:data.player});return;
     }
     Object.assign(data.player,{x:packet.x,y:SHIP.deckY,z:packet.z,rotation:Math.atan2(Math.sin(packet.rotation),Math.cos(packet.rotation)),moving:packet.moving});
