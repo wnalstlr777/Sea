@@ -121,3 +121,22 @@ body.sea-overview #jump-toggle{display:none!important}
   text-align:center;
   touch-action:manipulation;
 }
+
+/* Desktop: three matching icon controls at the upper-right. */
+@media(min-width:601px){
+  details{right:24px;top:24px;width:48px;z-index:4;border-radius:12px;overflow:visible}
+  details summary{height:48px;min-height:48px;padding:0;display:flex;align-items:center;justify-content:center;list-style:none;letter-spacing:0}
+  details summary::-webkit-details-marker{display:none}
+  details .desktop-menu-title{display:none}
+  details .mobile-menu-title{display:block;font-size:23px;line-height:1}
+  details[open]{width:270px;max-height:calc(100dvh - 48px);overflow-y:auto}
+  details[open] summary{justify-content:flex-end;padding-right:13px}
+  details[open] .mobile-menu-title{font-size:0}
+  details[open] .mobile-menu-title::after{content:'×';font-size:30px}
+  #music-toggle{right:88px}
+  #camera-toggle{right:152px}
+  #app:has(details[open]) #music-toggle{right:302px}
+  #app:has(details[open]) #camera-toggle{right:358px}
+  /* Keep the time/cloud controls away from the jump/sit column. */
+  .time-control{left:auto;right:84px;bottom:24px;transform:none}
+}
