@@ -47,7 +47,7 @@ export function createOcean(){
   const mirror=new Water(new THREE.PlaneGeometry(1,1),{textureWidth:compact?256:512,textureHeight:compact?256:512});
   mirror.rotation.x=-Math.PI/2;mirror.updateMatrixWorld();
   const uniforms={
-    time:{value:0},travel:{value:0},curvature:{value:1},height:{value:.55},speed:{value:2},wake:{value:.65},
+    time:{value:0},travel:{value:0},curvature:{value:1},height:{value:.55},waveSize:{value:1},normalStrength:{value:0},speed:{value:8},wake:{value:.65},
     horizon:{value:new THREE.Color('#52798b')},mid:{value:new THREE.Color('#17455c')},
     near:{value:new THREE.Color('#105064')},deep:{value:new THREE.Color('#062839')},
     surfaceMap:{value:surfaceMap},mirrorSampler:mirror.material.uniforms.mirrorSampler,
@@ -55,14 +55,14 @@ export function createOcean(){
   };
   const material=new THREE.ShaderMaterial({name:'OceanSurface',uniforms,side:THREE.DoubleSide,
     vertexShader:`
-      uniform float time,travel,curvature,height;
+      uniform float time,travel,curvature,height,waveSize;
       uniform mat4 textureMatrix;
       varying vec3 world,macroNormal;
       varying vec2 water;
       varying float crest;
       varying vec4 mirrorCoord;
       void wave(vec2 anchor,vec2 direction,float wavelength,float amplitude,float steepness,inout vec3 p,inout vec3 dx,inout vec3 dz,inout float compression){
-        vec2 d=normalize(direction);float k=6.2831853/wavelength;
+        vec2 d=normalize(direction);float k=6.2831853/(wavelength*waveSize);
         float phase=k*dot(d,anchor)-sqrt(9.81*k)*time;
         float a=amplitude*height;
         float s=sin(phase),c=cos(phase),q=steepness;
@@ -87,7 +87,7 @@ export function createOcean(){
         gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
       }`,
     fragmentShader:`
-      uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible;
+      uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,normalStrength;
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
       uniform sampler2D surfaceMap,mirrorSampler;
       varying vec3 world,macroNormal;
@@ -116,7 +116,7 @@ export function createOcean(){
         vec4 tex=turbulence(water);
         vec2 ripple=(tex.rg*2.-1.)*.48;
         float rippleGain=mix(.55,1.,clamp(height,0.,1.));
-        vec3 n=normalize(macroNormal+vec3(-ripple.x,0.,-ripple.y)*rippleGain);
+        vec3 n=normalize(macroNormal+vec3(-ripple.x,0.,-ripple.y)*rippleGain*normalStrength);
         vec3 v=normalize(cameraPosition-world),r=reflect(-v,n);
         float nv=max(dot(n,v),0.);
         // Water reflects strongly at low viewing angles while retaining deep body colour.
