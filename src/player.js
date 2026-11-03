@@ -7,7 +7,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   const player=new THREE.Group();player.position.set(0,SHIP.deckY,-27);
   const characterId=Math.random()<.5?'hina':'daeun';
   player.userData.characterId=characterId;
-  let avatar=createSurvivor(characterId),enabled=true,sitting=false,lying=false,bedAnchor=null;
+  let avatar=createSurvivor(characterId),enabled=true,sitting=false,lying=false,bedAnchor=null,titanicPose=false;
   player.userData.hairColor='black';
   // Survival models face +Z; Sea movement and the existing camera face -Z.
   avatar.mesh.rotation.y=Math.PI;const jumpPivot=new THREE.Group();jumpPivot.add(avatar.mesh);player.add(jumpPivot);jumpPivot.position.y=NETWORK_TO_VISUAL_Y;scene.add(player);
@@ -199,7 +199,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(overboard){returnToDeck();return;}
     // A player standing on another head can jump again to build taller towers.
     if((jumpHeight>.03&&!headSupport)||jumpVelocity>0)return;
-    if(lying)standUp();if(sitting)setSitting(false);
+    if(lying)standUp();if(sitting)setSitting(false);titanicPose=false;
     headSupport=null;airborneFromEdge=false;jumpVelocity=JUMP_SPEED;playJumpSound();
   }
   // Use Touch Events on iOS for reliable two-finger joystick + jump input.
@@ -408,7 +408,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     updateJump(dt);
     updateLie(dt);
     if(flying){player.userData.moving=false;return;}
-    if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose,overboard);return;}
+    if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose,overboard,false,titanicPose);return;}
     if(deckCollision.ready()&&!spawnValidated){
       const safe=deckCollision.safeSpot(player.position.x,player.position.z)
         ||deckCollision.safeSpot(0,-33)
@@ -436,6 +436,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     }
     if(lying)standUp();
     if(sitting)setSitting(false);
+    titanicPose=false;
     // Riding passengers stay upright and travel with their support. Jump
     // remains available to leave the tower or climb to the next level.
     if(headSupport){player.userData.moving=false;avatar.update(dt,false,sitting,jumpPose,overboard);return;}
@@ -453,10 +454,11 @@ export function createPlayer(scene,camera,controls,deckCollision){
     }
     const delta=player.position.clone().sub(previous);
     if(delta.lengthSq()>1e-8)player.rotation.y=Math.atan2(-delta.x,-delta.z);
-    player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving&&!overboard,sitting,jumpPose,overboard);
+    player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving&&!overboard,sitting,jumpPose,overboard,false,titanicPose);
     camera.position.add(delta);controls.target.add(delta);
   }
   return {player,update,setCharacter,setEnabled,resetView,deckViewPose,
+    toggleTitanicPose:()=>{if(overboard||returnFlight||launchFlight||lying)return false;titanicPose=!titanicPose;if(titanicPose){setSitting(false);player.rotation.y=0;}return titanicPose;},
     launchFireworkPose:()=>{avatar.fireworkPose();player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},
     getFireworkHandPosition:()=>{player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},isSpawnReady:()=>spawnValidated,lieOn,standUp,isLying:()=>lying,
     launchTo,getNetworkState:()=>({sitting,lying,jump:!!launchFlight||!headSupport&&(jumpHeight>0||jumpVelocity>0),jumpHeight:Math.max(0,jumpHeight),verticalOffset:jumpPivot.position.y-NETWORK_TO_VISUAL_Y,inWater:overboard,returning:Boolean(returnFlight||launchFlight)}),
