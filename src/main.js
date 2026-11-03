@@ -128,7 +128,8 @@ let bowBeamOpacity=0;
 function updateBowBeam(dt){
   const hour=params.hour;
   const night=1-THREE.MathUtils.smoothstep(Math.min(hour,24-hour),4.5,6.5);
-  const target=overviewActive?night*.11:0;
+  const inOpeningOverview=Boolean(intro&&!introFinished&&intro.elapsed<3);
+  const target=(overviewActive||inOpeningOverview)?night*.11:0;
   bowBeamOpacity+=(target-bowBeamOpacity)*(1-Math.exp(-dt*2.5));
   for(const material of bowBeamMaterials)material.uniforms.uOpacity.value=bowBeamOpacity;
   bowBeam.visible=bowBeamOpacity>.002;
