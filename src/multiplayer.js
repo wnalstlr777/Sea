@@ -103,8 +103,8 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       socket.send('ping');
     },20000);
   }
-  function project(element,position){
-    projected.copy(position);projected.y+=NETWORK_TO_VISUAL_Y+3.15;projected.project(camera);
+  function project(element,position,visualHeight=0){
+    projected.copy(position);projected.y+=NETWORK_TO_VISUAL_Y+visualHeight+3.15;projected.project(camera);
     const visible=projected.z>-1&&projected.z<1&&Math.abs(projected.x)<1.1&&Math.abs(projected.y)<1.1;
     element.hidden=!visible;if(visible){element.style.left=`${(projected.x*.5+.5)*innerWidth}px`;element.style.top=`${(-projected.y*.5+.5)*innerHeight}px`;}
   }
@@ -132,10 +132,10 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       // the verticalOffset already includes any supporting player beneath.
       remote.root.userData.headPlatformEnabled=!state.lying&&!state.inWater&&!state.returning;
       remote.root.userData.headPlatformY=remote.root.position.y+remote.motionPivot.position.y+remote.avatar.mesh.position.y+2.83;
-      project(remote.label,remote.root.position);if(!showNames)remote.label.hidden=true;
-      if(remote.emoteUntil>performance.now()){project(remote.emoteLabel,remote.root.position);remote.emoteLabel.style.top=`${parseFloat(remote.emoteLabel.style.top)-38}px`;if(!showNames)remote.emoteLabel.hidden=true;}else remote.emoteLabel.hidden=true;
+      project(remote.label,remote.root.position,state.lying?0:remote.jumpHeight);if(!showNames)remote.label.hidden=true;
+      if(remote.emoteUntil>performance.now()){project(remote.emoteLabel,remote.root.position,state.lying?0:remote.jumpHeight);remote.emoteLabel.style.top=`${parseFloat(remote.emoteLabel.style.top)-38}px`;if(!showNames)remote.emoteLabel.hidden=true;}else remote.emoteLabel.hidden=true;
     }
-    if(localLabel){project(localLabel,character.player.position);if(!showNames)localLabel.hidden=true;}
+    if(localLabel){project(localLabel,character.player.position,character.getNetworkState().lying?0:character.getNetworkState().verticalOffset);if(!showNames)localLabel.hidden=true;}
   }
   addEventListener('pagehide',()=>{stopped=true;clearTimeout(retryTimer);retryTimer=null;socket?.close(1000,'Leaving');});
   addEventListener('pageshow',event=>{if(event.persisted&&url){stopped=false;socket=null;connect();}});
