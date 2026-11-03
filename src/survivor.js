@@ -162,8 +162,12 @@ function split(pivot,kind,side){
 }
 const elbows=arms.map((a,i)=>split(a,'arm',i));
 const knees=legs.map((l,i)=>split(l,'leg',i));
-let walkTime=0,sitBlend=0;
+let walkTime=0,sitBlend=0,fireworkPoseUntil=0;
+function raiseRightHand(){arms[1].rotation.set(Math.PI,0,0);elbows[1].rotation.x=0;}
+function fireworkPose(){fireworkPoseUntil=performance.now()+1500;raiseRightHand();}
+function rightHandWorldPosition(){hana.updateWorldMatrix(true,true);return arms[1].localToWorld(new THREE.Vector3(0,-.72,0));}
 function update(dt,moving,sitting=false,jumpPhase=null,inWater=false){
+  const firing=performance.now()<fireworkPoseUntil;
   if(inWater){
     // Treading water: alternating arms, kicking legs and a slight torso sway.
     walkTime+=dt;
@@ -180,6 +184,7 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false){
       legs[i].rotation.x+=(legTarget-legs[i].rotation.x)*blend;
       knees[i].rotation.x+=((.25+.3*Math.max(0,Math.sin(phase+i*Math.PI)))-knees[i].rotation.x)*blend;
     }
+    if(firing)raiseRightHand();
     body.rotation.z=Math.sin(phase*.5)*.12;
     head.rotation.z=-body.rotation.z*.45;
     return;
@@ -199,6 +204,7 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false){
       legs[i].rotation.x+=(legX[i]-legs[i].rotation.x)*blend;
       knees[i].rotation.x+=(kneeX[i]-knees[i].rotation.x)*blend;
     }
+    if(firing)raiseRightHand();
     body.rotation.z=0;head.rotation.z=0;
     return;
   }
@@ -218,10 +224,11 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false){
     knees[i].rotation.x+=(knee-knees[i].rotation.x)*blend;
     elbows[i].rotation.x+=((moving?-.10:0)-elbows[i].rotation.x)*blend;
   }
+  if(firing)raiseRightHand();
   body.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.016:0;
   head.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.020:0;
 }
-return {mesh:hana,update};
+return {mesh:hana,update,fireworkPose,rightHandWorldPosition};
 }
 
 export function disposeSurvivor(root){
