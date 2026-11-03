@@ -231,3 +231,8 @@ body.sea-overview #jump-toggle{display:none!important}
 @media(max-width:600px){
   .time-control:not(.sky-auto) label input[type=range]{margin-top:2px;margin-bottom:0}
 }
+
+/* Music off: dim the existing note icon and cross it with a diagonal slash. */
+#music-toggle .music-mute-slash{display:none}
+#music-toggle[aria-pressed=false]{color:#8ba2aa;border-color:#67818a66;background:#092833aa;box-shadow:none}
+#music-toggle[aria-pressed=false] .music-mute-slash{display:block;stroke:#e0edf0}
