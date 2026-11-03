@@ -24,15 +24,28 @@ export function createShip(){
     root.traverse(obj=>{
       if(!obj.isMesh)return;
       if(obj.name.startsWith('UCX_')){obj.visible=false;obj.material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide,visible:false});colliders.push(obj);return;}
-      // Recolor only the ship's named red material; leave white/metal/wood intact.
-      const recolor=material=>{
-        if(!material?.name?.toLowerCase().includes('c_boat_red_mat'))return material;
-        const gray=material.clone();
-        gray.color.set('#101114');
-        return gray;
+      // Preserve the existing dark hull recolor. Give only neutral gray
+      // ship materials a brushed-metal response; do not affect white or wood.
+      const tuneMaterial=material=>{
+        if(!material)return material;
+        if(material.name?.toLowerCase().includes('c_boat_red_mat')){
+          const dark=material.clone();
+          dark.color.set('#101114');
+          return dark;
+        }
+        if(!material.isMeshStandardMaterial||!material.color)return material;
+        const {r,g,b}=material.color;
+        const brightest=Math.max(r,g,b),darkest=Math.min(r,g,b);
+        // Linear-space neutral grays only. Exclude nearly black, white,
+        // colored materials and texture-driven surfaces.
+        if(material.map||brightest-darkest>.075||brightest<.09||brightest>.78)return material;
+        const metal=material.clone();
+        metal.metalness=.8;
+        metal.roughness=.35;
+        return metal;
       };
-      if(Array.isArray(obj.material))obj.material=obj.material.map(recolor);
-      else obj.material=recolor(obj.material);
+      if(Array.isArray(obj.material))obj.material=obj.material.map(tuneMaterial);
+      else obj.material=tuneMaterial(obj.material);
       obj.castShadow=true;obj.receiveShadow=true;
     });
     // Render-only duplicate: shared geometries/materials, independent transforms.
