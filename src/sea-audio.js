@@ -87,9 +87,14 @@ export function createSeaAudio(button){
       tone(95,now,2.8,.30,effectsBus,'sine',160);tone(190,now+.2,2.5,.08,effectsBus,'sine',130);
       hiss(now,.65,.24,effectsBus,250);
     }
+    if(kind==='whaleSpout'){
+      // Short, airy exhale synchronized to the visible blowhole spray.
+      hiss(now,1.4,.35,effectsBus,1600);
+      hiss(now+.12,.95,.15,effectsBus,650);
+    }
     if(kind==='splash')hiss(now,.8,.40,effectsBus,650);
     return true;
   }
   document.addEventListener('visibilitychange',()=>{if(context){if(document.hidden)musicBus.gain.setTargetAtTime(0,context.currentTime,.1);else if(enabled)unlock();}});
-  return {update,seagull:()=>effect('seagull'),dolphin:()=>effect('dolphin'),whale:()=>effect('whale'),splash:()=>effect('splash')};
+  return {update,seagull:()=>effect('seagull'),dolphin:()=>effect('dolphin'),whale:()=>effect('whale'),whaleSpout:()=>effect('whaleSpout'),splash:()=>effect('splash')};
 }
