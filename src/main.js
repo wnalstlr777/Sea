@@ -167,11 +167,13 @@ for(const [x,label,target,color] of [
   [-3.5,'조종실',{x:0,z:-18.7,y:21.0},0x63d8e8],
   [3.5,'망루',{x:0,z:-21,y:70.9},0xffc568]
 ]){
-  const root=new THREE.Group();root.position.set(x,VISUAL_DECK_Y+.12,SHIP_CENTER_Z-2.9);
-  const plate=new THREE.Mesh(new THREE.CylinderGeometry(.85,.85,.22,24),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.28,roughness:.55}));
+  const root=new THREE.Group();root.position.set(x,VISUAL_DECK_Y+.35,SHIP_CENTER_Z-2.9);
+  const plate=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,.3,24),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.28,roughness:.55}));
   plate.castShadow=false;root.add(plate);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.65,.055,6,28),new THREE.MeshBasicMaterial({color:0xffffff}));
-  ring.rotation.x=-Math.PI/2;ring.position.y=.13;root.add(ring);
+  ring.rotation.x=-Math.PI/2;ring.position.y=.19;root.add(ring);
+  const marker=new THREE.Mesh(new THREE.ConeGeometry(.23,.55,6),new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false}));
+  marker.position.y=.85;root.add(marker);
   scene.add(root);launchPads.push({root,target,label,armed:true});
 }
 
@@ -297,6 +299,10 @@ function updateLoadingCover(){
 }
 renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;updateSkyCycle(wallDt);naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt,overviewActive);marineLife.update(wallDt);jellyfish.update(dt,params.hour,overviewActive);horn.update(wallDt);character.update(dt);
 for(const pad of launchPads){
+  if(deckCollision.ready()){
+    const floor=deckCollision.floorAt(pad.root.position.x,pad.root.position.z,VISUAL_DECK_Y+3);
+    if(floor!==null)pad.root.position.y=floor+.35;
+  }
   const distance=Math.hypot(character.player.position.x-pad.root.position.x,character.player.position.z-pad.root.position.z);
   if(distance>1.35)pad.armed=true;
   if(pad.armed&&distance<.78&&!overviewActive&&introFinished&&!character.isLying()){
