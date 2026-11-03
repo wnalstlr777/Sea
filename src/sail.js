@@ -10,6 +10,20 @@ export function createSail(ship, lighting){
     const attach=boat=>{
       if(!boat)return;
       boat.add(root);
+      root.updateWorldMatrix(true,true);
+      // The bow points toward world -Z. Determine the forward sail from
+      // mesh bounds, independent of Blender mesh names or hierarchy.
+      const sailMeshes=[];
+      root.traverse(obj=>{
+        if(!obj.isMesh)return;
+        obj.geometry.computeBoundingBox();
+        const center=obj.geometry.boundingBox.getCenter(new THREE.Vector3());
+        obj.localToWorld(center);
+        sailMeshes.push({obj,z:center.z});
+      });
+      const frontZ=Math.min(...sailMeshes.map(item=>item.z));
+      const rearZ=Math.max(...sailMeshes.map(item=>item.z));
+      const splitZ=(frontZ+rearZ)*.5;
       root.traverse(obj=>{
         if(!obj.isMesh)return;
         const geo=obj.geometry;
@@ -30,7 +44,7 @@ export function createSail(ship, lighting){
         }
         geo.setAttribute('sailWeight',new THREE.BufferAttribute(weights,1));
         const material=new THREE.MeshStandardMaterial({
-          color:'#101114',roughness:.89,metalness:0,side:THREE.DoubleSide
+          color:(rearZ-frontZ>0.01&&sailMeshes.find(item=>item.obj===obj)?.z<splitZ)?'#ffffff':'#101114',roughness:.89,metalness:0,side:THREE.DoubleSide
         });
         material.onBeforeCompile=shader=>{
           shader.uniforms.sailTime=time;
