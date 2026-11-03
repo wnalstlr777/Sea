@@ -205,9 +205,17 @@ export function createOcean(){
         #include <colorspace_fragment>
       }`});
   const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;
+  let reflectStars=true;
   mesh.onBeforeRender=(renderer,scene,camera)=>{
     mesh.visible=false;
-    try{mirror.onBeforeRender(renderer,scene,camera);}finally{mesh.visible=true;}
+    const stars=scene.getObjectByName('night-stars');
+    const starWasVisible=stars?.visible;
+    if(stars&&!reflectStars)stars.visible=false;
+    try{mirror.onBeforeRender(renderer,scene,camera);}
+    finally{
+      if(stars&&starWasVisible!==undefined)stars.visible=starWasVisible;
+      mesh.visible=true;
+    }
   };
   function setReflectionResolution(size){
     if(!reflectionSizes.includes(size))return;
@@ -215,5 +223,5 @@ export function createOcean(){
     uniforms.mirrorSampler.value=mirror.material.uniforms.mirrorSampler.value;
     uniforms.textureMatrix.value=mirror.material.uniforms.textureMatrix.value;
   }
-  return {mesh,uniforms,setReflectionResolution};
+  return {mesh,uniforms,setReflectionResolution,setStarReflectionEnabled:enabled=>{reflectStars=enabled;}};
 }
