@@ -21,7 +21,7 @@ export function createDeckCollision(ship){
       surfaceNormal.copy(hit.face.normal).applyMatrix3(normalMatrix).normalize();
       // Some UCX_Bottom02 top faces are wound downward in the exported GLB.
       // DoubleSide raycasts already hit both sides; accept either face winding.
-      if(Math.abs(surfaceNormal.y)>.55 && Math.abs(hit.point.y-VISUAL_DECK_Y)<8)return hit.point.y;
+      if(Math.abs(surfaceNormal.y)>.55)return hit.point.y;
     }
     return null;
   }
