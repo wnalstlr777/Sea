@@ -34,7 +34,7 @@ export function createAtmosphere(scene,lighting){
         return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
                    mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);}
       float density(vec3 p){
-        vec3 q=p*.0025+vec3(time*.012,0.,time*.004);
+        vec3 q=p*.0025+vec3(time*.036,0.,time*.012);
         float n=noise(q)*.70+noise(q*2.03)*.23+noise(q*4.11)*.07;
         // High mode adds fine-scale structure without changing the large cloud shapes.
         n+=cloudDetail*(noise(q*8.17)-.5)*.035;
