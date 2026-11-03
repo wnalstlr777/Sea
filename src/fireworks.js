@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // Lightweight local-only firework: a rising spark, then a colorful burst.
-export function createFireworks(scene,deckY){
+export function createFireworks(scene,character){
   const button=document.createElement('button');
   button.id='fireworks-toggle';
   button.type='button';
@@ -55,17 +55,44 @@ export function createFireworks(scene,deckY){
     sound(130,.36,.13,'triangle',.2);
     sound(65,.48,.1,'sawtooth',.25);
   }
+  let pending=null;
   function launch(){
-    if(active.length>=5)return;
-    const position=character.launchFireworkPose();
+    if(active.length>=5||pending)return;
+    // Pose first, hold the raised hand, then show an ignition glow.
+    character.launchFireworkPose();
     const color=new THREE.Color(colors[Math.floor(Math.random()*colors.length)]);
-    const rocket=new THREE.Mesh(new THREE.SphereGeometry(.28,6,6),new THREE.MeshBasicMaterial({color}));
-    rocket.position.copy(position);effects.add(rocket);
-    active.push({rocket,color,age:0,burst:false,particles:null,velocities:null});
-    sound(440,.9,.07,'sawtooth',3.5);
+    const glow=new THREE.Mesh(
+      new THREE.SphereGeometry(.32,10,8),
+      new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending})
+    );
+    glow.visible=false;
+    effects.add(glow);
+    pending={age:0,glow,color};
   }
   button.addEventListener('click',launch);
   function update(dt){
+    dt=Math.min(dt,.05);
+    if(pending){
+      pending.age+=dt;
+      // Raise for 0.45s, glow in the hand for 0.55s, then launch.
+      if(pending.age>=.45){
+        pending.glow.visible=true;
+        pending.glow.position.copy(character.getFireworkHandPosition());
+        const pulse=1+Math.sin(pending.age*27)*.18;
+        pending.glow.scale.setScalar(pulse);
+      }
+      if(pending.age>=1){
+        const position=character.getFireworkHandPosition();
+        const rocket=new THREE.Mesh(new THREE.SphereGeometry(.28,6,6),new THREE.MeshBasicMaterial({color:pending.color}));
+        rocket.position.copy(position);effects.add(rocket);
+        active.push({rocket,color:pending.color,age:0,burst:false,particles:null,velocities:null});
+        effects.remove(pending.glow);
+        pending.glow.geometry.dispose();pending.glow.material.dispose();
+        pending=null;
+        sound(440,.9,.07,'sawtooth',3.5);
+      }
+    }
+
     dt=Math.min(dt,.05);
     for(let i=active.length-1;i>=0;i--){
       const effect=active[i];
