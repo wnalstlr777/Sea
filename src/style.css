@@ -140,3 +140,12 @@ body.sea-overview #jump-toggle{display:none!important}
   /* Keep the time/cloud controls away from the jump/sit column. */
   .time-control{left:auto;right:84px;bottom:24px;transform:none}
 }
+
+/* Tablet touch input: independent of viewport width and primary pointer type. */
+.sea-touch-capable #joystick{display:flex;position:absolute;bottom:max(80px,env(safe-area-inset-bottom));left:24px;width:112px;height:112px;align-items:center;justify-content:center;border:1px solid #e1fffa66;border-radius:50%;background:#072d3955;touch-action:none;user-select:none;z-index:5;opacity:.38;transition:opacity .15s}
+.sea-touch-capable #joystick.active{opacity:1}
+.sea-touch-capable #joystick .stick-knob{width:44px;height:44px;border-radius:50%;background:#c3eee1b3;border:1px solid #fff8;pointer-events:none}
+.sea-touch-capable #joystick .stick-label{position:absolute;bottom:8px;font-size:10px;pointer-events:none}
+.sea-touch-capable .time-control{z-index:5;touch-action:pan-y}
+.sea-touch-capable .time-control input[type=range]{height:28px;min-height:28px;margin:6px 0 4px;touch-action:none}
+@media(min-width:601px){.sea-touch-capable .time-control{right:84px;bottom:24px}}

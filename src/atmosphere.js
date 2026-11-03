@@ -48,14 +48,15 @@ export function createAtmosphere(scene,lighting){
         if(finish<=start)discard;
         float stepSize=(finish-start)/cloudSamples;vec3 sum=vec3(0.);float alpha=0.;
         vec3 lightDir=normalize(vec3(sunDirection.x,max(sunDirection.y,.25),sunDirection.z));
-        for(int i=0;i<48;i++){
+        vec3 ambient=mix(vec3(.045,.065,.12),vec3(.44,.56,.70),daylight);
+        vec3 directBase=mix(vec3(.12,.18,.29),sunColor,daylight)*(.2+sunVisible*.85);
+        for(int i=0;i<24;i++){
           if(float(i)>=cloudSamples)break;
           vec3 p=d*(start+(float(i)+.5)*stepSize);
           float den=density(p);float a=1.-exp(-den*stepSize*.006);
+          if(a<.002)continue;
           float shade=exp(-density(p+lightDir*150.)*1.8-density(p+lightDir*330.)*.9);
-          vec3 ambient=mix(vec3(.045,.065,.12),vec3(.44,.56,.70),daylight);
-          vec3 direct=mix(vec3(.12,.18,.29),sunColor,daylight)*shade*(.2+sunVisible*.85);
-          sum+=(1.-alpha)*a*(ambient+direct);alpha+=(1.-alpha)*a;
+          sum+=(1.-alpha)*a*(ambient+directBase*shade);alpha+=(1.-alpha)*a;
           if(alpha>.98)break;
         }
         float haze=smoothstep(.035,.22,d.y);
