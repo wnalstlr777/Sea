@@ -236,3 +236,7 @@ body.sea-overview #jump-toggle{display:none!important}
 #music-toggle .music-mute-slash{display:none}
 #music-toggle[aria-pressed=false]{color:#8ba2aa;border-color:#67818a66;background:#092833aa;box-shadow:none}
 #music-toggle[aria-pressed=false] .music-mute-slash{display:block;stroke:#e0edf0}
+
+/* Fireworks launch above the jump button. */
+#fireworks-toggle{position:absolute;right:34px;bottom:max(124px,calc(env(safe-area-inset-bottom) + 100px));width:68px;min-height:38px;border-radius:12px;background:#072d39e8;color:#fff;font-size:12px;z-index:3;touch-action:manipulation}
+@media(max-width:600px){#fireworks-toggle{right:24px;bottom:280px;width:68px;min-height:38px}}
