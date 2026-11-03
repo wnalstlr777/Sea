@@ -53,7 +53,7 @@ export class SeaRoom extends DurableObject {
     const occupied=new Set(existing.map(p=>p.slot));let slot=0;while(occupied.has(slot))slot++;
     const id=crypto.randomUUID();
     const names=NICKNAMES.filter(name=>!existing.some(player=>player.nickname===name));
-    const player={id,slot,nickname:names[crypto.getRandomValues(new Uint32Array(1))[0]%names.length],characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot-2)*2,y:SHIP.deckY,z:-27,rotation:0,moving:false,sitting:false,lying:false,jump:false,jumpHeight:0,inWater:false};
+    const player={id,slot,nickname:names[crypto.getRandomValues(new Uint32Array(1))[0]%names.length],characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot-2)*2,y:SHIP.deckY,z:-27,rotation:0,moving:false,sitting:false,lying:false,jump:false,jumpHeight:0,verticalOffset:0,inWater:false};
     server.serializeAttachment({player,seq:-1,updatedAt:Date.now(),rateAt:Date.now(),tokens:8,credit:.65});
     this.send(server,{type:'welcome',protocol:PROTOCOL,you:id,players:this.players(),capacity:CAPACITY});
     this.broadcast({type:'join',player},server);
@@ -70,7 +70,7 @@ export class SeaRoom extends DurableObject {
     if(packet.type==='emote'){if(EMOTES.includes(packet.icon))this.broadcast({type:'emote',id:data.player.id,icon:packet.icon},ws);return;}
     if(packet.type!=='state')return;
     const valid=Number.isSafeInteger(packet.seq)&&packet.seq>data.seq&&
-      ['x','y','z','rotation'].every(key=>typeof packet[key]==='number'&&Number.isFinite(packet[key]))&&typeof packet.moving==='boolean'&&['sitting','lying','jump','inWater'].every(key=>typeof packet[key]==='boolean')&&typeof packet.jumpHeight==='number'&&Number.isFinite(packet.jumpHeight)&&packet.jumpHeight>=0&&packet.jumpHeight<=4;
+      ['x','y','z','rotation'].every(key=>typeof packet[key]==='number'&&Number.isFinite(packet[key]))&&typeof packet.moving==='boolean'&&['sitting','lying','jump','inWater'].every(key=>typeof packet[key]==='boolean')&&typeof packet.jumpHeight==='number'&&Number.isFinite(packet.jumpHeight)&&packet.jumpHeight>=0&&packet.jumpHeight<=4&&typeof packet.verticalOffset==='number'&&Number.isFinite(packet.verticalOffset)&&packet.verticalOffset>=-40&&packet.verticalOffset<=5;
     if(!valid){ws.close(1008,'Invalid state');return;}
     data.seq=packet.seq;
     const elapsed=Math.max(0,(now-data.updatedAt)/1000);
@@ -78,7 +78,7 @@ export class SeaRoom extends DurableObject {
     if(Math.abs(packet.y-SHIP.deckY)>.02||!withinSeaBounds(packet)||Math.abs(packet.rotation)>Math.PI*100||distance>Math.min(1.7,data.credit+5.25*elapsed)+.03){
       ws.serializeAttachment(data);this.send(ws,{type:'correction',player:data.player});return;
     }
-    Object.assign(data.player,{x:packet.x,y:SHIP.deckY,z:packet.z,rotation:Math.atan2(Math.sin(packet.rotation),Math.cos(packet.rotation)),moving:packet.moving,sitting:packet.sitting,lying:packet.lying,jump:packet.jump,jumpHeight:packet.jumpHeight,inWater:packet.inWater});
+    Object.assign(data.player,{x:packet.x,y:SHIP.deckY,z:packet.z,rotation:Math.atan2(Math.sin(packet.rotation),Math.cos(packet.rotation)),moving:packet.moving,sitting:packet.sitting,lying:packet.lying,jump:packet.jump,jumpHeight:packet.jumpHeight,verticalOffset:packet.verticalOffset,inWater:packet.inWater});
     data.credit=Math.max(0,Math.min(1.7,data.credit+5.25*elapsed)-distance);
     data.updatedAt=now;ws.serializeAttachment(data);
     this.broadcast({type:'state',player:data.player},ws);
