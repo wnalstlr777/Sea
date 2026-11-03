@@ -37,8 +37,19 @@ const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.5,50000);camera.position.set(0,SHIP.deckY+NETWORK_TO_VISUAL_Y+2,-12);
 const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,SHIP.deckY+NETWORK_TO_VISUAL_Y+1.7,-33);controls.enableDamping=true;controls.enablePan=false;controls.minDistance=3;controls.maxDistance=320;controls.minPolarAngle=.15;controls.maxPolarAngle=Math.PI/2-.02;controls.update();
 let intro=null, introFinished=false, overviewActive=false;
+// Hide player names until the opening camera reaches the deck.
+const introNameStyle=document.createElement('style');
+introNameStyle.textContent='body.sea-intro .player-names,body.sea-intro .player-name{display:none!important}';
+document.head.append(introNameStyle);
+document.body.classList.add('sea-intro');
+// Shared opening/overview framing. Slightly wider than the previous overview.
+function overviewCameraPose(){
+  const mobile=camera.aspect<.8;
+  return new THREE.Vector3(mobile?166:140,VISUAL_DECK_Y-5+1.0,SHIP_CENTER_Z);
+}
 function setView(overview){
   if(intro){intro=null;introFinished=true;}
+  document.body.classList.remove('sea-intro');
   overviewActive=overview;
   document.body.classList.toggle('sea-overview',overview);
   const button=document.querySelector('#camera-toggle');
@@ -47,9 +58,7 @@ function setView(overview){
   button.title=overview?'갑판 시점으로 전환':'바다 전체 감상';
   character.setEnabled(!overview);
   if(overview){
-    // Match the existing side-profile intro shot; keep its framing and distance.
-    const mobile=camera.aspect<.8;
-    camera.position.set(mobile?151:127,VISUAL_DECK_Y-5+1.0,SHIP_CENTER_Z);
+    camera.position.copy(overviewCameraPose());
     controls.target.set(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);
     controls.update();
   }else{
@@ -69,7 +78,7 @@ const sail=createSail(ship);
 // Only the rendered hull rocks. The collision mesh stays motionless.
 let overviewSway=0;
 function updateOverviewSway(dt,seconds){
-  const active=overviewActive||(intro&&!introFinished&&intro.elapsed<2);
+  const active=overviewActive||(intro&&!introFinished&&intro.elapsed<3);
   const target=active?1:0;
   overviewSway+= (target-overviewSway)*(1-Math.exp(-Math.min(dt,.05)*2.2));
   const pivot=ship.userData.overviewDisplay;
@@ -92,14 +101,14 @@ const character=createPlayer(scene,camera,controls,deckCollision);
 // Camera motion is owned by this one state machine, not competing frame handlers.
 const introSide=new THREE.Vector3(),introTarget=new THREE.Vector3(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);
 function beginIntro(){
-  const mobile=camera.aspect<.8;
-  introSide.set(mobile?135:113, VISUAL_DECK_Y-5+1.0, SHIP_CENTER_Z);
+  introSide.copy(overviewCameraPose());
   intro={elapsed:0,fromPosition:introSide.clone(),fromTarget:introTarget.clone()};
   character.setEnabled(false);
   camera.position.copy(introSide);controls.target.copy(introTarget);controls.update();
 }
 function finishIntro(){
   intro=null;introFinished=true;character.setEnabled(true);
+  document.body.classList.remove('sea-intro');
   const pose=character.deckViewPose();camera.position.copy(pose.position);
   controls.target.copy(pose.target);controls.update();
 }
@@ -107,9 +116,9 @@ function updateIntro(dt){
   if(introFinished||overviewActive)return;
   if(!intro){if(deckCollision.ready()&&character.isSpawnReady())beginIntro();return;}
   intro.elapsed+=dt;
-  if(intro.elapsed>=5){finishIntro();return;}
+  if(intro.elapsed>=7.5){finishIntro();return;}
   const pose=character.deckViewPose();
-  const t=Math.max(0,Math.min(1,(intro.elapsed-2)/3));
+  const t=Math.max(0,Math.min(1,(intro.elapsed-3)/4.5));
   const eased=t*t*(3-2*t);
   camera.position.copy(intro.fromPosition).lerp(pose.position,eased);
   controls.target.copy(intro.fromTarget).lerp(pose.target,eased);
