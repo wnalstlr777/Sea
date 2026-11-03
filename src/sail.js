@@ -39,10 +39,10 @@ attribute float sailWeight;
 uniform float sailTime;`);
           shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
 float w=clamp(sailWeight,0.0,1.0);
-float slow=0.65+0.20*sin(sailTime*1.35+position.y*0.010);
+float slow=0.65+0.20*sin(sailTime*2.70+position.y*0.010);
 // Broad, slow cloth billow: one dominant traveling wave with a subtle secondary swell.
-float ripple=sin(sailTime*3.75-position.y*0.026+position.x*0.009)*1.0
-           +sin(sailTime*2.34+position.y*0.016-position.z*0.012+1.3)*0.22;
+float ripple=sin(sailTime*7.50-position.y*0.026+position.x*0.009)*1.0
+           +sin(sailTime*4.68+position.y*0.016-position.z*0.012+1.3)*0.22;
 float displacement=w*(slow*11.0+ripple*10.5);
 transformed+=normalize(normal)*displacement;`);
         };
