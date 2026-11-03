@@ -39,7 +39,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // current Workers protocol only accepts y === SHIP.deckY.
   const jumpButton=document.createElement('button');jumpButton.id='jump-toggle';jumpButton.type='button';jumpButton.textContent='점프';jumpButton.setAttribute('aria-label','점프');document.querySelector('#app').append(jumpButton);
   // Keep launch velocity; 1.5x gravity shortens airtime to 2/3 and peak height to 2/3.
-  const JUMP_SPEED=10.6,GRAVITY=20.25,HEAD_HEIGHT=2.95;
+  const JUMP_SPEED=10.6,GRAVITY=20.25;
   const WATER_SURFACE_Y=-1.35, RESPAWN_X=0, RESPAWN_Z=-27;
   let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
   let landingGrace=0;
