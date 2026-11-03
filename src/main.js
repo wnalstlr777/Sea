@@ -115,14 +115,14 @@ for(let layer=0;layer<6;layer++){
     transparent:true,depthWrite:false,side:THREE.DoubleSide,
     blending:THREE.AdditiveBlending
   });
-  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1.1*fraction,17*fraction,48,32,1,true),material);
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1.1*fraction,34*fraction,48,32,1,true),material);
   mesh.rotation.x=Math.PI/2;
   mesh.renderOrder=4;
   bowBeam.add(mesh);
   bowBeamMaterials.push(material);
 }
 // Attach to the ship's animated overview pivot, so the beam pitches and rolls with the hull.
-bowBeam.position.set(0,6,-33);
+bowBeam.position.set(0,6,-48);
 bowBeam.visible=false;
 let bowBeamOpacity=0;
 function updateBowBeam(dt){
