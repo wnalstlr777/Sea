@@ -9,10 +9,11 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   panel.append(status,retry);document.querySelector('#app').append(panel);
   const names=document.createElement('div');names.className='player-names';document.querySelector('#app').append(names);
   const projected=new THREE.Vector3(),remotes=new Map();
+  const EMOTES=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
   let socket=null,self=null,localLabel=null,ready=false,stopped=false,blocked=false,retryTimer=null,attempt=0,lastSent=null,lastHeard=0,seq=0;
   function message(text,canRetry=false){status.textContent=text;retry.hidden=!canRetry;}
   function label(name){const element=document.createElement('span');element.className='player-name';element.hidden=true;element.textContent=name;names.append(element);return element;}
-  function remove(id){const remote=remotes.get(id);if(!remote)return;scene.remove(remote.root);disposeSurvivor(remote.avatar.mesh);remote.label.remove();remotes.delete(id);}
+  function remove(id){const remote=remotes.get(id);if(!remote)return;scene.remove(remote.root);disposeSurvivor(remote.avatar.mesh);remote.label.remove();remote.emoteLabel.remove();remotes.delete(id);}
   function clear(){for(const id of [...remotes.keys()])remove(id);localLabel?.remove();localLabel=null;}
   function occupancy(){message(`함께 항해 중 · ${remotes.size+1}/5명`);}
   function setLocal(state){
@@ -27,7 +28,8 @@ export function createMultiplayer({scene,camera,controls,character,url}){
     const look=appearanceForPlayer(state.id);const avatar=createSurvivor(look.model,look.hairColor),root=new THREE.Group();root.name=`remote-${state.id}`;
     root.userData.playerId=state.id;avatar.mesh.rotation.y=Math.PI;avatar.mesh.position.y=NETWORK_TO_VISUAL_Y;root.add(avatar.mesh);scene.add(root);
     root.position.set(state.x,state.y,state.z);root.rotation.y=state.rotation;
-    remotes.set(state.id,{root,avatar,label:label(state.nickname),samples:[{...state,time:performance.now()}]});
+    const emoteLabel=label('');emoteLabel.style.fontSize='34px';emoteLabel.style.background='transparent';emoteLabel.style.padding='0';
+    remotes.set(state.id,{root,avatar,label:label(state.nickname),emoteLabel,emoteUntil:0,jumpHeight:0,samples:[{...state,time:performance.now()}]});
   }
   function receive(state){
     if(state.id===self)return;
@@ -50,7 +52,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
         blocked=true;message('정원 초과 · 최대 5명까지 탑승할 수 있습니다.',true);ws.close(4003,'Room full');return;
       }
       if(packet.type==='welcome'){
-        if(packet.protocol!==1){blocked=true;message('서버 버전이 다릅니다. 새로고침해 주세요.');ws.close(1002);return;}
+        if(packet.protocol!==2){blocked=true;message('서버 버전이 다릅니다. 새로고침해 주세요.');ws.close(1002);return;}
         self=packet.you;character.player.userData.playerId=self;const state=packet.players.find(p=>p.id===self);if(!state){ws.close(1002);return;}
         clear();setLocal(state);localLabel=label(`${state.nickname} (나)`);for(const player of packet.players)add(player);
         ready=true;attempt=0;seq=0;lastSent=null;character.setEnabled(true);occupancy();return;
@@ -58,6 +60,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       if(!ready)return;
       if(packet.type==='join'){add(packet.player);occupancy();}
       if(packet.type==='state')receive(packet.player);
+      if(packet.type==='emote'&&EMOTES.includes(packet.icon)){const remote=remotes.get(packet.id);if(remote){remote.emoteLabel.textContent=packet.icon;remote.emoteUntil=performance.now()+3000;}}
       if(packet.type==='leave'){remove(packet.id);occupancy();}
       if(packet.type==='correction'){setLocal(packet.player);lastSent=null;}
     };
@@ -83,8 +86,8 @@ export function createMultiplayer({scene,camera,controls,character,url}){
     sendTimer=setInterval(()=>{
       if(!ready||socket?.readyState!==WebSocket.OPEN||socket.bufferedAmount>4096)return;
       const p=character.player;
-      const state={x:p.position.x,y:p.position.y,z:p.position.z,rotation:p.rotation.y,moving:!!p.userData.moving};
-      if(lastSent&&Math.hypot(state.x-lastSent.x,state.z-lastSent.z)<.005&&Math.abs(Math.atan2(Math.sin(state.rotation-lastSent.rotation),Math.cos(state.rotation-lastSent.rotation)))<.005&&state.moving===lastSent.moving)return;
+      const state={x:p.position.x,y:p.position.y,z:p.position.z,rotation:p.rotation.y,moving:!!p.userData.moving,...character.getNetworkState()};
+      if(lastSent&&Math.hypot(state.x-lastSent.x,state.z-lastSent.z)<.005&&Math.abs(Math.atan2(Math.sin(state.rotation-lastSent.rotation),Math.cos(state.rotation-lastSent.rotation)))<.005&&state.moving===lastSent.moving&&state.sitting===lastSent.sitting&&state.lying===lastSent.lying&&state.jump===lastSent.jump&&state.inWater===lastSent.inWater&&Math.abs(state.jumpHeight-lastSent.jumpHeight)<.06)return;
       socket.send(JSON.stringify({type:'state',seq:seq++,...state}));lastSent=state;
     },100);
     heartbeat=setInterval(()=>{
@@ -106,12 +109,18 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       const alpha=b.time>a.time?THREE.MathUtils.clamp((renderTime-a.time)/(b.time-a.time),0,1):1;
       remote.root.position.set(THREE.MathUtils.lerp(a.x,b.x,alpha),THREE.MathUtils.lerp(a.y,b.y,alpha),THREE.MathUtils.lerp(a.z,b.z,alpha));
       remote.root.rotation.y=a.rotation+Math.atan2(Math.sin(b.rotation-a.rotation),Math.cos(b.rotation-a.rotation))*alpha;
-      remote.avatar.update(dt,(alpha<.5?a:b).moving);project(remote.label,remote.root.position);if(!showNames)remote.label.hidden=true;
+      const state=alpha<.5?a:b;
+      remote.jumpHeight+=(Math.max(0,state.jumpHeight||0)-remote.jumpHeight)*Math.min(1,dt*18);
+      remote.avatar.mesh.position.y=NETWORK_TO_VISUAL_Y+remote.jumpHeight;
+      if(state.lying){remote.avatar.mesh.position.set(0,NETWORK_TO_VISUAL_Y+.58,-1.08);remote.avatar.mesh.rotation.set(-Math.PI/2,Math.PI,0);}else remote.avatar.mesh.rotation.set(0,Math.PI,0);
+      remote.avatar.update(dt,state.moving&&!state.lying,!!state.sitting,remote.jumpHeight>.05?1:0,!!state.inWater);
+      project(remote.label,remote.root.position);if(!showNames)remote.label.hidden=true;
+      if(remote.emoteUntil>performance.now()){project(remote.emoteLabel,remote.root.position);remote.emoteLabel.style.top=`${parseFloat(remote.emoteLabel.style.top)-38}px`;if(!showNames)remote.emoteLabel.hidden=true;}else remote.emoteLabel.hidden=true;
     }
     if(localLabel){project(localLabel,character.player.position);if(!showNames)localLabel.hidden=true;}
   }
   addEventListener('pagehide',()=>{stopped=true;clearTimeout(retryTimer);retryTimer=null;socket?.close(1000,'Leaving');});
   addEventListener('pageshow',event=>{if(event.persisted&&url){stopped=false;socket=null;connect();}});
   addEventListener('online',()=>{if(url&&!ready&&!blocked){clearTimeout(retryTimer);retryTimer=null;connect();}});
-  return {update,dispose(){stopped=true;clearTimeout(retryTimer);clearInterval(sendTimer);clearInterval(heartbeat);socket?.close(1000);clear();panel.remove();names.remove();}};
+  return {update,sendEmote(icon){if(ready&&socket?.readyState===WebSocket.OPEN&&EMOTES.includes(icon))socket.send(JSON.stringify({type:'emote',icon}));},dispose(){stopped=true;clearTimeout(retryTimer);clearInterval(sendTimer);clearInterval(heartbeat);socket?.close(1000);clear();panel.remove();names.remove();}};
 }
