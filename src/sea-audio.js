@@ -16,10 +16,20 @@ export function createSeaAudio(button){
     const swell=context.createOscillator(),depth=context.createGain();swell.frequency.value=.09;depth.gain.value=.06;
     swell.connect(depth);depth.connect(waveGain.gain);waves.connect(filter);filter.connect(waveGain);waveGain.connect(musicBus);
     waves.start();swell.start();
-    if(enabled){nextNote=context.currentTime+.08;scheduler=setInterval(update,200);}
+    if(enabled){nextNote=context.currentTime+.02;startScheduler();}
   }
-  function unlock(){init();if(context?.state==='suspended')context.resume().catch(()=>{});}
-  // Attempt autoplay; browsers may require the first user gesture to unlock audio.
+  function startScheduler(){
+    if(scheduler!==null)return;
+    update(); // Schedule the first notes immediately instead of waiting for the timer.
+    scheduler=setInterval(update,200);
+  }
+  function unlock(){
+    init();
+    if(!context)return;
+    if(context.state==='suspended')context.resume().then(()=>{if(enabled)update();}).catch(()=>{});
+    else if(enabled)update();
+  }
+  // Attempt autoplay immediately; browsers may require a user gesture.
   unlock();
   addEventListener('pointerdown',unlock);addEventListener('keydown',e=>{if(!e.repeat)unlock();});
   function tone(frequency,at,duration,volume,bus,type='sine',endFrequency=frequency){
@@ -55,17 +65,17 @@ export function createSeaAudio(button){
   }
   button.addEventListener('click',()=>{
     unlock();if(!context)return;enabled=!enabled;
-    if(enabled){step=0;nextNote=context.currentTime+.08;scheduler=setInterval(update,200);}
+    if(enabled){step=0;nextNote=context.currentTime+.02;startScheduler();update();}
     else{clearInterval(scheduler);scheduler=null;for(const voice of voices){try{voice.stop();}catch{}}}
-    musicBus.gain.setTargetAtTime(enabled?.38:0,context.currentTime,.2);
+    musicBus.gain.setTargetAtTime(enabled?.38:0,context.currentTime,.08);
     button.textContent=enabled?'♫':'♪';button.setAttribute('aria-pressed',String(enabled));
   });
   function update(){
     if(!context)return;
-    if(document.hidden){musicBus.gain.setTargetAtTime(0,context.currentTime,.1);nextNote=context.currentTime+.1;return;}
+    if(document.hidden){musicBus.gain.setTargetAtTime(0,context.currentTime,.1);nextNote=context.currentTime+.02;return;}
     if(!enabled||context.state!=='running')return;
-    musicBus.gain.setTargetAtTime(.38,context.currentTime,.2);
-    if(nextNote<context.currentTime)nextNote=context.currentTime+.05;
+    musicBus.gain.setTargetAtTime(.38,context.currentTime,.08);
+    if(nextNote<context.currentTime)nextNote=context.currentTime+.02;
     while(nextNote<context.currentTime+1.5){schedule(nextNote,step);nextNote+=(step++%2===0?2:1)*(60/84/3);}
   }
   function effect(kind){
@@ -80,6 +90,6 @@ export function createSeaAudio(button){
     if(kind==='splash')hiss(now,.8,.40,effectsBus,650);
     return true;
   }
-  document.addEventListener('visibilitychange',()=>{if(context&&document.hidden)musicBus.gain.setTargetAtTime(0,context.currentTime,.1);});
+  document.addEventListener('visibilitychange',()=>{if(context){if(document.hidden)musicBus.gain.setTargetAtTime(0,context.currentTime,.1);else if(enabled)unlock();}});
   return {update,seagull:()=>effect('seagull'),dolphin:()=>effect('dolphin'),whale:()=>effect('whale'),splash:()=>effect('splash')};
 }
