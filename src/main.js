@@ -160,6 +160,7 @@ const deckCollision=createDeckCollision(ship);
 const sunbeds=createSunbeds(scene);
 const jellyfish=createJellyfish(scene);
 const character=createPlayer(scene,camera,controls,deckCollision);
+const fireworks=createFireworks(scene,character);
 // Start the side-profile intro only after the UCX ship and player spawn are ready.
 // Camera motion is owned by this one state machine, not competing frame handlers.
 const introSide=new THREE.Vector3(),introTarget=new THREE.Vector3(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);

@@ -57,7 +57,7 @@ export function createFireworks(scene,deckY){
   }
   function launch(){
     if(active.length>=5)return;
-    const position=new THREE.Vector3((Math.random()-.5)*14,deckY+5,-42);
+    const position=character.launchFireworkPose();
     const color=new THREE.Color(colors[Math.floor(Math.random()*colors.length)]);
     const rocket=new THREE.Mesh(new THREE.SphereGeometry(.28,6,6),new THREE.MeshBasicMaterial({color}));
     rocket.position.copy(position);effects.add(rocket);

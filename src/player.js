@@ -335,7 +335,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
     player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving&&!overboard,sitting,jumpPose,overboard);
     camera.position.add(delta);controls.target.add(delta);
   }
-  return {player,update,setCharacter,setEnabled,resetView,deckViewPose,isSpawnReady:()=>spawnValidated,lieOn,standUp,isLying:()=>lying,
+  return {player,update,setCharacter,setEnabled,resetView,deckViewPose,
+    launchFireworkPose:()=>{avatar.fireworkPose();player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},isSpawnReady:()=>spawnValidated,lieOn,standUp,isLying:()=>lying,
     getNetworkState:()=>({sitting,lying,jump:jumpHeight>0||jumpVelocity>0,jumpHeight:Math.max(0,jumpHeight),verticalOffset:jumpPivot.position.y-NETWORK_TO_VISUAL_Y,inWater:overboard,returning:Boolean(returnFlight)}),
     isReturning:()=>Boolean(returnFlight),
     handleCorrection(state){
