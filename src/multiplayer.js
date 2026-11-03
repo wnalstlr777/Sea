@@ -122,6 +122,10 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       const targetHeight=THREE.MathUtils.lerp(heightA,heightB,alpha);
       remote.jumpHeight+=(targetHeight-remote.jumpHeight)*Math.min(1,dt*24);
       remote.motionPivot.position.y=NETWORK_TO_VISUAL_Y+(state.lying?0:remote.jumpHeight);
+      // Invisible one-way head collider, updated from the interpolated avatar height.
+      // Swimming, lying and returning players cannot act as head platforms.
+      remote.root.userData.headPlatformEnabled=!state.lying&&!state.inWater&&!state.returning;
+      remote.root.userData.headPlatformY=remote.root.position.y+remote.motionPivot.position.y+2.95;
       if(state.lying){remote.avatar.mesh.position.set(0,.58,-1.08);remote.avatar.mesh.quaternion.copy(lieQuat);}
       else{remote.avatar.mesh.position.set(0,0,0);remote.avatar.mesh.rotation.set(0,Math.PI,0);}
       if(!state.lying)remote.avatar.update(dt,state.moving,!!state.sitting,!!state.jump||!!state.returning?1:0,!!state.inWater);
