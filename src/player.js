@@ -82,6 +82,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   }
   // Water camera follows horizontal motion but stays above the surface.
   function followWaterHeight(shift){
+    if(!enabled)return; // Overview owns the camera while swimming continues.
     const desiredTarget=Math.max(3.0,controls.target.y+shift);
     const delta=desiredTarget-controls.target.y;
     controls.target.y=desiredTarget;
@@ -132,8 +133,10 @@ export function createPlayer(scene,camera,controls,deckCollision){
     player.position.x=x;player.position.z=z;
     fallOffset=y-visualBaseY;
     jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
-    camera.position.x+=x-previousX;controls.target.x+=x-previousX;
-    camera.position.z+=z-previousZ;controls.target.z+=z-previousZ;
+    if(enabled){
+      camera.position.x+=x-previousX;controls.target.x+=x-previousX;
+      camera.position.z+=z-previousZ;controls.target.z+=z-previousZ;
+    }
     followWaterHeight(y-previousY);
     jumpPose+=(1-jumpPose)*(1-Math.exp(-dt*16));
     if(t>=1){
@@ -149,9 +152,11 @@ export function createPlayer(scene,camera,controls,deckCollision){
       // Restore the original deck-view orbit without resetting the user's angle/zoom.
       // The player's visual feet are at landedY; aim slightly above them.
       const orbit=new THREE.Vector3(0,3.7,12.0);
-      controls.target.set(player.position.x,landedY+1.3,player.position.z);
-      camera.position.copy(controls.target).add(orbit);
-      controls.update();
+      if(enabled){
+        controls.target.set(player.position.x,landedY+1.3,player.position.z);
+        camera.position.copy(controls.target).add(orbit);
+        controls.update();
+      }
       deckCameraOffset=null;
     }
     return true;
@@ -194,7 +199,11 @@ export function createPlayer(scene,camera,controls,deckCollision){
     jump();
   }, {capture:true});
   function updateJump(dt){
-    if(!enabled){jumpHeight=0;jumpVelocity=0;jumpPose=0;headSupport=null;jumpPivot.position.y=NETWORK_TO_VISUAL_Y;return;}
+    if(!enabled&&!overboard&&!returnFlight){
+      jumpHeight=0;jumpVelocity=0;jumpPose=0;headSupport=null;
+      jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lastFloorY-VISUAL_DECK_Y);
+      return;
+    }
     const step=Math.min(dt,.05);
     if(updateReturnFlight(step))return;
     if(overboard){
@@ -208,8 +217,10 @@ export function createPlayer(scene,camera,controls,deckCollision){
           keys.has('ArrowUp')||keys.has('ArrowDown')||keys.has('ArrowLeft')||keys.has('ArrowRight')||stick.lengthSq()>.01;
         const dx=steering?0:fallDriftX*step,dz=steering?0:fallDriftZ*step;
         player.position.x+=dx;player.position.z+=dz;
-        camera.position.x+=dx;controls.target.x+=dx;
-        camera.position.z+=dz;controls.target.z+=dz;
+        if(enabled){
+          camera.position.x+=dx;controls.target.x+=dx;
+          camera.position.z+=dz;controls.target.z+=dz;
+        }
         // Drag gently slows the horizontal momentum in the air.
         const drag=Math.exp(-step*.38);fallDriftX*=drag;fallDriftZ*=drag;
         if(fallOffset<=desired){fallOffset=desired;fallAirborne=false;waterTime=0;}
@@ -281,9 +292,16 @@ export function createPlayer(scene,camera,controls,deckCollision){
       avatar.mesh.quaternion.copy(lieTargetQuat);
     }
   }
-  function resetView(){const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.target.copy(player.position).add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));camera.position.copy(controls.target).add(new THREE.Vector3(0,3.7,12.0));controls.update();controls.enableDamping=damping;}
+  function resetView(){
+    const damping=controls.enableDamping;controls.enableDamping=false;controls.update();
+    const feetY=overboard||returnFlight?visualBaseY+fallOffset:lastFloorY;
+    controls.target.set(player.position.x,Math.max(overboard?3:feetY+1.3,feetY+1.3),player.position.z);
+    camera.position.copy(controls.target).add(new THREE.Vector3(0,3.7,12.0));
+    controls.update();controls.enableDamping=damping;
+  }
   function deckViewPose(){
-    const target=player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y+1.3,0));
+    const feetY=overboard||returnFlight?visualBaseY+fallOffset:lastFloorY;
+    const target=new THREE.Vector3(player.position.x,Math.max(overboard?3:feetY+1.3,feetY+1.3),player.position.z);
     const position=target.clone().add(new THREE.Vector3(0,3.7,12.0));
     return {position,target};
   }
