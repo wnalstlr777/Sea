@@ -255,6 +255,7 @@ document.querySelector('#reset').onclick=()=>{Object.assign(params,defaults);set
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 let previous=performance.now(),elapsed=0,frames=0;
 let loadingReleased=false,loadingReadyFrames=0;
+const loadingStartedAt=performance.now();
 function updateLoadingCover(){
   if(loadingReleased)return;
   if(ship.userData.loadingState==='error'){
@@ -262,6 +263,10 @@ function updateLoadingCover(){
     return;
   }
   const ready=ship.userData.loadingState==='ready'&&deckCollision.ready()&&character.isSpawnReady();
+  if(!ready&&performance.now()-loadingStartedAt>9000){
+    const detail=ship.userData.loadingState!=='ready'?'선박 모델을 불러오는 중입니다.':!deckCollision.ready()?'갑판 충돌 데이터를 확인 중입니다.':'캐릭터 시작 위치를 찾지 못했습니다.';
+    loadingCover.querySelector('.sea-loading-subtitle').textContent=detail+' 새로고침 후에도 계속되면 알려주세요.';
+  }
   if(ready&&++loadingReadyFrames>=2){
     loadingReleased=true;
     loadingCover.classList.add('sea-loading-done');
