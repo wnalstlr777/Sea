@@ -131,7 +131,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       // Follow the actual animated head height: seated heads sit lower, and
       // the verticalOffset already includes any supporting player beneath.
       remote.root.userData.headPlatformEnabled=!state.lying&&!state.inWater&&!state.returning;
-      remote.root.userData.headPlatformY=remote.root.position.y+remote.motionPivot.position.y+remote.avatar.mesh.position.y+2.95;
+      remote.root.userData.headPlatformY=remote.root.position.y+remote.motionPivot.position.y+remote.avatar.mesh.position.y+2.83;
       project(remote.label,remote.root.position);if(!showNames)remote.label.hidden=true;
       if(remote.emoteUntil>performance.now()){project(remote.emoteLabel,remote.root.position);remote.emoteLabel.style.top=`${parseFloat(remote.emoteLabel.style.top)-38}px`;if(!showNames)remote.emoteLabel.hidden=true;}else remote.emoteLabel.hidden=true;
     }
