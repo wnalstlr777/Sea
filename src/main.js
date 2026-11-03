@@ -18,6 +18,8 @@ import {createJellyfish} from './jellyfish.js';
 import {createEmoteWheel} from './emote-wheel.js';
 
 const app=document.querySelector('#app');
+// Touch-capable tablets may report a fine primary pointer when a trackpad is connected.
+if(navigator.maxTouchPoints>0)document.documentElement.classList.add('sea-touch-capable');
 // Cover the initial unpositioned camera until the ship and player are ready.
 const loadingCover=document.createElement('div');
 loadingCover.id='sea-loading';
@@ -139,11 +141,11 @@ function setCloudCover(value){params.cloudCover=value;lighting.uniforms.cloudCov
 cloudInput.addEventListener('input',event=>setCloudCover(Number(event.target.value)));
 const qualityInput=document.querySelector('#graphics-quality');
 const qualityPresets={
-  high:{reflection:1024,pixelRatio:2,cloudSamples:48,cloudDetail:1},
-  medium:{reflection:256,pixelRatio:1.5,cloudSamples:32,cloudDetail:.5},
-  low:{reflection:128,pixelRatio:1,cloudSamples:16,cloudDetail:0}
+  high:{reflection:1024,pixelRatio:2,cloudSamples:24,cloudDetail:0},
+  medium:{reflection:256,pixelRatio:1.5,cloudSamples:20,cloudDetail:0},
+  low:{reflection:128,pixelRatio:1,cloudSamples:12,cloudDetail:0}
 };
-const defaultQuality=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||matchMedia('(pointer:coarse)').matches?'medium':'high';
+const defaultQuality=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||navigator.maxTouchPoints>0||matchMedia('(pointer:coarse)').matches?'medium':'high';
 function setGraphicsQuality(level){
   const preset=qualityPresets[level]||qualityPresets.medium;
   qualityInput.value=level;
