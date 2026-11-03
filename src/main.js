@@ -238,6 +238,7 @@ function setSkyAuto(enabled){
   if(enabled)skyCycleSeconds=(params.hour%24)/24*SKY_CYCLE_SECONDS;
 }
 skyModeButton.addEventListener('click',()=>setSkyAuto(!skyAuto));
+setSkyAuto(true); // Start with only the compact auto toggle visible.
 function updateSkyCycle(dt){
   if(!skyAuto)return;
   skyCycleSeconds=(skyCycleSeconds+dt)%SKY_CYCLE_SECONDS;
