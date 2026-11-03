@@ -166,7 +166,17 @@ let walkTime=0,sitBlend=0,fireworkPoseUntil=0;
 function raiseRightHand(){arms[1].rotation.set(Math.PI,0,0);elbows[1].rotation.x=0;}
 function fireworkPose(){fireworkPoseUntil=performance.now()+1500;raiseRightHand();}
 function rightHandWorldPosition(){hana.updateWorldMatrix(true,true);return arms[1].localToWorld(new THREE.Vector3(0,-.72,0));}
-function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=false){
+function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=false,titanic=false){
+  if(titanic){
+    const blend=1-Math.exp(-Math.min(.1,dt)*12);
+    for(let i=0;i<2;i++){
+      arms[i].rotation.x+=(0-arms[i].rotation.x)*blend;
+      arms[i].rotation.z+=((i===0?Math.PI/2:-Math.PI/2)-arms[i].rotation.z)*blend;
+      elbows[i].rotation.x+=(0-elbows[i].rotation.x)*blend;
+      legs[i].rotation.x+=(0-legs[i].rotation.x)*blend;
+    }
+    body.rotation.z=0;head.rotation.z=0;return;
+  }
   if(flapping){
     const t=performance.now()*.001;
     const blend=1-Math.exp(-Math.min(.1,dt)*15);
