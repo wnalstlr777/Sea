@@ -39,7 +39,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // current Workers protocol only accepts y === SHIP.deckY.
   const jumpButton=document.createElement('button');jumpButton.id='jump-toggle';jumpButton.type='button';jumpButton.textContent='점프';jumpButton.setAttribute('aria-label','점프');document.querySelector('#app').append(jumpButton);
   // Keep launch velocity; 1.5x gravity shortens airtime to 2/3 and peak height to 2/3.
-  const JUMP_SPEED=10.6,GRAVITY=20.25,HEAD_HEIGHT=2.95;
+  const JUMP_SPEED=10.6,GRAVITY=20.25;
   const WATER_SURFACE_Y=-1.35, RESPAWN_X=0, RESPAWN_Z=-27;
   let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
   let landingGrace=0;
@@ -238,18 +238,30 @@ export function createPlayer(scene,camera,controls,deckCollision){
       const before=jumpHeight;
       jumpHeight+=jumpVelocity*step-.5*GRAVITY*step*step;
       jumpVelocity-=GRAVITY*step;
-      // Local-only landing on another player's head, using the current
-      // interpolated remote avatar positions. Does not change server state.
-      if(jumpVelocity<0&&before>=HEAD_HEIGHT-.1&&jumpHeight<=HEAD_HEIGHT){
-        const remote=scene.children.find(obj=>obj.name?.startsWith('remote-')&&Math.hypot(obj.position.x-player.position.x,obj.position.z-player.position.z)<.65);
-        if(remote){jumpHeight=HEAD_HEIGHT;jumpVelocity=0;headSupport=remote;}
+      // Invisible head platform for each standing remote avatar.
+      // Landing is one-way: only feet descending across the head surface collide.
+      if(jumpVelocity<0&&!headSupport){
+        const groundOffset=lastFloorY-VISUAL_DECK_Y;
+        for(const remote of scene.children){
+          if(!remote.name?.startsWith('remote-')||!remote.userData.headPlatformEnabled)continue;
+          const headY=remote.userData.headPlatformY;
+          const platformHeight=headY-visualBaseY-groundOffset;
+          if(before>=platformHeight-.12&&jumpHeight<=platformHeight&&
+             Math.hypot(remote.position.x-player.position.x,remote.position.z-player.position.z)<.62){
+            jumpHeight=platformHeight;jumpVelocity=0;headSupport=remote;break;
+          }
+        }
       }
       if(jumpHeight<=0){jumpHeight=0;jumpVelocity=0;headSupport=null;}
     }
     if(headSupport){
       const near=Math.hypot(headSupport.position.x-player.position.x,headSupport.position.z-player.position.z)<.7;
-      if(!headSupport.parent||!near){headSupport=null;jumpVelocity=-.01;}
-      else jumpHeight=HEAD_HEIGHT;
+      if(!headSupport.parent||!headSupport.userData.headPlatformEnabled||!near){
+        headSupport=null;jumpVelocity=-.01;
+      }else{
+        jumpHeight=headSupport.userData.headPlatformY-visualBaseY-(lastFloorY-VISUAL_DECK_Y);
+        jumpVelocity=0;
+      }
     }
     const groundOffset=lastFloorY-VISUAL_DECK_Y;
     jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lying?0:jumpHeight+groundOffset);
