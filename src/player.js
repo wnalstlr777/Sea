@@ -306,13 +306,13 @@ export function createPlayer(scene,camera,controls,deckCollision){
   }
   function resetView(){
     const damping=controls.enableDamping;controls.enableDamping=false;controls.update();
-    const feetY=overboard||returnFlight?visualBaseY+fallOffset:lastFloorY;
+    const feetY=visualBaseY+jumpPivot.position.y-NETWORK_TO_VISUAL_Y;
     controls.target.set(player.position.x,overboard?Math.max(3,feetY+1.3):feetY+1.3,player.position.z);
     camera.position.copy(controls.target).add(new THREE.Vector3(0,3.7,12.0));
     controls.update();controls.enableDamping=damping;
   }
   function deckViewPose(){
-    const feetY=overboard||returnFlight?visualBaseY+fallOffset:lastFloorY;
+    const feetY=visualBaseY+jumpPivot.position.y-NETWORK_TO_VISUAL_Y;
     const target=new THREE.Vector3(player.position.x,overboard?Math.max(3,feetY+1.3):feetY+1.3,player.position.z);
     const position=target.clone().add(new THREE.Vector3(0,3.7,12.0));
     return {position,target};
