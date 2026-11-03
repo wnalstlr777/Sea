@@ -23,14 +23,29 @@ export function createSeagulls(scene,camera,audio){
     root.scale.setScalar(1.15+(i%3)*.18);flock.add(root);
     birds.push({root,wings,phase:i*2.4,radius:28+i*5,height:23+(i%4)*4,speed:.065+(i%3)*.012});
   }
-  let time=0,callIn=0;
+  let time=0,callIn=0,foregroundBlend=0;
+  // A few existing birds pass between the overview camera and the ship.
+  const foregroundBirds=birds.slice(0,3);
   const projected=new THREE.Vector3();
-  function update(dt){
-    time+=Math.min(dt,.2);callIn-=dt;
+  function update(dt,overview=false){
+    const step=Math.min(dt,.2);
+    time+=step;callIn-=dt;
+    foregroundBlend=THREE.MathUtils.damp(foregroundBlend,overview?1:0,1.8,step);
     for(const bird of birds){
       const a=time*bird.speed+bird.phase;
       bird.root.position.set(Math.cos(a)*bird.radius,bird.height+Math.sin(time*.6+bird.phase)*1.6,-25+Math.sin(a)*bird.radius*.7);
-      bird.root.rotation.y=Math.atan2(Math.sin(a),-Math.cos(a)*.7);
+      if(foregroundBlend>.001&&foregroundBirds.includes(bird)){
+        const index=foregroundBirds.indexOf(bird);
+        const direction=index===1?-1:1;
+        const travel=(time*(7+index*1.5)+index*47)%220;
+        const foregroundX=65+index*12+Math.sin(time*.11+index)*9;
+        const foregroundY=13+index*5+Math.sin(time*.7+index)*2;
+        const foregroundZ=direction*(travel-110)-25;
+        bird.root.position.lerp(new THREE.Vector3(foregroundX,foregroundY,foregroundZ),foregroundBlend);
+        bird.root.rotation.y=direction>0?Math.PI:0;
+      }else{
+        bird.root.rotation.y=Math.atan2(Math.sin(a),-Math.cos(a)*.7);
+      }
       bird.root.rotation.z=Math.sin(a)*.12;
       const flapping=Math.sin(time*.7+bird.phase)>.15;
       const flap=flapping?Math.sin(time*5.5+bird.phase)*.48:.10;
