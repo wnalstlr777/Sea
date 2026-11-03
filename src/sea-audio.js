@@ -2,6 +2,9 @@
 export function createSeaAudio(button){
   let context,musicBus,effectsBus,noiseBuffer,waves,enabled=true,nextNote=0,step=0,scheduler=null;
   const voices=new Set();
+  const hz=midi=>440*2**((midi-69)/12);
+  const chords=[[60,64,67,71,74],[57,60,64,67,71],[50,53,57,60,64],[55,59,62,65,69]];
+  const melody=[0,2,4,3,1,2,0,4,3,2,4,1,0,3,2,1];
   function init(){
     if(context)return;
     const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;
@@ -50,9 +53,6 @@ export function createSeaAudio(button){
     if(bus===musicBus)voices.add(source);
     source.onended=()=>{voices.delete(source);source.disconnect();filter.disconnect();gain.disconnect();};
   }
-  const hz=midi=>440*2**((midi-69)/12);
-  const chords=[[60,64,67,71,74],[57,60,64,67,71],[50,53,57,60,64],[55,59,62,65,69]];
-  const melody=[0,2,4,3,1,2,0,4,3,2,4,1,0,3,2,1];
   function schedule(at,index){
     const chord=chords[Math.floor(index/16)%4],beat=index%16;
     // Swing eighths, walking bass, soft electric-piano voicings and brushed noise.
