@@ -1,4 +1,4 @@
-# Sea 5인 멀티플레이
+# 배타고 (BAETAGO) 멀티플레이
 
 공용 방 하나, 최대 5명, 익명 접속입니다. 기존 Vite/Three.js 화면과 GitHub Pages를 유지하며 WebSocket 서버만 Cloudflare Workers + SQLite Durable Objects로 분리합니다. 계정·채팅·저장·방 생성 기능은 없습니다. HINA SURVIVAL 원본은 사용하거나 수정하지 않습니다.
 
