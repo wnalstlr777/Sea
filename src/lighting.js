@@ -2,14 +2,14 @@ import * as THREE from 'three';
 import {createAtmosphere} from './atmosphere.js';
 
 const stops=[
-  [0,'#060e24','#18263c','#a6c7ff',.07,.23],
+  [0,'#091832','#223955','#b3d1ff',.085,.23],
   [6,'#524968','#ec9b78','#ffc18c',.4,.6],
   [12,'#428fbd','#a3d1db','#fff3d6',1,2.5],
   [17,'#525a8f','#f2ab77','#ffba68',.75,1.7],
   [18,'#343c6b','#d87b60','#ff9c43',.5,1.1],
   [19,'#182242','#785368','#f47b4b',.18,.35],
-  [21,'#060e24','#18263c','#a6c7ff',.07,.23],
-  [24,'#060e24','#18263c','#a6c7ff',.07,.23],
+  [21,'#091832','#223955','#b3d1ff',.085,.23],
+  [24,'#091832','#223955','#b3d1ff',.085,.23],
 ];
 // A 20-degree tilt from vertical; moon retraces the sunset path in reverse.
 export function celestialDirections(hour){

@@ -31,16 +31,6 @@ export function createSail(ship, lighting){
       const splitZ=(frontZ+rearZ)*.5;
       root.traverse(obj=>{
         if(!obj.isMesh)return;
-        obj.geometry.computeBoundingBox();
-        const center=obj.geometry.boundingBox.getCenter(new THREE.Vector3());
-        obj.localToWorld(center);
-        sailMeshes.push({obj,z:center.z});
-      });
-      const frontZ=Math.min(...sailMeshes.map(item=>item.z));
-      const rearZ=Math.max(...sailMeshes.map(item=>item.z));
-      const splitZ=(frontZ+rearZ)*.5;
-      root.traverse(obj=>{
-        if(!obj.isMesh)return;
         const geo=obj.geometry;
         const colors=geo.getAttribute('color');
         if(!geo.getAttribute('normal'))geo.computeVertexNormals();
