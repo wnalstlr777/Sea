@@ -108,7 +108,7 @@ for(let layer=0;layer<6;layer++){
         vec3 viewDir=normalize(cameraPosition-vWorldPos);
         float facing=abs(dot(normalize(vNormalWorld),viewDir));
         float feather=smoothstep(.0,.72,facing);
-        float layerFade=(pow(1.-uLayer,1.35)*.9+.08)*mix(.8,1.,smoothstep(0.,.65,uLayer));
+        float layerFade=(pow(1.-uLayer,1.35)*.9+.08)*mix(.6,1.,smoothstep(0.,.65,uLayer));
         float alpha=uOpacity*startFade*endFade*feather*layerFade;
         gl_FragColor=vec4(uColor,alpha);
       }`,
