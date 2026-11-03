@@ -321,7 +321,7 @@ bowPoseButton.style.display='none';
 if(!overviewActive&&!character.isLying()&&Math.hypot(character.player.position.x-bowPoseAnchor.x,character.player.position.z-bowPoseAnchor.z)<4){
   bowPoseProjection.copy(bowPoseAnchor).project(camera);
   if(bowPoseProjection.z>0&&bowPoseProjection.z<1){
-    bowPoseButton.style.left=`\${(bowPoseProjection.x*.5+.5)*innerWidth}px`;
+    bowPoseButton.style.left=`${(bowPoseProjection.x*.5+.5)*innerWidth}px`;
     bowPoseButton.style.top=`\${(-bowPoseProjection.y*.5+.5)*innerHeight}px`;
     bowPoseButton.style.display='block';
   }
