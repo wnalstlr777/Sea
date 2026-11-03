@@ -192,3 +192,33 @@ body.sea-overview #jump-toggle{display:none!important}
   }
   .time-control.sky-auto{background:transparent;border:0;backdrop-filter:none}
 }
+
+/* Auto/manual use the exact same button box and horizontal anchor.
+   Only the slider panel expands upward in manual mode. */
+.time-control #sky-mode-toggle,
+.time-control.sky-auto #sky-mode-toggle{
+  box-sizing:border-box;
+  width:64px;
+  min-width:64px;
+  max-width:64px;
+  height:32px;
+  min-height:32px;
+  max-height:32px;
+  padding:0;
+  margin:10px 0 0 auto;
+  align-self:flex-end;
+  line-height:30px;
+  text-align:center;
+}
+.time-control.sky-auto #sky-mode-toggle{margin-top:0}
+@media(max-width:600px){
+  .time-control,.time-control.sky-auto,
+  .sea-touch-capable .time-control,.sea-touch-capable .time-control.sky-auto{
+    right:4px;
+    bottom:max(8px,env(safe-area-inset-bottom));
+    width:min(180px,calc(100vw - 168px));
+    box-sizing:border-box;
+  }
+  .time-control{padding-right:8px}
+  .time-control.sky-auto{padding-right:8px}
+}
