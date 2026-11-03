@@ -177,3 +177,18 @@ body.sea-overview #jump-toggle{display:none!important}
 .time-control.sky-auto{width:min(180px,calc(100vw - 168px));min-width:0;padding:6px 12px;background:transparent;border:0;backdrop-filter:none}
 @media(min-width:601px){.time-control,.time-control.sky-auto{width:260px;right:36px;bottom:70px}}
 @media(max-width:600px){.time-control,.time-control.sky-auto{right:16px;bottom:82px}}
+
+/* Mobile deck view: park the sky controls below the sit/jump stack.
+   Keep the auto and manual toggle in the same bottom-right position. */
+@media(max-width:600px){
+  .time-control,.time-control.sky-auto,
+  .sea-touch-capable .time-control,.sea-touch-capable .time-control.sky-auto{
+    left:auto;
+    right:12px;
+    bottom:max(8px,env(safe-area-inset-bottom));
+    transform:none;
+    width:min(180px,calc(100vw - 168px));
+    z-index:3;
+  }
+  .time-control.sky-auto{background:transparent;border:0;backdrop-filter:none}
+}
