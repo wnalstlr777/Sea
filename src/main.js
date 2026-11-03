@@ -72,23 +72,66 @@ const marineLife=createMarineLife(scene,camera,seaAudio);
 const horn=createShipHorn();
 const ship=createShip();scene.add(ship);
 const sail=createSail(ship);
-// Lightweight visual-only bow beam for the night overview (no actual light/shadows).
-const bowBeam=new THREE.Mesh(
-  new THREE.ConeGeometry(8,28,24,1,true),
-  new THREE.MeshBasicMaterial({color:0xffd78a,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending})
-);
+// Soft, visual-only 4000K marine searchlight. No actual lights or shadows.
+// Nested feathered volumes avoid the hard silhouette and pointed tip of ConeGeometry.
+const bowBeam=new THREE.Group();
 bowBeam.name='night-bow-beam';
-bowBeam.rotation.x=Math.PI/2;
+const bowBeamMaterials=[];
+for(let layer=0;layer<6;layer++){
+  const fraction=(layer+1)/6;
+  const material=new THREE.ShaderMaterial({
+    uniforms:{uOpacity:{value:0},uLayer:{value:fraction},uColor:{value:new THREE.Color('#fff0d6')}},
+    vertexShader:`
+      varying vec3 vLocal;
+      varying vec3 vNormalWorld;
+      varying vec3 vWorldPos;
+      void main(){
+        vLocal=position;
+        vec4 world=modelMatrix*vec4(position,1.);
+        vWorldPos=world.xyz;
+        vNormalWorld=normalize(mat3(modelMatrix)*normal);
+        gl_Position=projectionMatrix*viewMatrix*world;
+      }`,
+    fragmentShader:`
+      uniform float uOpacity;
+      uniform float uLayer;
+      uniform vec3 uColor;
+      varying vec3 vLocal;
+      varying vec3 vNormalWorld;
+      varying vec3 vWorldPos;
+      void main(){
+        // Height: near end (+Y) and far end (-Y) both dissolve into air.
+        float along=(15.-vLocal.y)/30.;
+        float startFade=smoothstep(0.,.16,along);
+        float endFade=1.-smoothstep(.57,1.,along);
+        // Feather the silhouette based on view angle; no visible cone outline.
+        vec3 viewDir=normalize(cameraPosition-vWorldPos);
+        float facing=abs(dot(normalize(vNormalWorld),viewDir));
+        float feather=smoothstep(.0,.72,facing);
+        float layerFade=pow(1.-uLayer,1.35)*.9+.08;
+        float alpha=uOpacity*startFade*endFade*feather*layerFade;
+        gl_FragColor=vec4(uColor,alpha);
+      }`,
+    transparent:true,depthWrite:false,side:THREE.DoubleSide,
+    blending:THREE.AdditiveBlending
+  });
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1.1*fraction,7.5*fraction,30,32,1,true),material);
+  mesh.rotation.x=Math.PI/2;
+  mesh.renderOrder=4;
+  bowBeam.add(mesh);
+  bowBeamMaterials.push(material);
+}
 bowBeam.position.set(0,VISUAL_DECK_Y-6,-57);
-bowBeam.renderOrder=4;
 bowBeam.visible=false;
 scene.add(bowBeam);
+let bowBeamOpacity=0;
 function updateBowBeam(dt){
   const hour=params.hour;
   const night=1-THREE.MathUtils.smoothstep(Math.min(hour,24-hour),4.5,6.5);
-  const target=overviewActive?night*.17:0;
-  bowBeam.material.opacity+=(target-bowBeam.material.opacity)*(1-Math.exp(-dt*2.5));
-  bowBeam.visible=bowBeam.material.opacity>.002;
+  const target=overviewActive?night*.11:0;
+  bowBeamOpacity+=(target-bowBeamOpacity)*(1-Math.exp(-dt*2.5));
+  for(const material of bowBeamMaterials)material.uniforms.uOpacity.value=bowBeamOpacity;
+  bowBeam.visible=bowBeamOpacity>.002;
 }
 
 // Only the rendered hull rocks. The collision mesh stays motionless.
