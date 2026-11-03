@@ -170,3 +170,10 @@ body.sea-overview #jump-toggle{display:none!important}
 .time-control.sky-auto label{display:none}
 .time-control.sky-auto #sky-mode-toggle{margin-top:0}
 @media(max-width:600px){.time-control.sky-auto{width:auto;padding:4px;right:16px}}
+
+/* Keep the auto-only toggle at the same fixed bottom/right position as manual toggle. */
+.time-control{right:16px;left:auto;bottom:82px;transform:none;box-sizing:border-box}
+.time-control #sky-mode-toggle{display:block;margin-left:auto;margin-right:auto}
+.time-control.sky-auto{width:min(180px,calc(100vw - 168px));min-width:0;padding:6px 12px;background:transparent;border:0;backdrop-filter:none}
+@media(min-width:601px){.time-control,.time-control.sky-auto{width:260px;right:36px;bottom:70px}}
+@media(max-width:600px){.time-control,.time-control.sky-auto{right:16px;bottom:82px}}
