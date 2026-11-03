@@ -339,6 +339,19 @@ export function createPlayer(scene,camera,controls,deckCollision){
     return {position,target};
   }
   function setEnabled(value){enabled=value;if(!value){keys.clear();reset();player.userData.moving=false;}}
+  // Query from the actual feet, not a fixed height above the main deck.
+  // Only land on elevated UCX after descending onto it; never teleport up from below.
+  function walkableFloor(x,z){
+    const feetY=lastFloorY+jumpHeight;
+    const floor=deckCollision.floorAt(x,z,feetY+.22);
+    if(floor===null)return null;
+    if(headSupport)return null;
+    if(jumpHeight>.03){
+      if(jumpVelocity>=0||feetY>floor+.28)return null;
+      jumpHeight=0;jumpVelocity=0;
+    }
+    return floor;
+  }
   function update(dt){
     landingGrace=Math.max(0,landingGrace-Math.min(dt,.05));
     updateJump(dt);
@@ -357,7 +370,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       }
     }
     if(!overboard&&!returnFlight&&deckCollision.ready()&&spawnValidated&&!lying){
-      const stationaryFloor=deckCollision.floorAt(player.position.x,player.position.z);
+      const stationaryFloor=walkableFloor(player.position.x,player.position.z);
       if(stationaryFloor!==null){lastFloorY=stationaryFloor;}
       else if(landingGrace<=0){startFall();}
     }
@@ -377,7 +390,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     lastMoveX=dt>0?movement.x/dt:0;lastMoveZ=dt>0?movement.z/dt:0;
     player.position.add(movement);
     // The exported UCX surfaces, not the old rectangular deck, determine support.
-    const floor=deckCollision.floorAt(player.position.x,player.position.z);
+    const floor=walkableFloor(player.position.x,player.position.z);
     if(!overboard&&floor!==null){lastFloorY=floor;}
     if(!overboard&&spawnValidated&&deckCollision.ready()&&floor===null&&landingGrace<=0){
       if(lying)standUp();if(sitting)setSitting(false);
