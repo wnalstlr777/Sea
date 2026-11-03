@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // Lightweight local-only firework: a rising spark, then a colorful burst.
-export function createFireworks(scene,ship){
+export function createFireworks(scene,deckY){
   const button=document.createElement('button');
   button.id='fireworks-toggle';
   button.type='button';
@@ -57,11 +57,7 @@ export function createFireworks(scene,ship){
   }
   function launch(){
     if(active.length>=5)return;
-    const position=new THREE.Vector3(0,0,-12);
-    if(ship.userData.model){
-      ship.userData.model.localToWorld(position);
-    }else position.set(0,12,-40);
-    position.y+=3;
+    const position=new THREE.Vector3((Math.random()-.5)*14,deckY+5,-42);
     const color=new THREE.Color(colors[Math.floor(Math.random()*colors.length)]);
     const rocket=new THREE.Mesh(new THREE.SphereGeometry(.28,6,6),new THREE.MeshBasicMaterial({color}));
     rocket.position.copy(position);effects.add(rocket);
