@@ -284,7 +284,11 @@ export function createPlayer(scene,camera,controls,deckCollision){
           }
         }
       }
-      if(jumpHeight<=0&&!airborneFromEdge){jumpHeight=0;jumpVelocity=0;headSupport=null;}
+      if(jumpHeight<=0&&!airborneFromEdge){
+        const below=deckCollision.floorAt(player.position.x,player.position.z,lastFloorY+.22);
+        if(below===null||below<lastFloorY-.45)airborneFromEdge=true;
+        else {jumpHeight=0;jumpVelocity=0;headSupport=null;}
+      }
     }
     if(headSupport){
       // Carry the passenger along with the base, rather than letting its
@@ -419,7 +423,9 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(!overboard&&!returnFlight&&deckCollision.ready()&&spawnValidated&&!lying){
       const stationaryFloor=walkableFloor(player.position.x,player.position.z);
       if(stationaryFloor!==null){lastFloorY=stationaryFloor;}
-      else if(landingGrace<=0&&!headSupport&&!airborneFromEdge&&jumpHeight<=.03&&jumpVelocity===0){startFall();}
+      else if(landingGrace<=0&&!headSupport&&!airborneFromEdge&&jumpHeight<=.03&&jumpVelocity===0){
+        airborneFromEdge=true;jumpVelocity=-.01;
+      }
     }
     if(airborneFromEdge&&!overboard&&lastFloorY+jumpHeight<WATER_SURFACE_Y+.3){startFall();airborneFromEdge=false;}
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
@@ -442,7 +448,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(!overboard&&floor!==null){lastFloorY=floor;}
     if(!overboard&&spawnValidated&&deckCollision.ready()&&floor===null&&landingGrace<=0&&!airborneFromEdge&&jumpHeight<=.03&&jumpVelocity===0){
       if(lying)standUp();if(sitting)setSitting(false);
-      startFall();
+      airborneFromEdge=true;jumpVelocity=Math.min(jumpVelocity,-.01);
     }
     const delta=player.position.clone().sub(previous);
     if(delta.lengthSq()>1e-8)player.rotation.y=Math.atan2(-delta.x,-delta.z);
