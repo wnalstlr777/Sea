@@ -216,6 +216,7 @@ function setGraphicsQuality(level){
   renderer.setSize(innerWidth,innerHeight);
   params.reflectionResolution=preset.reflection;
   ocean.setReflectionResolution(preset.reflection);
+  ocean.setStarReflectionEnabled(level==='high');
   lighting.uniforms.cloudSamples.value=preset.cloudSamples;
   lighting.uniforms.cloudDetail.value=preset.cloudDetail;
 }
