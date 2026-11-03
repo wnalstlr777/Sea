@@ -16,7 +16,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   let capacity=20,socket=null,self=null,localLabel=null,ready=false,stopped=false,blocked=false,retryTimer=null,attempt=0,lastSent=null,lastHeard=0,seq=0;
   function message(text,canRetry=false){status.textContent=text;retry.hidden=!canRetry;}
   function label(name){const element=document.createElement('span');element.className='player-name';element.hidden=true;element.textContent=name;names.append(element);return element;}
-  function remove(id){const remote=remotes.get(id);if(!remote)return;scene.remove(remote.root);disposeSurvivor(remote.avatar.mesh);remote.label.remove();remote.emoteLabel.remove();remotes.delete(id);}
+  function remove(id){const remote=remotes.get(id);if(!remote)return;remote.root.userData.headPlatformEnabled=false;scene.remove(remote.root);disposeSurvivor(remote.avatar.mesh);remote.label.remove();remote.emoteLabel.remove();remotes.delete(id);}
   function clear(){for(const id of [...remotes.keys()])remove(id);localLabel?.remove();localLabel=null;}
   function occupancy(){message(`함께 항해 중 · ${remotes.size+1}/${capacity}명`);}
   function setLocal(state){
