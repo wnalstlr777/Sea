@@ -42,7 +42,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // Reach the 2.95m head platform (previous 10.6m/s jump peaked at only 2.77m).
   const JUMP_SPEED=11.6,GRAVITY=20.25;
   const WATER_SURFACE_Y=-1.35, RESPAWN_X=0, RESPAWN_Z=-27;
-  let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
+  let overboard=false, fallOffset=0, waterTime=0, returnFlight=null,launchFlight=null;
   let landingGrace=0;
   let fallVelocity=0,fallDriftX=0,fallDriftZ=0,fallAirborne=false;
   let lastMoveX=0,lastMoveZ=0;
@@ -165,9 +165,33 @@ export function createPlayer(scene,camera,controls,deckCollision){
     }
     return true;
   }
+  function launchTo(target){
+    if(!enabled||overboard||returnFlight||launchFlight||lying||!spawnValidated)return false;
+    const y=deckCollision.floorAt(target.x,target.z,target.y+2);
+    if(y===null||Math.abs(y-target.y)>3)return false;
+    const distance=Math.hypot(target.x-player.position.x,target.z-player.position.z);
+    const duration=Math.max(2.8,distance/3.4);
+    launchFlight={time:0,duration,startX:player.position.x,startZ:player.position.z,startY:lastFloorY+jumpHeight,endX:target.x,endZ:target.z,endY:y};
+    headSupport=null;jumpVelocity=0;jumpHeight=0;playJumpSound();return true;
+  }
+  function updateLaunch(dt){
+    if(!launchFlight)return false;
+    const f=launchFlight;f.time=Math.min(f.duration,f.time+Math.min(dt,.05));
+    const t=f.time/f.duration;
+    const x=THREE.MathUtils.lerp(f.startX,f.endX,t),z=THREE.MathUtils.lerp(f.startZ,f.endZ,t);
+    const y=THREE.MathUtils.lerp(f.startY,f.endY,t)+Math.sin(Math.PI*t)*Math.max(7,(f.endY-f.startY)*.24);
+    const dx=x-player.position.x,dz=z-player.position.z;
+    player.position.x=x;player.position.z=z;
+    if(enabled){camera.position.x+=dx;controls.target.x+=dx;camera.position.z+=dz;controls.target.z+=dz;}
+    jumpHeight=y-lastFloorY;
+    jumpPivot.position.y=NETWORK_TO_VISUAL_Y+y-visualBaseY;
+    avatar.update(dt,false,false,1,false,true);
+    if(t>=1){lastFloorY=f.endY;jumpHeight=0;jumpVelocity=0;launchFlight=null;landingGrace=.65;resetView();}
+    return true;
+  }
   function jump(){
     if(!enabled)return;
-    if(returnFlight)return;
+    if(returnFlight||launchFlight)return;
     if(overboard){returnToDeck();return;}
     // A player standing on another head can jump again to build taller towers.
     if((jumpHeight>.03&&!headSupport)||jumpVelocity>0)return;
@@ -207,6 +231,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     // Overview disables controls, not physics. Keep head support and the
     // vertical network offset alive so human towers remain in photos.
     const step=Math.min(dt,.05);
+    if(updateLaunch(step))return;
     if(updateReturnFlight(step))return;
     if(overboard){
       const desired=WATER_SURFACE_Y-visualBaseY;
@@ -354,8 +379,10 @@ export function createPlayer(scene,camera,controls,deckCollision){
   }
   function update(dt){
     landingGrace=Math.max(0,landingGrace-Math.min(dt,.05));
+    const flying=Boolean(launchFlight);
     updateJump(dt);
     updateLie(dt);
+    if(flying){player.userData.moving=false;return;}
     if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose,overboard);return;}
     if(deckCollision.ready()&&!spawnValidated){
       const safe=deckCollision.safeSpot(player.position.x,player.position.z)
@@ -404,7 +431,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   return {player,update,setCharacter,setEnabled,resetView,deckViewPose,
     launchFireworkPose:()=>{avatar.fireworkPose();player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},
     getFireworkHandPosition:()=>{player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},isSpawnReady:()=>spawnValidated,lieOn,standUp,isLying:()=>lying,
-    getNetworkState:()=>({sitting,lying,jump:!headSupport&&(jumpHeight>0||jumpVelocity>0),jumpHeight:Math.max(0,jumpHeight),verticalOffset:jumpPivot.position.y-NETWORK_TO_VISUAL_Y,inWater:overboard,returning:Boolean(returnFlight)}),
+    launchTo,getNetworkState:()=>({sitting,lying,jump:!!launchFlight||!headSupport&&(jumpHeight>0||jumpVelocity>0),jumpHeight:Math.max(0,jumpHeight),verticalOffset:jumpPivot.position.y-NETWORK_TO_VISUAL_Y,inWater:overboard,returning:Boolean(returnFlight||launchFlight)}),
     isReturning:()=>Boolean(returnFlight),
     handleCorrection(state){
       // Keep the server authoritative; cancel an invalid flight cleanly.
