@@ -101,7 +101,7 @@ for(let layer=0;layer<6;layer++){
       varying vec3 vWorldPos;
       void main(){
         // Height: near end (+Y) and far end (-Y) both dissolve into air.
-        float along=(24.-vLocal.y)/48.;
+        float along=(16.-vLocal.y)/32.;
         float startFade=smoothstep(0.,.16,along);
         float endFade=1.-smoothstep(.57,1.,along);
         // Feather the silhouette based on view angle; no visible cone outline.
@@ -115,14 +115,14 @@ for(let layer=0;layer<6;layer++){
     transparent:true,depthWrite:false,side:THREE.DoubleSide,
     blending:THREE.AdditiveBlending
   });
-  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1.1*fraction,38*fraction,48,32,1,true),material);
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1.1*fraction,38*fraction,32,32,1,true),material);
   mesh.rotation.x=Math.PI/2;
   mesh.renderOrder=4;
   bowBeam.add(mesh);
   bowBeamMaterials.push(material);
 }
 // Attach to the ship's animated overview pivot, so the beam pitches and rolls with the hull.
-bowBeam.position.set(0,6,-44);
+bowBeam.position.set(0,6,-36);
 bowBeam.visible=false;
 let bowBeamOpacity=0;
 function updateBowBeam(dt){
