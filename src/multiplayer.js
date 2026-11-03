@@ -51,7 +51,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       if(socket!==ws)return;lastHeard=performance.now();if(event.data==='pong')return;
       let packet;try{packet=JSON.parse(event.data);}catch{return;}
       if(packet.type==='full'){
-        capacity=packet.capacity||20;blocked=true;message('정원 초과 · 최대 ${capacity}명까지 탑승할 수 있습니다.',true);ws.close(4003,'Room full');return;
+        capacity=packet.capacity||20;blocked=true;message(`정원 초과 · 최대 ${capacity}명까지 탑승할 수 있습니다.`,true);ws.close(4003,'Room full');return;
       }
       if(packet.type==='welcome'){
         if(packet.protocol!==2){blocked=true;message('서버 버전이 다릅니다. 새로고침해 주세요.');ws.close(1002);return;}
