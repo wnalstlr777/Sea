@@ -101,7 +101,7 @@ for(let layer=0;layer<6;layer++){
       varying vec3 vWorldPos;
       void main(){
         // Height: near end (+Y) and far end (-Y) both dissolve into air.
-        float along=(15.-vLocal.y)/30.;
+        float along=(24.-vLocal.y)/48.;
         float startFade=smoothstep(0.,.16,along);
         float endFade=1.-smoothstep(.57,1.,along);
         // Feather the silhouette based on view angle; no visible cone outline.
@@ -115,15 +115,15 @@ for(let layer=0;layer<6;layer++){
     transparent:true,depthWrite:false,side:THREE.DoubleSide,
     blending:THREE.AdditiveBlending
   });
-  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1.1*fraction,7.5*fraction,30,32,1,true),material);
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1.1*fraction,17*fraction,48,32,1,true),material);
   mesh.rotation.x=Math.PI/2;
   mesh.renderOrder=4;
   bowBeam.add(mesh);
   bowBeamMaterials.push(material);
 }
-bowBeam.position.set(0,VISUAL_DECK_Y-6,-57);
+// Attach to the ship's animated overview pivot, so the beam pitches and rolls with the hull.
+bowBeam.position.set(0,6,-33);
 bowBeam.visible=false;
-scene.add(bowBeam);
 let bowBeamOpacity=0;
 function updateBowBeam(dt){
   const hour=params.hour;
@@ -142,6 +142,7 @@ function updateOverviewSway(dt,seconds){
   overviewSway+= (target-overviewSway)*(1-Math.exp(-Math.min(dt,.05)*2.2));
   const pivot=ship.userData.overviewDisplay;
   if(!pivot)return; // GLB may still be loading
+  if(bowBeam.parent!==pivot)pivot.add(bowBeam);
   const showing=overviewSway>.002;
   pivot.visible=showing;
   for(const mesh of ship.userData.overviewVisualMeshes)mesh.visible=!showing;
