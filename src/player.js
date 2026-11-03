@@ -372,7 +372,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(!overboard&&!returnFlight&&deckCollision.ready()&&spawnValidated&&!lying){
       const stationaryFloor=walkableFloor(player.position.x,player.position.z);
       if(stationaryFloor!==null){lastFloorY=stationaryFloor;}
-      else if(landingGrace<=0){startFall();}
+      else if(landingGrace<=0&&jumpHeight<=.03&&!headSupport){startFall();}
     }
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
@@ -392,7 +392,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     // The exported UCX surfaces, not the old rectangular deck, determine support.
     const floor=walkableFloor(player.position.x,player.position.z);
     if(!overboard&&floor!==null){lastFloorY=floor;}
-    if(!overboard&&spawnValidated&&deckCollision.ready()&&floor===null&&landingGrace<=0){
+    if(!overboard&&spawnValidated&&deckCollision.ready()&&floor===null&&landingGrace<=0&&jumpHeight<=.03&&!headSupport){
       if(lying)standUp();if(sitting)setSitting(false);
       startFall();
     }
