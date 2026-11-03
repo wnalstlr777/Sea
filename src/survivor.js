@@ -166,7 +166,20 @@ let walkTime=0,sitBlend=0,fireworkPoseUntil=0;
 function raiseRightHand(){arms[1].rotation.set(Math.PI,0,0);elbows[1].rotation.x=0;}
 function fireworkPose(){fireworkPoseUntil=performance.now()+1500;raiseRightHand();}
 function rightHandWorldPosition(){hana.updateWorldMatrix(true,true);return arms[1].localToWorld(new THREE.Vector3(0,-.72,0));}
-function update(dt,moving,sitting=false,jumpPhase=null,inWater=false){
+function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=false){
+  if(flapping){
+    const t=performance.now()*.001;
+    const blend=1-Math.exp(-Math.min(.1,dt)*15);
+    for(let i=0;i<2;i++){
+      const target=-1.35+Math.sin(t*17+i*.5)*.7;
+      arms[i].rotation.x+=(target-arms[i].rotation.x)*blend;
+      arms[i].rotation.z+=((i===0?-.55:.55)-arms[i].rotation.z)*blend;
+      elbows[i].rotation.x+=(-.4-elbows[i].rotation.x)*blend;
+      legs[i].rotation.x+=(Math.sin(t*11+i*Math.PI)*.35-legs[i].rotation.x)*blend;
+    }
+    body.rotation.z=Math.sin(t*8)*.07;head.rotation.z=-body.rotation.z*.5;
+    return;
+  }
   const firing=performance.now()<fireworkPoseUntil;
   if(inWater){
     // Treading water: alternating arms, kicking legs and a slight torso sway.
