@@ -1,0 +1,31 @@
+/* Minimal Ocean Cruise line-art loading cover.
+   The existing main.js owns readiness checks and the fade-out transition. */
+#sea-loading {
+  background: #05182e url('/loading/ocean-cruise-loading.webp') center center / cover no-repeat !important;
+}
+#sea-loading .sea-loading-inner {
+  /* Keep the DOM in place so main.js can report loading failures. */
+  position: absolute;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(90vw, 500px);
+  pointer-events: none;
+}
+#sea-loading .sea-loading-mark,
+#sea-loading .sea-loading-title,
+#sea-loading .sea-loading-track { display: none !important; }
+#sea-loading .sea-loading-subtitle {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: #a3cad8;
+  opacity: .72;
+  text-shadow: 0 1px 8px #001324;
+}
+@media (max-aspect-ratio: 4/5) {
+  #sea-loading {
+    background-image: url('/loading/ocean-cruise-loading-mobile.webp') !important;
+    background-size: cover !important;
+  }
+}
