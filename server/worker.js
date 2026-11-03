@@ -1,7 +1,7 @@
 import {DurableObject} from 'cloudflare:workers';
 import {SHIP} from '../src/deck.js';
 
-const CAPACITY=5,PROTOCOL=2;
+const CAPACITY=20,PROTOCOL=2;
 const EMOTES=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
 // The old rectangular DECK polygon only covered the middle of the enlarged hull.
 // The client uses the exported UCX surfaces to decide deck vs. water.
@@ -53,7 +53,7 @@ export class SeaRoom extends DurableObject {
     const occupied=new Set(existing.map(p=>p.slot));let slot=0;while(occupied.has(slot))slot++;
     const id=crypto.randomUUID();
     const names=NICKNAMES.filter(name=>!existing.some(player=>player.nickname===name));
-    const player={id,slot,nickname:names[crypto.getRandomValues(new Uint32Array(1))[0]%names.length],characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot-2)*2,y:SHIP.deckY,z:-27,rotation:0,moving:false,sitting:false,lying:false,jump:false,jumpHeight:0,verticalOffset:0,inWater:false,returning:false};
+    const player={id,slot,nickname:names[crypto.getRandomValues(new Uint32Array(1))[0]%names.length],characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot%5-2)*1.5,y:SHIP.deckY,z:-27+Math.floor(slot/5)*1.5,rotation:0,moving:false,sitting:false,lying:false,jump:false,jumpHeight:0,verticalOffset:0,inWater:false,returning:false};
     server.serializeAttachment({player,seq:-1,updatedAt:Date.now(),rateAt:Date.now(),tokens:8,credit:.65});
     this.send(server,{type:'welcome',protocol:PROTOCOL,you:id,players:this.players(),capacity:CAPACITY});
     this.broadcast({type:'join',player},server);

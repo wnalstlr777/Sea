@@ -12,12 +12,12 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   const EMOTES=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
   const lieQuat=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2)
     .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI));
-  let socket=null,self=null,localLabel=null,ready=false,stopped=false,blocked=false,retryTimer=null,attempt=0,lastSent=null,lastHeard=0,seq=0;
+  let capacity=20,socket=null,self=null,localLabel=null,ready=false,stopped=false,blocked=false,retryTimer=null,attempt=0,lastSent=null,lastHeard=0,seq=0;
   function message(text,canRetry=false){status.textContent=text;retry.hidden=!canRetry;}
   function label(name){const element=document.createElement('span');element.className='player-name';element.hidden=true;element.textContent=name;names.append(element);return element;}
   function remove(id){const remote=remotes.get(id);if(!remote)return;scene.remove(remote.root);disposeSurvivor(remote.avatar.mesh);remote.label.remove();remote.emoteLabel.remove();remotes.delete(id);}
   function clear(){for(const id of [...remotes.keys()])remove(id);localLabel?.remove();localLabel=null;}
-  function occupancy(){message(`함께 항해 중 · ${remotes.size+1}/5명`);}
+  function occupancy(){message(`함께 항해 중 · ${remotes.size+1}/${capacity}명`);}
   function setLocal(state){
     const look=appearanceForPlayer(state.id);character.setCharacter(look.model,look.hairColor);
     const delta=new THREE.Vector3(state.x,state.y,state.z).sub(character.player.position);
@@ -51,11 +51,11 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       if(socket!==ws)return;lastHeard=performance.now();if(event.data==='pong')return;
       let packet;try{packet=JSON.parse(event.data);}catch{return;}
       if(packet.type==='full'){
-        blocked=true;message('정원 초과 · 최대 5명까지 탑승할 수 있습니다.',true);ws.close(4003,'Room full');return;
+        capacity=packet.capacity||20;blocked=true;message(`정원 초과 · 최대 ${capacity}명까지 탑승할 수 있습니다.`,true);ws.close(4003,'Room full');return;
       }
       if(packet.type==='welcome'){
         if(packet.protocol!==2){blocked=true;message('서버 버전이 다릅니다. 새로고침해 주세요.');ws.close(1002);return;}
-        self=packet.you;character.player.userData.playerId=self;const state=packet.players.find(p=>p.id===self);if(!state){ws.close(1002);return;}
+        capacity=packet.capacity||20;self=packet.you;character.player.userData.playerId=self;const state=packet.players.find(p=>p.id===self);if(!state){ws.close(1002);return;}
         clear();setLocal(state);localLabel=label(`${state.nickname} (나)`);for(const player of packet.players)add(player);
         ready=true;attempt=0;seq=0;lastSent=null;character.setEnabled(true);occupancy();return;
       }
