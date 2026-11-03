@@ -98,7 +98,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
     const visible=projected.z>-1&&projected.z<1&&Math.abs(projected.x)<1.1&&Math.abs(projected.y)<1.1;
     element.hidden=!visible;if(visible){element.style.left=`${(projected.x*.5+.5)*innerWidth}px`;element.style.top=`${(-projected.y*.5+.5)*innerHeight}px`;}
   }
-  function update(dt){
+  function update(dt,showNames=true){
     const renderTime=performance.now()-100;
     for(const remote of remotes.values()){
       const samples=remote.samples;while(samples.length>2&&samples[1].time<=renderTime)samples.shift();
@@ -106,9 +106,9 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       const alpha=b.time>a.time?THREE.MathUtils.clamp((renderTime-a.time)/(b.time-a.time),0,1):1;
       remote.root.position.set(THREE.MathUtils.lerp(a.x,b.x,alpha),THREE.MathUtils.lerp(a.y,b.y,alpha),THREE.MathUtils.lerp(a.z,b.z,alpha));
       remote.root.rotation.y=a.rotation+Math.atan2(Math.sin(b.rotation-a.rotation),Math.cos(b.rotation-a.rotation))*alpha;
-      remote.avatar.update(dt,(alpha<.5?a:b).moving);project(remote.label,remote.root.position);
+      remote.avatar.update(dt,(alpha<.5?a:b).moving);project(remote.label,remote.root.position);if(!showNames)remote.label.hidden=true;
     }
-    if(localLabel)project(localLabel,character.player.position);
+    if(localLabel){project(localLabel,character.player.position);if(!showNames)localLabel.hidden=true;}
   }
   addEventListener('pagehide',()=>{stopped=true;clearTimeout(retryTimer);retryTimer=null;socket?.close(1000,'Leaving');});
   addEventListener('pageshow',event=>{if(event.persisted&&url){stopped=false;socket=null;connect();}});

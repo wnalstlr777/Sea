@@ -52,7 +52,7 @@ export class SeaRoom extends DurableObject {
     const occupied=new Set(existing.map(p=>p.slot));let slot=0;while(occupied.has(slot))slot++;
     const id=crypto.randomUUID();
     const names=NICKNAMES.filter(name=>!existing.some(player=>player.nickname===name));
-    const player={id,slot,nickname:names[crypto.getRandomValues(new Uint32Array(1))[0]%names.length],characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot-2)*2,y:SHIP.deckY,z:-24,rotation:0,moving:false};
+    const player={id,slot,nickname:names[crypto.getRandomValues(new Uint32Array(1))[0]%names.length],characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot-2)*2,y:SHIP.deckY,z:-27,rotation:0,moving:false};
     server.serializeAttachment({player,seq:-1,updatedAt:Date.now(),rateAt:Date.now(),tokens:8,credit:.65});
     this.send(server,{type:'welcome',protocol:PROTOCOL,you:id,players:this.players(),capacity:CAPACITY});
     this.broadcast({type:'join',player},server);

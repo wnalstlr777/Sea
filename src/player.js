@@ -4,7 +4,7 @@ import {NETWORK_TO_VISUAL_Y,VISUAL_DECK_Y} from './ship.js';
 import {createSurvivor,disposeSurvivor} from './survivor.js';
 
 export function createPlayer(scene,camera,controls,deckCollision){
-  const player=new THREE.Group();player.position.set(0,SHIP.deckY,-33);
+  const player=new THREE.Group();player.position.set(0,SHIP.deckY,-27);
   const characterId=Math.random()<.5?'hina':'daeun';
   player.userData.characterId=characterId;
   let avatar=createSurvivor(characterId),enabled=true,sitting=false,lying=false,bedAnchor=null;
@@ -39,7 +39,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // current Workers protocol only accepts y === SHIP.deckY.
   const jumpButton=document.createElement('button');jumpButton.id='jump-toggle';jumpButton.type='button';jumpButton.textContent='점프';jumpButton.setAttribute('aria-label','점프');document.querySelector('#app').append(jumpButton);
   const JUMP_SPEED=10.6,GRAVITY=13.5,HEAD_HEIGHT=2.95;
-  const WATER_SURFACE_Y=-1.35, RESPAWN_X=0, RESPAWN_Z=-33;
+  const WATER_SURFACE_Y=-1.35, RESPAWN_X=0, RESPAWN_Z=-27;
   let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
   let landingGrace=0;
   let fallVelocity=0,fallDriftX=0,fallDriftZ=0,fallAirborne=false;

@@ -73,7 +73,7 @@ const sail=createSail(ship);
 // Only the rendered hull rocks. The collision mesh stays motionless.
 let overviewSway=0;
 function updateOverviewSway(dt,seconds){
-  const active=overviewActive||(intro&&!introFinished&&intro.elapsed<2);
+  const active=overviewActive||(intro&&!introFinished&&intro.elapsed<3);
   const target=active?1:0;
   overviewSway+= (target-overviewSway)*(1-Math.exp(-Math.min(dt,.05)*2.2));
   const pivot=ship.userData.overviewDisplay;
@@ -110,9 +110,9 @@ function updateIntro(dt){
   if(introFinished||overviewActive)return;
   if(!intro){if(deckCollision.ready()&&character.isSpawnReady())beginIntro();return;}
   intro.elapsed+=dt;
-  if(intro.elapsed>=5){finishIntro();return;}
+  if(intro.elapsed>=7.5){finishIntro();return;}
   const pose=character.deckViewPose();
-  const t=Math.max(0,Math.min(1,(intro.elapsed-2)/3));
+  const t=Math.max(0,Math.min(1,(intro.elapsed-3)/4.5));
   const eased=t*t*(3-2*t);
   camera.position.copy(intro.fromPosition).lerp(pose.position,eased);
   controls.target.copy(intro.fromTarget).lerp(pose.target,eased);
@@ -187,6 +187,6 @@ renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.m
 nearbyBed=null;
 if(!overviewActive&&!character.isLying())for(const bed of sunbeds.beds){if(Math.hypot(character.player.position.x-bed.position.x,character.player.position.z-bed.position.z)<1.6){nearbyBed=bed;break;}}
 lieButton.style.display='none';
-camera.updateMatrixWorld();if(nearbyBed){bedProjection.copy(nearbyBed.position).add(new THREE.Vector3(0,2.2,0)).project(camera);if(bedProjection.z>0&&bedProjection.z<1){lieButton.style.left=`${(bedProjection.x*.5+.5)*innerWidth}px`;lieButton.style.top=`${(-bedProjection.y*.5+.5)*innerHeight}px`;lieButton.style.display='block';}}camera.updateMatrixWorld();multiplayer.update(dt);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
+camera.updateMatrixWorld();if(nearbyBed){bedProjection.copy(nearbyBed.position).add(new THREE.Vector3(0,2.2,0)).project(camera);if(bedProjection.z>0&&bedProjection.z<1){lieButton.style.left=`${(bedProjection.x*.5+.5)*innerWidth}px`;lieButton.style.top=`${(-bedProjection.y*.5+.5)*innerHeight}px`;lieButton.style.display='block';}}camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
 // Read-only diagnostics for smoke checks and performance inspection.
 window.oceanCruise={renderer,scene,camera,controls,ship,player:character.player,lighting,params,uniforms:ocean.uniforms};
