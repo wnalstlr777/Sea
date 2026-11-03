@@ -294,7 +294,9 @@ export function createPlayer(scene,camera,controls,deckCollision){
     updateLie(dt);
     if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose,overboard);return;}
     if(deckCollision.ready()&&!spawnValidated){
-      const safe=deckCollision.safeSpot(player.position.x,player.position.z);
+      const safe=deckCollision.safeSpot(player.position.x,player.position.z)
+        ||deckCollision.safeSpot(0,-33)
+        ||deckCollision.safeSpot(0,-24);
       if(safe){
         player.position.x=safe.x;player.position.z=safe.z;
         lastFloorY=safe.y;spawnValidated=true;resetView();
