@@ -16,6 +16,7 @@ import {createMarineLife} from './marine-life.js';
 import {createSunbeds} from './sunbeds.js';
 import {createJellyfish} from './jellyfish.js';
 import {createEmoteWheel} from './emote-wheel.js';
+import {createFireworks} from './fireworks.js';
 
 const app=document.querySelector('#app');
 // Touch-capable tablets may report a fine primary pointer when a trackpad is connected.
@@ -72,6 +73,7 @@ const marineLife=createMarineLife(scene,camera,seaAudio);
 const horn=createShipHorn();
 const ship=createShip();scene.add(ship);
 const sail=createSail(ship);
+const fireworks=createFireworks(scene,VISUAL_DECK_Y);
 // Soft, visual-only 4000K marine searchlight. No actual lights or shadows.
 // Nested feathered volumes avoid the hard silhouette and pointed tip of ConeGeometry.
 const bowBeam=new THREE.Group();
@@ -276,7 +278,7 @@ function updateLoadingCover(){
     loadingCover.addEventListener('transitionend',()=>loadingCover.remove(),{once:true});
   }
 }
-renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;updateSkyCycle(wallDt);naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();updateIntro(dt);updateLoadingCover();updateOverviewSway(dt,naturalTime);updateBowBeam(dt);sail.update(naturalTime);
+renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;updateSkyCycle(wallDt);naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);fireworks.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();updateIntro(dt);updateLoadingCover();updateOverviewSway(dt,naturalTime);updateBowBeam(dt);sail.update(naturalTime);
 nearbyBed=null;
 if(!overviewActive&&!character.isLying())for(const bed of sunbeds.beds){if(Math.hypot(character.player.position.x-bed.position.x,character.player.position.z-bed.position.z)<1.6){nearbyBed=bed;break;}}
 lieButton.style.display='none';
