@@ -274,7 +274,10 @@ export function createPlayer(scene,camera,controls,deckCollision){
       }
       const near=Math.hypot(headSupport.position.x-player.position.x,headSupport.position.z-player.position.z)<.7;
       if(!headSupport.parent||!headSupport.userData.headPlatformEnabled||!near){
-        headSupport=null;jumpVelocity=-.01;
+        // Preserve the current height and begin a real fall when the supporting
+        // player leaves, lies down, swims, or moves out of reach.
+        headSupport=null;
+        jumpVelocity=Math.min(jumpVelocity,-.01);
       }else{
         jumpHeight=headSupport.userData.headPlatformY-visualBaseY-(lastFloorY-VISUAL_DECK_Y);
         jumpVelocity=0;
