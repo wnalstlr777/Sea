@@ -167,7 +167,7 @@ for(const [x,label,target,color] of [
   [-3.5,'조종실',{x:0,z:-18.7,y:21.0},0x63d8e8],
   [3.5,'망루',{x:0,z:-21,y:70.9},0xffc568]
 ]){
-  const root=new THREE.Group();root.position.set(x,VISUAL_DECK_Y+.35,SHIP_CENTER_Z-2.9);
+  const root=new THREE.Group();root.position.set(x,VISUAL_DECK_Y+.35,SHIP_CENTER_Z+2.5);
   const plate=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,.3,24),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.28,roughness:.55}));
   plate.castShadow=false;root.add(plate);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.65,.055,6,28),new THREE.MeshBasicMaterial({color:0xffffff}));
