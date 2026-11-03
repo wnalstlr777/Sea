@@ -52,6 +52,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   const visualBaseY=SHIP.deckY+NETWORK_TO_VISUAL_Y;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
   let airborneFromEdge=false;
+  let previousFeetY=null;
   // Follow the supporting remote's interpolated transform, including rotation.
   const supportLastPosition=new THREE.Vector3();
   let supportLastYaw=0;
@@ -378,13 +379,16 @@ export function createPlayer(scene,camera,controls,deckCollision){
   function walkableFloor(x,z){
     if(headSupport)return null;
     const feetY=lastFloorY+jumpHeight;
-    const floor=deckCollision.floorAt(x,z,feetY+.22);
+    // Sweep from the previous foot height so fast falls cannot tunnel through a deck.
+    const rayStart=Math.max(feetY,previousFeetY??feetY)+.22;
+    const floor=deckCollision.floorAt(x,z,rayStart);
     if(floor===null)return null;
     // Never snap upwards or downwards onto a remote surface. Falling feet must
     // actually cross the floor plane before a new UCX platform is acquired.
     if(jumpHeight>.03||jumpVelocity!==0||airborneFromEdge){
       if(jumpVelocity>=0||feetY>floor+.28)return null;
-      jumpHeight=floor-lastFloorY;jumpVelocity=0;airborneFromEdge=false;
+      jumpHeight=0;jumpVelocity=0;airborneFromEdge=false;
+      previousFeetY=floor;
     }else if(Math.abs(floor-lastFloorY)>.45){
       // Leaving a high ledge begins a physical fall rather than a teleport.
       airborneFromEdge=true;jumpVelocity=-.01;return null;
@@ -395,6 +399,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   function update(dt){
     landingGrace=Math.max(0,landingGrace-Math.min(dt,.05));
     const flying=Boolean(launchFlight);
+    previousFeetY=lastFloorY+jumpHeight;
     updateJump(dt);
     updateLie(dt);
     if(flying){player.userData.moving=false;return;}
@@ -411,14 +416,12 @@ export function createPlayer(scene,camera,controls,deckCollision){
         window.__seaNoDeckWarning=true;
       }
     }
-    if(airborneFromEdge&&lastFloorY+jumpHeight<WATER_SURFACE_Y+.3){
-      startFall();airborneFromEdge=false;
-    }
     if(!overboard&&!returnFlight&&deckCollision.ready()&&spawnValidated&&!lying){
       const stationaryFloor=walkableFloor(player.position.x,player.position.z);
       if(stationaryFloor!==null){lastFloorY=stationaryFloor;}
       else if(landingGrace<=0&&!headSupport&&!airborneFromEdge&&jumpHeight<=.03&&jumpVelocity===0){startFall();}
     }
+    if(airborneFromEdge&&!overboard&&lastFloorY+jumpHeight<WATER_SURFACE_Y+.3){startFall();airborneFromEdge=false;}
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
     if((!spawnValidated&&deckCollision.ready())||returnFlight||(!x&&!z)){
