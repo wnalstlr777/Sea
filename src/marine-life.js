@@ -31,9 +31,9 @@ export function createMarineLife(scene,camera,audio){
   const spout=new THREE.Points(spoutGeometry,new THREE.PointsMaterial({color:'#b8eaff',size:3.5,transparent:true,opacity:.65,depthWrite:false}));
   spout.frustumCulled=false;spout.visible=false;group.add(spout);
   const origin=new THREE.Vector3(),direction=new THREE.Vector3(),right=new THREE.Vector3();
-  let next=12,age=-1,current=null,encounters=0,didSplash=false;
+  let next=12,age=-1,current=null,encounters=0,didSplash=false,didSpout=false;
   function start(){
-    current=encounters++%3===2?whale:dolphin;current.root.visible=true;age=0;didSplash=false;
+    current=encounters++%3===2?whale:dolphin;current.root.visible=true;age=0;didSplash=false;didSpout=false;
     camera.getWorldDirection(direction);direction.y=0;direction.normalize();right.crossVectors(direction,THREE.Object3D.DEFAULT_UP).normalize();
     // Beyond the bow, to either side, within the current viewing direction.
     const side=Math.random()<.5?-1:1;
@@ -58,6 +58,7 @@ export function createMarineLife(scene,camera,audio){
     // A brief breath near the top of the whale's surfacing arc.
     const breath=isWhale?(age-duration*.37):-1;
     spout.visible=isWhale&&breath>=0&&breath<2.2;
+    if(spout.visible&&!didSpout){didSpout=true;audio.whaleSpout();}
     if(spout.visible){
       // The whale's nose is at local -Z, scaled by ten.
       spout.position.copy(current.root.position);
