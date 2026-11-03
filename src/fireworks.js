@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
-// Lightweight local-only firework: a rising spark, then a colorful burst.
-export function createFireworks(scene,character){
+// Shared firework visuals: each client renders the same launch event locally.
+export function createFireworks(scene,character,onLaunch){
   const button=document.createElement('button');
   button.id='fireworks-toggle';
   button.type='button';
@@ -55,40 +55,54 @@ export function createFireworks(scene,character){
     sound(130,.36,.13,'triangle',.2);
     sound(65,.48,.1,'sawtooth',.25);
   }
-  let pending=null;
-  function launch(){
-    if(active.length>=5||pending)return;
-    // Pose first, hold the raised hand, then show an ignition glow.
-    character.launchFireworkPose();
-    const color=new THREE.Color(colors[Math.floor(Math.random()*colors.length)]);
+  const pending=[];
+  function queueLaunch(colorIndex,getHandPosition){
+    const color=new THREE.Color(colors[colorIndex]);
     const glow=new THREE.Mesh(
       new THREE.SphereGeometry(.32,10,8),
       new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending})
     );
     glow.visible=false;
     effects.add(glow);
-    pending={age:0,glow,color};
+    pending.push({age:0,glow,color,getHandPosition});
+  }
+  function launch(){
+    if(active.length>=12||pending.some(p=>p.local))return;
+    const colorIndex=Math.floor(Math.random()*colors.length);
+    character.launchFireworkPose();
+    queueLaunch(colorIndex,()=>character.getFireworkHandPosition());
+    pending[pending.length-1].local=true;
+    onLaunch?.(colorIndex);
+  }
+  function launchRemote(colorIndex,remote){
+    if(!Number.isInteger(colorIndex)||colorIndex<0||colorIndex>=colors.length)return;
+    if(active.length+pending.length>=24)return;
+    remote.avatar.fireworkPose();
+    queueLaunch(colorIndex,()=>{
+      remote.root.updateWorldMatrix(true,true);
+      return remote.avatar.rightHandWorldPosition();
+    });
   }
   button.addEventListener('click',launch);
   function update(dt){
     dt=Math.min(dt,.05);
-    if(pending){
-      pending.age+=dt;
-      // Raise for 0.45s, glow in the hand for 0.55s, then launch.
-      if(pending.age>=.45){
-        pending.glow.visible=true;
-        pending.glow.position.copy(character.getFireworkHandPosition());
-        const pulse=1+Math.sin(pending.age*27)*.18;
-        pending.glow.scale.setScalar(pulse);
+    for(let i=pending.length-1;i>=0;i--){
+      const effect=pending[i];
+      effect.age+=dt;
+      // Every player sees the same hand raise, ignition and launch sequence.
+      if(effect.age>=.45){
+        effect.glow.visible=true;
+        effect.glow.position.copy(effect.getHandPosition());
+        effect.glow.scale.setScalar(1+Math.sin(effect.age*27)*.18);
       }
-      if(pending.age>=1){
-        const position=character.getFireworkHandPosition();
-        const rocket=new THREE.Mesh(new THREE.SphereGeometry(.28,6,6),new THREE.MeshBasicMaterial({color:pending.color}));
+      if(effect.age>=1){
+        const position=effect.getHandPosition();
+        const rocket=new THREE.Mesh(new THREE.SphereGeometry(.28,6,6),new THREE.MeshBasicMaterial({color:effect.color}));
         rocket.position.copy(position);effects.add(rocket);
-        active.push({rocket,color:pending.color,age:0,burst:false,particles:null,velocities:null});
-        effects.remove(pending.glow);
-        pending.glow.geometry.dispose();pending.glow.material.dispose();
-        pending=null;
+        active.push({rocket,color:effect.color,age:0,burst:false,particles:null,velocities:null});
+        effects.remove(effect.glow);
+        effect.glow.geometry.dispose();effect.glow.material.dispose();
+        pending.splice(i,1);
         sound(440,.9,.07,'sawtooth',3.5);
       }
     }
@@ -120,5 +134,5 @@ export function createFireworks(scene,character){
       }
     }
   }
-  return {update};
+  return {update,launchRemote};
 }

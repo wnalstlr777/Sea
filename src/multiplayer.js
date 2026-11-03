@@ -9,6 +9,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   panel.append(status,retry);document.querySelector('#app').append(panel);
   const names=document.createElement('div');names.className='player-names';document.querySelector('#app').append(names);
   const projected=new THREE.Vector3(),remotes=new Map();
+  let fireworkHandler=null;
   const EMOTES=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
   const lieQuat=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2)
     .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI));
@@ -63,6 +64,10 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       if(packet.type==='join'){add(packet.player);occupancy();}
       if(packet.type==='state')receive(packet.player);
       if(packet.type==='emote'&&EMOTES.includes(packet.icon)){const remote=remotes.get(packet.id);if(remote){remote.emoteLabel.textContent=packet.icon;remote.emoteUntil=performance.now()+3000;}}
+      if(packet.type==='firework'&&Number.isInteger(packet.color)&&packet.color>=0&&packet.color<5){
+        const remote=remotes.get(packet.id);
+        if(remote)fireworkHandler?.(packet.color,remote);
+      }
       if(packet.type==='leave'){remove(packet.id);occupancy();}
       if(packet.type==='correction'){setLocal(packet.player);lastSent=null;}
     };
@@ -128,5 +133,8 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   addEventListener('pagehide',()=>{stopped=true;clearTimeout(retryTimer);retryTimer=null;socket?.close(1000,'Leaving');});
   addEventListener('pageshow',event=>{if(event.persisted&&url){stopped=false;socket=null;connect();}});
   addEventListener('online',()=>{if(url&&!ready&&!blocked){clearTimeout(retryTimer);retryTimer=null;connect();}});
-  return {update,sendEmote(icon){if(ready&&socket?.readyState===WebSocket.OPEN&&EMOTES.includes(icon))socket.send(JSON.stringify({type:'emote',icon}));},dispose(){stopped=true;clearTimeout(retryTimer);clearInterval(sendTimer);clearInterval(heartbeat);socket?.close(1000);clear();panel.remove();names.remove();}};
+  return {update,
+    onFirework(handler){fireworkHandler=handler;},
+    sendFirework(color){if(ready&&socket?.readyState===WebSocket.OPEN&&Number.isInteger(color)&&color>=0&&color<5)socket.send(JSON.stringify({type:'firework',color}));},
+    sendEmote(icon){if(ready&&socket?.readyState===WebSocket.OPEN&&EMOTES.includes(icon))socket.send(JSON.stringify({type:'emote',icon}));},dispose(){stopped=true;clearTimeout(retryTimer);clearInterval(sendTimer);clearInterval(heartbeat);socket?.close(1000);clear();panel.remove();names.remove();}};
 }
