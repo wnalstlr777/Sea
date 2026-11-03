@@ -51,6 +51,9 @@ export function createPlayer(scene,camera,controls,deckCollision){
   let lastFloorY=VISUAL_DECK_Y,spawnValidated=false;
   const visualBaseY=SHIP.deckY+NETWORK_TO_VISUAL_Y;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
+  // Follow the supporting remote's interpolated transform, including rotation.
+  const supportLastPosition=new THREE.Vector3();
+  let supportLastYaw=0;
   let lieTransition=null;
   const LIE_DURATION=1.6;
   // Character local +Y (head) -> bed +Z (backrest); local +Z (face) -> world +Y (sky).
@@ -247,13 +250,28 @@ export function createPlayer(scene,camera,controls,deckCollision){
           const platformHeight=headY-visualBaseY-groundOffset;
           if(before>=platformHeight-.12&&jumpHeight<=platformHeight&&
              Math.hypot(remote.position.x-player.position.x,remote.position.z-player.position.z)<.62){
-            jumpHeight=platformHeight;jumpVelocity=0;headSupport=remote;break;
+            jumpHeight=platformHeight;jumpVelocity=0;headSupport=remote;
+            supportLastPosition.copy(remote.position);supportLastYaw=remote.rotation.y;
+            break;
           }
         }
       }
       if(jumpHeight<=0){jumpHeight=0;jumpVelocity=0;headSupport=null;}
     }
     if(headSupport){
+      // Carry the passenger along with the base, rather than letting its
+      // horizontal separation invalidate the head collision on the next frame.
+      if(headSupport.parent&&headSupport.userData.headPlatformEnabled){
+        const yaw=headSupport.rotation.y-supportLastYaw;
+        const dx=player.position.x-supportLastPosition.x,dz=player.position.z-supportLastPosition.z;
+        const cos=Math.cos(yaw),sin=Math.sin(yaw);
+        const nextX=headSupport.position.x+dx*cos+dz*sin;
+        const nextZ=headSupport.position.z-dx*sin+dz*cos;
+        const moveX=nextX-player.position.x,moveZ=nextZ-player.position.z;
+        player.position.x=nextX;player.position.z=nextZ;player.rotation.y+=yaw;
+        if(enabled){camera.position.x+=moveX;controls.target.x+=moveX;camera.position.z+=moveZ;controls.target.z+=moveZ;}
+        supportLastPosition.copy(headSupport.position);supportLastYaw=headSupport.rotation.y;
+      }
       const near=Math.hypot(headSupport.position.x-player.position.x,headSupport.position.z-player.position.z)<.7;
       if(!headSupport.parent||!headSupport.userData.headPlatformEnabled||!near){
         headSupport=null;jumpVelocity=-.01;
@@ -347,7 +365,9 @@ export function createPlayer(scene,camera,controls,deckCollision){
     }
     if(lying)standUp();
     if(sitting)setSitting(false);
-    if(headSupport){headSupport=null;jumpVelocity=-.01;}
+    // Riding passengers stay upright and travel with their support. Jump
+    // remains available to leave the tower or climb to the next level.
+    if(headSupport){player.userData.moving=false;avatar.update(dt,false,sitting,jumpPose,overboard);return;}
     camera.getWorldDirection(forward);forward.y=0;forward.normalize();right.crossVectors(forward,THREE.Object3D.DEFAULT_UP).normalize();movement.copy(forward).multiplyScalar(z).addScaledVector(right,x);if(movement.length()>1)movement.normalize();movement.multiplyScalar(5.25*dt);
     if(returnFlight){avatar.update(dt,false,false,jumpPose);return;}
     const previous=player.position.clone();
