@@ -28,10 +28,10 @@ export function createMultiplayer({scene,camera,controls,character,url}){
     if(state.id===self)return;
     if(remotes.has(state.id)){receive(state);return;}
     const look=appearanceForPlayer(state.id);const avatar=createSurvivor(look.model,look.hairColor),root=new THREE.Group();root.name=`remote-${state.id}`;
-    root.userData.playerId=state.id;avatar.mesh.rotation.y=Math.PI;avatar.mesh.position.y=NETWORK_TO_VISUAL_Y;root.add(avatar.mesh);scene.add(root);
+    root.userData.playerId=state.id;avatar.mesh.rotation.y=Math.PI;const motionPivot=new THREE.Group();motionPivot.position.y=NETWORK_TO_VISUAL_Y;motionPivot.add(avatar.mesh);root.add(motionPivot);scene.add(root);
     root.position.set(state.x,state.y,state.z);root.rotation.y=state.rotation;
     const emoteLabel=label('');emoteLabel.style.fontSize='34px';emoteLabel.style.background='transparent';emoteLabel.style.padding='0';
-    remotes.set(state.id,{root,avatar,label:label(state.nickname),emoteLabel,emoteUntil:0,jumpHeight:0,samples:[{...state,time:performance.now()}]});
+    remotes.set(state.id,{root,avatar,motionPivot,label:label(state.nickname),emoteLabel,emoteUntil:0,jumpHeight:0,samples:[{...state,time:performance.now()}]});
   }
   function receive(state){
     if(state.id===self)return;
@@ -89,7 +89,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       if(!ready||socket?.readyState!==WebSocket.OPEN||socket.bufferedAmount>4096)return;
       const p=character.player;
       const state={x:p.position.x,y:p.position.y,z:p.position.z,rotation:p.rotation.y,moving:!!p.userData.moving,...character.getNetworkState()};
-      if(lastSent&&Math.hypot(state.x-lastSent.x,state.z-lastSent.z)<.005&&Math.abs(Math.atan2(Math.sin(state.rotation-lastSent.rotation),Math.cos(state.rotation-lastSent.rotation)))<.005&&state.moving===lastSent.moving&&state.sitting===lastSent.sitting&&state.lying===lastSent.lying&&state.jump===lastSent.jump&&state.inWater===lastSent.inWater&&Math.abs(state.jumpHeight-lastSent.jumpHeight)<.06&&Math.abs(state.verticalOffset-lastSent.verticalOffset)<.04)return;
+      if(lastSent&&Math.hypot(state.x-lastSent.x,state.z-lastSent.z)<.005&&Math.abs(Math.atan2(Math.sin(state.rotation-lastSent.rotation),Math.cos(state.rotation-lastSent.rotation)))<.005&&state.moving===lastSent.moving&&state.sitting===lastSent.sitting&&state.lying===lastSent.lying&&state.jump===lastSent.jump&&state.inWater===lastSent.inWater&&state.returning===lastSent.returning&&Math.abs(state.jumpHeight-lastSent.jumpHeight)<.06&&Math.abs(state.verticalOffset-lastSent.verticalOffset)<.04)return;
       socket.send(JSON.stringify({type:'state',seq:seq++,...state}));lastSent=state;
     },100);
     heartbeat=setInterval(()=>{
@@ -112,10 +112,14 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       remote.root.position.set(THREE.MathUtils.lerp(a.x,b.x,alpha),THREE.MathUtils.lerp(a.y,b.y,alpha),THREE.MathUtils.lerp(a.z,b.z,alpha));
       remote.root.rotation.y=a.rotation+Math.atan2(Math.sin(b.rotation-a.rotation),Math.cos(b.rotation-a.rotation))*alpha;
       const state=alpha<.5?a:b;
-      remote.jumpHeight+=((Number.isFinite(state.verticalOffset)?state.verticalOffset:0)-remote.jumpHeight)*Math.min(1,dt*18);
-      if(state.lying){remote.avatar.mesh.position.set(0,NETWORK_TO_VISUAL_Y+.58,-1.08);remote.avatar.mesh.quaternion.copy(lieQuat);}
-      else{remote.avatar.mesh.position.set(0,NETWORK_TO_VISUAL_Y+remote.jumpHeight,0);remote.avatar.mesh.rotation.set(0,Math.PI,0);}
-      if(!state.lying)remote.avatar.update(dt,state.moving,!!state.sitting,!!state.jump?1:0,!!state.inWater);
+      const heightA=Number.isFinite(a.verticalOffset)?a.verticalOffset:0;
+      const heightB=Number.isFinite(b.verticalOffset)?b.verticalOffset:heightA;
+      const targetHeight=THREE.MathUtils.lerp(heightA,heightB,alpha);
+      remote.jumpHeight+=(targetHeight-remote.jumpHeight)*Math.min(1,dt*24);
+      remote.motionPivot.position.y=NETWORK_TO_VISUAL_Y+(state.lying?0:remote.jumpHeight);
+      if(state.lying){remote.avatar.mesh.position.set(0,.58,-1.08);remote.avatar.mesh.quaternion.copy(lieQuat);}
+      else{remote.avatar.mesh.position.set(0,0,0);remote.avatar.mesh.rotation.set(0,Math.PI,0);}
+      if(!state.lying)remote.avatar.update(dt,state.moving,!!state.sitting,!!state.jump||!!state.returning?1:0,!!state.inWater);
       project(remote.label,remote.root.position);if(!showNames)remote.label.hidden=true;
       if(remote.emoteUntil>performance.now()){project(remote.emoteLabel,remote.root.position);remote.emoteLabel.style.top=`${parseFloat(remote.emoteLabel.style.top)-38}px`;if(!showNames)remote.emoteLabel.hidden=true;}else remote.emoteLabel.hidden=true;
     }
