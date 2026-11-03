@@ -5,7 +5,7 @@ export function createJellyfish(scene){
   const group=new THREE.Group();
   group.name='night-jellyfish-schools';
   scene.add(group);
-  const count=42, perSchool=14;
+  const count=48, perSchool=14;
   const geometry=new THREE.PlaneGeometry(3.2,3.2);
   const phases=new Float32Array(count);
   const fades=new Float32Array(count);
@@ -79,14 +79,33 @@ export function createJellyfish(scene){
   group.add(mesh);
   const dummy=new THREE.Object3D();
   const centers=[[-19,-24],[20,-10],[-15,14]];
+  // Six extra glowing jellyfish drift through the water between the overview camera and ship.
+  const foregroundCount=6;
+  let foregroundBlend=0;
   const smooth=(a,b,x)=>{const t=THREE.MathUtils.clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
   let time=0;
-  return {group,update(dt,hour){
-    time+=Math.min(dt,.1);
+  return {group,update(dt,hour,overview=false){
+    const step=Math.min(dt,.1);
+    time+=step;
+    foregroundBlend=THREE.MathUtils.damp(foregroundBlend,overview?1:0,1.4,step);
     material.uniforms.uTime.value=time;
     const h=((hour%24)+24)%24;
     const night=h>=18?smooth(18,20,h):h<7?1-smooth(5,7,h):0;
     for(let i=0;i<count;i++){
+      if(i>=count-foregroundCount){
+        const j=i-(count-foregroundCount);
+        const phase=phases[i];
+        const x=65+(j%3)*9+Math.sin(time*.10+phase)*4;
+        const z=-38+Math.floor(j/3)*28+Math.cos(time*.08+phase)*5;
+        const y=1.72+Math.sin(time*.45+phase)*.18;
+        dummy.position.set(x,y,z);
+        dummy.rotation.set(-Math.PI/2,0,0);
+        const size=sizes[i]*(1+.06*Math.sin(time*.9+phase));
+        dummy.scale.set(size,size,size);
+        dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);
+        fades[i]=night*foregroundBlend*(.55+.45*Math.sin(time*.35+phase)**2);
+        continue;
+      }
       const school=Math.floor(i/perSchool);
       const index=i%perSchool;
       const phase=phases[i];
