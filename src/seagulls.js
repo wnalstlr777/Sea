@@ -25,7 +25,7 @@ export function createSeagulls(scene,camera,audio){
   }
   let time=0,callIn=0,foregroundBlend=0;
   // A few existing birds pass between the overview camera and the ship.
-  const foregroundBirds=birds.slice(0,3);
+  const foregroundBirds=birds.slice(0,2);
   const projected=new THREE.Vector3();
   function update(dt,overview=false){
     const step=Math.min(dt,.2);
@@ -37,9 +37,9 @@ export function createSeagulls(scene,camera,audio){
       if(foregroundBlend>.001&&foregroundBirds.includes(bird)){
         const index=foregroundBirds.indexOf(bird);
         const direction=index===1?-1:1;
-        const travel=(time*(7+index*1.5)+index*47)%220;
+        const travel=(time*(1.8+index*.4)+index*47)%220;
         const foregroundX=65+index*12+Math.sin(time*.11+index)*9;
-        const foregroundY=13+index*5+Math.sin(time*.7+index)*2;
+        const foregroundY=23+index*5+Math.sin(time*.35+index)*1.5;
         const foregroundZ=direction*(travel-110)-25;
         bird.root.position.lerp(new THREE.Vector3(foregroundX,foregroundY,foregroundZ),foregroundBlend);
         bird.root.rotation.y=direction>0?Math.PI:0;
