@@ -124,11 +124,14 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       remote.motionPivot.position.y=NETWORK_TO_VISUAL_Y+(state.lying?0:remote.jumpHeight);
       // Invisible one-way head collider, updated from the interpolated avatar height.
       // Swimming, lying and returning players cannot act as head platforms.
-      remote.root.userData.headPlatformEnabled=!state.lying&&!state.inWater&&!state.returning;
-      remote.root.userData.headPlatformY=remote.root.position.y+remote.motionPivot.position.y+2.95;
+
       if(state.lying){remote.avatar.mesh.position.set(0,.58,-1.08);remote.avatar.mesh.quaternion.copy(lieQuat);}
       else{remote.avatar.mesh.position.set(0,0,0);remote.avatar.mesh.rotation.set(0,Math.PI,0);}
       if(!state.lying)remote.avatar.update(dt,state.moving,!!state.sitting,!!state.jump||!!state.returning?1:0,!!state.inWater);
+      // Follow the actual animated head height: seated heads sit lower, and
+      // the verticalOffset already includes any supporting player beneath.
+      remote.root.userData.headPlatformEnabled=!state.lying&&!state.inWater&&!state.returning;
+      remote.root.userData.headPlatformY=remote.root.position.y+remote.motionPivot.position.y+remote.avatar.mesh.position.y+2.95;
       project(remote.label,remote.root.position);if(!showNames)remote.label.hidden=true;
       if(remote.emoteUntil>performance.now()){project(remote.emoteLabel,remote.root.position);remote.emoteLabel.style.top=`${parseFloat(remote.emoteLabel.style.top)-38}px`;if(!showNames)remote.emoteLabel.hidden=true;}else remote.emoteLabel.hidden=true;
     }
