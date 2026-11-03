@@ -160,14 +160,14 @@ const deckCollision=createDeckCollision(ship);
 const sunbeds=createSunbeds(scene);
 const jellyfish=createJellyfish(scene);
 const character=createPlayer(scene,camera,controls,deckCollision);
-// Step-on launch pads behind the sunbeds. Targets are UCX_Bottom04 (cabin)
+// Step-on launch pads behind the sunbeds. Targets are UCX_Bottom05 (cabin roof)
 // and UCX_Bottom06 (mast lookout) from the supplied Ship.glb.
 const launchPads=[];
 for(const [x,label,target,color] of [
-  [-3.5,'조종실',{x:0,z:-42.4,y:15.3},0x63d8e8],
+  [-3.5,'조종실',{x:0,z:-18.7,y:21.0},0x63d8e8],
   [3.5,'망루',{x:0,z:-21,y:70.9},0xffc568]
 ]){
-  const root=new THREE.Group();root.position.set(x,VISUAL_DECK_Y+.12,SHIP_CENTER_Z-9.2);
+  const root=new THREE.Group();root.position.set(x,VISUAL_DECK_Y+.12,SHIP_CENTER_Z-2.9);
   const plate=new THREE.Mesh(new THREE.CylinderGeometry(.85,.85,.22,24),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.28,roughness:.55}));
   plate.castShadow=false;root.add(plate);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.65,.055,6,28),new THREE.MeshBasicMaterial({color:0xffffff}));
