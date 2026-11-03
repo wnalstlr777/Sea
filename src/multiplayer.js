@@ -10,6 +10,8 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   const names=document.createElement('div');names.className='player-names';document.querySelector('#app').append(names);
   const projected=new THREE.Vector3(),remotes=new Map();
   const EMOTES=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
+  const lieQuat=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2)
+    .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI));
   let socket=null,self=null,localLabel=null,ready=false,stopped=false,blocked=false,retryTimer=null,attempt=0,lastSent=null,lastHeard=0,seq=0;
   function message(text,canRetry=false){status.textContent=text;retry.hidden=!canRetry;}
   function label(name){const element=document.createElement('span');element.className='player-name';element.hidden=true;element.textContent=name;names.append(element);return element;}
@@ -87,7 +89,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       if(!ready||socket?.readyState!==WebSocket.OPEN||socket.bufferedAmount>4096)return;
       const p=character.player;
       const state={x:p.position.x,y:p.position.y,z:p.position.z,rotation:p.rotation.y,moving:!!p.userData.moving,...character.getNetworkState()};
-      if(lastSent&&Math.hypot(state.x-lastSent.x,state.z-lastSent.z)<.005&&Math.abs(Math.atan2(Math.sin(state.rotation-lastSent.rotation),Math.cos(state.rotation-lastSent.rotation)))<.005&&state.moving===lastSent.moving&&state.sitting===lastSent.sitting&&state.lying===lastSent.lying&&state.jump===lastSent.jump&&state.inWater===lastSent.inWater&&Math.abs(state.jumpHeight-lastSent.jumpHeight)<.06)return;
+      if(lastSent&&Math.hypot(state.x-lastSent.x,state.z-lastSent.z)<.005&&Math.abs(Math.atan2(Math.sin(state.rotation-lastSent.rotation),Math.cos(state.rotation-lastSent.rotation)))<.005&&state.moving===lastSent.moving&&state.sitting===lastSent.sitting&&state.lying===lastSent.lying&&state.jump===lastSent.jump&&state.inWater===lastSent.inWater&&Math.abs(state.jumpHeight-lastSent.jumpHeight)<.06&&Math.abs(state.verticalOffset-lastSent.verticalOffset)<.04)return;
       socket.send(JSON.stringify({type:'state',seq:seq++,...state}));lastSent=state;
     },100);
     heartbeat=setInterval(()=>{
@@ -110,10 +112,10 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       remote.root.position.set(THREE.MathUtils.lerp(a.x,b.x,alpha),THREE.MathUtils.lerp(a.y,b.y,alpha),THREE.MathUtils.lerp(a.z,b.z,alpha));
       remote.root.rotation.y=a.rotation+Math.atan2(Math.sin(b.rotation-a.rotation),Math.cos(b.rotation-a.rotation))*alpha;
       const state=alpha<.5?a:b;
-      remote.jumpHeight+=(Math.max(0,state.jumpHeight||0)-remote.jumpHeight)*Math.min(1,dt*18);
-      remote.avatar.mesh.position.y=NETWORK_TO_VISUAL_Y+remote.jumpHeight;
-      if(state.lying){remote.avatar.mesh.position.set(0,NETWORK_TO_VISUAL_Y+.58,-1.08);remote.avatar.mesh.rotation.set(-Math.PI/2,Math.PI,0);}else remote.avatar.mesh.rotation.set(0,Math.PI,0);
-      remote.avatar.update(dt,state.moving&&!state.lying,!!state.sitting,remote.jumpHeight>.05?1:0,!!state.inWater);
+      remote.jumpHeight+=((Number.isFinite(state.verticalOffset)?state.verticalOffset:0)-remote.jumpHeight)*Math.min(1,dt*18);
+      if(state.lying){remote.avatar.mesh.position.set(0,NETWORK_TO_VISUAL_Y+.58,-1.08);remote.avatar.mesh.quaternion.copy(lieQuat);}
+      else{remote.avatar.mesh.position.set(0,NETWORK_TO_VISUAL_Y+remote.jumpHeight,0);remote.avatar.mesh.rotation.set(0,Math.PI,0);}
+      if(!state.lying)remote.avatar.update(dt,state.moving,!!state.sitting,!!state.jump?1:0,!!state.inWater);
       project(remote.label,remote.root.position);if(!showNames)remote.label.hidden=true;
       if(remote.emoteUntil>performance.now()){project(remote.emoteLabel,remote.root.position);remote.emoteLabel.style.top=`${parseFloat(remote.emoteLabel.style.top)-38}px`;if(!showNames)remote.emoteLabel.hidden=true;}else remote.emoteLabel.hidden=true;
     }
