@@ -93,7 +93,6 @@ export function createFireworks(scene,character){
       }
     }
 
-    dt=Math.min(dt,.05);
     for(let i=active.length-1;i>=0;i--){
       const effect=active[i];
       effect.age+=dt;
