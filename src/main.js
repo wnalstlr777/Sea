@@ -72,6 +72,25 @@ const marineLife=createMarineLife(scene,camera,seaAudio);
 const horn=createShipHorn();
 const ship=createShip();scene.add(ship);
 const sail=createSail(ship);
+// Lightweight visual-only bow beam for the night overview (no actual light/shadows).
+const bowBeam=new THREE.Mesh(
+  new THREE.ConeGeometry(8,28,24,1,true),
+  new THREE.MeshBasicMaterial({color:0xffd78a,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending})
+);
+bowBeam.name='night-bow-beam';
+bowBeam.rotation.x=Math.PI/2;
+bowBeam.position.set(0,VISUAL_DECK_Y-6,-57);
+bowBeam.renderOrder=4;
+bowBeam.visible=false;
+scene.add(bowBeam);
+function updateBowBeam(dt){
+  const hour=params.hour;
+  const night=1-THREE.MathUtils.smoothstep(Math.min(hour,24-hour),4.5,6.5);
+  const target=overviewActive?night*.17:0;
+  bowBeam.material.opacity+=(target-bowBeam.material.opacity)*(1-Math.exp(-dt*2.5));
+  bowBeam.visible=bowBeam.material.opacity>.002;
+}
+
 // Only the rendered hull rocks. The collision mesh stays motionless.
 let overviewSway=0;
 function updateOverviewSway(dt,seconds){
@@ -204,7 +223,7 @@ function updateLoadingCover(){
     loadingCover.addEventListener('transitionend',()=>loadingCover.remove(),{once:true});
   }
 }
-renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;updateSkyCycle(wallDt);naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();updateIntro(dt);updateLoadingCover();updateOverviewSway(dt,naturalTime);sail.update(naturalTime);
+renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;updateSkyCycle(wallDt);naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt);marineLife.update(wallDt);jellyfish.update(dt,params.hour);horn.update(wallDt);character.update(dt);controls.update();updateIntro(dt);updateLoadingCover();updateOverviewSway(dt,naturalTime);updateBowBeam(dt);sail.update(naturalTime);
 nearbyBed=null;
 if(!overviewActive&&!character.isLying())for(const bed of sunbeds.beds){if(Math.hypot(character.player.position.x-bed.position.x,character.player.position.z-bed.position.z)<1.6){nearbyBed=bed;break;}}
 lieButton.style.display='none';
