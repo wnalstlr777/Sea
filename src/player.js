@@ -201,11 +201,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
     jump();
   }, {capture:true});
   function updateJump(dt){
-    if(!enabled&&!overboard&&!returnFlight){
-      jumpHeight=0;jumpVelocity=0;jumpPose=0;headSupport=null;
-      jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lastFloorY-VISUAL_DECK_Y);
-      return;
-    }
+    // Overview disables controls, not physics. Keep head support and the
+    // vertical network offset alive so human towers remain in photos.
     const step=Math.min(dt,.05);
     if(updateReturnFlight(step))return;
     if(overboard){
