@@ -160,7 +160,7 @@ const deckCollision=createDeckCollision(ship);
 const sunbeds=createSunbeds(scene);
 const jellyfish=createJellyfish(scene);
 const character=createPlayer(scene,camera,controls,deckCollision);
-const fireworks=createFireworks(scene,character);
+const fireworks=createFireworks(scene,character,color=>multiplayer.sendFirework(color));
 // Start the side-profile intro only after the UCX ship and player spawn are ready.
 // Camera motion is owned by this one state machine, not competing frame handlers.
 const introSide=new THREE.Vector3(),introTarget=new THREE.Vector3(0,VISUAL_DECK_Y-5,SHIP_CENTER_Z);
@@ -197,6 +197,7 @@ const lieButton=document.createElement('button');lieButton.id='sunbed-interact';
 let nearbyBed=null;const bedProjection=new THREE.Vector3();
 lieButton.onclick=()=>{if(nearbyBed&&!character.isLying())character.lieOn(nearbyBed.anchor);lieButton.style.display='none';};
 const multiplayer=createMultiplayer({scene,camera,controls,character,url:import.meta.env.VITE_MULTIPLAYER_URL?.trim()});
+multiplayer.onFirework((color,remote)=>fireworks.launchRemote(color,remote));
 const emotes=createEmoteWheel({scene,camera,renderer,controls,player:character.player,isAvailable:()=>introFinished&&!overviewActive,onChoose:icon=>multiplayer.sendEmote(icon)});
 controls.maxDistance=320;
 if(new URLSearchParams(location.search).get('view')==='ocean'){introFinished=true;setView(true);}
