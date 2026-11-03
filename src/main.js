@@ -15,6 +15,7 @@ import {createSeaAudio} from './sea-audio.js';
 import {createMarineLife} from './marine-life.js';
 import {createSunbeds} from './sunbeds.js';
 import {createJellyfish} from './jellyfish.js';
+import {createEmoteWheel} from './emote-wheel.js';
 
 const app=document.querySelector('#app');
 // Cover the initial unpositioned camera until the ship and player are ready.
@@ -37,11 +38,6 @@ const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.5,50000);camera.position.set(0,SHIP.deckY+NETWORK_TO_VISUAL_Y+2,-12);
 const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,SHIP.deckY+NETWORK_TO_VISUAL_Y+1.7,-33);controls.enableDamping=true;controls.enablePan=false;controls.minDistance=3;controls.maxDistance=320;controls.minPolarAngle=.15;controls.maxPolarAngle=Math.PI/2-.02;controls.update();
 let intro=null, introFinished=false, overviewActive=false;
-// Hide player names until the opening camera reaches the deck.
-const introNameStyle=document.createElement('style');
-introNameStyle.textContent='body.sea-intro .player-names,body.sea-intro .player-name{display:none!important}';
-document.head.append(introNameStyle);
-document.body.classList.add('sea-intro');
 // Shared opening/overview framing. Slightly wider than the previous overview.
 function overviewCameraPose(){
   const mobile=camera.aspect<.8;
@@ -49,7 +45,6 @@ function overviewCameraPose(){
 }
 function setView(overview){
   if(intro){intro=null;introFinished=true;}
-  document.body.classList.remove('sea-intro');
   overviewActive=overview;
   document.body.classList.toggle('sea-overview',overview);
   const button=document.querySelector('#camera-toggle');
@@ -78,7 +73,7 @@ const sail=createSail(ship);
 // Only the rendered hull rocks. The collision mesh stays motionless.
 let overviewSway=0;
 function updateOverviewSway(dt,seconds){
-  const active=overviewActive||(intro&&!introFinished&&intro.elapsed<3);
+  const active=overviewActive||(intro&&!introFinished&&intro.elapsed<2);
   const target=active?1:0;
   overviewSway+= (target-overviewSway)*(1-Math.exp(-Math.min(dt,.05)*2.2));
   const pivot=ship.userData.overviewDisplay;
@@ -108,7 +103,6 @@ function beginIntro(){
 }
 function finishIntro(){
   intro=null;introFinished=true;character.setEnabled(true);
-  document.body.classList.remove('sea-intro');
   const pose=character.deckViewPose();camera.position.copy(pose.position);
   controls.target.copy(pose.target);controls.update();
 }
@@ -116,9 +110,9 @@ function updateIntro(dt){
   if(introFinished||overviewActive)return;
   if(!intro){if(deckCollision.ready()&&character.isSpawnReady())beginIntro();return;}
   intro.elapsed+=dt;
-  if(intro.elapsed>=7.5){finishIntro();return;}
+  if(intro.elapsed>=5){finishIntro();return;}
   const pose=character.deckViewPose();
-  const t=Math.max(0,Math.min(1,(intro.elapsed-3)/4.5));
+  const t=Math.max(0,Math.min(1,(intro.elapsed-2)/3));
   const eased=t*t*(3-2*t);
   camera.position.copy(intro.fromPosition).lerp(pose.position,eased);
   controls.target.copy(intro.fromTarget).lerp(pose.target,eased);
@@ -134,6 +128,7 @@ const lieButton=document.createElement('button');lieButton.id='sunbed-interact';
 let nearbyBed=null;const bedProjection=new THREE.Vector3();
 lieButton.onclick=()=>{if(nearbyBed&&!character.isLying())character.lieOn(nearbyBed.anchor);lieButton.style.display='none';};
 const multiplayer=createMultiplayer({scene,camera,controls,character,url:import.meta.env.VITE_MULTIPLAYER_URL?.trim()});
+const emotes=createEmoteWheel({scene,camera,renderer,controls,player:character.player,isAvailable:()=>introFinished&&!overviewActive});
 controls.maxDistance=320;
 if(new URLSearchParams(location.search).get('view')==='ocean'){introFinished=true;setView(true);}
 const boatMotion=createBoatMotion(camera);
@@ -192,6 +187,6 @@ renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.m
 nearbyBed=null;
 if(!overviewActive&&!character.isLying())for(const bed of sunbeds.beds){if(Math.hypot(character.player.position.x-bed.position.x,character.player.position.z-bed.position.z)<1.6){nearbyBed=bed;break;}}
 lieButton.style.display='none';
-camera.updateMatrixWorld();if(nearbyBed){bedProjection.copy(nearbyBed.position).add(new THREE.Vector3(0,2.2,0)).project(camera);if(bedProjection.z>0&&bedProjection.z<1){lieButton.style.left=`${(bedProjection.x*.5+.5)*innerWidth}px`;lieButton.style.top=`${(-bedProjection.y*.5+.5)*innerHeight}px`;lieButton.style.display='block';}}camera.updateMatrixWorld();multiplayer.update(dt);lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
+camera.updateMatrixWorld();if(nearbyBed){bedProjection.copy(nearbyBed.position).add(new THREE.Vector3(0,2.2,0)).project(camera);if(bedProjection.z>0&&bedProjection.z<1){lieButton.style.left=`${(bedProjection.x*.5+.5)*innerWidth}px`;lieButton.style.top=`${(-bedProjection.y*.5+.5)*innerHeight}px`;lieButton.style.display='block';}}camera.updateMatrixWorld();multiplayer.update(dt);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
 // Read-only diagnostics for smoke checks and performance inspection.
 window.oceanCruise={renderer,scene,camera,controls,ship,player:character.player,lighting,params,uniforms:ocean.uniforms};
