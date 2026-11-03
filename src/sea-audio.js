@@ -68,7 +68,7 @@ export function createSeaAudio(button){
     if(enabled){step=0;nextNote=context.currentTime+.02;startScheduler();update();}
     else{clearInterval(scheduler);scheduler=null;for(const voice of voices){try{voice.stop();}catch{}}}
     musicBus.gain.setTargetAtTime(enabled?.38:0,context.currentTime,.08);
-    button.textContent=enabled?'♫':'♪';button.setAttribute('aria-pressed',String(enabled));
+    button.setAttribute('aria-pressed',String(enabled));button.setAttribute('aria-label',enabled?'음악 켜짐, 눌러서 끄기':'음악 꺼짐, 눌러서 켜기');button.title=enabled?'음악 끄기':'음악 켜기';
   });
   function update(){
     if(!context)return;
