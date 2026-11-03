@@ -52,6 +52,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   const visualBaseY=SHIP.deckY+NETWORK_TO_VISUAL_Y;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
   let airborneFromEdge=false;
+  const WALK_STEP_UP=1.25;
   let previousFeetY=null;
   // Follow the supporting remote's interpolated transform, including rotation.
   const supportLastPosition=new THREE.Vector3();
@@ -384,7 +385,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(headSupport)return null;
     const feetY=lastFloorY+jumpHeight;
     // Sweep from the previous foot height so fast falls cannot tunnel through a deck.
-    const rayStart=Math.max(feetY,previousFeetY??feetY)+.22;
+    const rayStart=Math.max(feetY,previousFeetY??feetY)+(jumpVelocity===0&&!airborneFromEdge?WALK_STEP_UP:.22);
     const floor=deckCollision.floorAt(x,z,rayStart);
     if(floor===null)return null;
     // Never snap upwards or downwards onto a remote surface. Falling feet must
@@ -393,7 +394,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       if(jumpVelocity>=0||feetY>floor+.28)return null;
       jumpHeight=0;jumpVelocity=0;airborneFromEdge=false;
       previousFeetY=floor;
-    }else if(Math.abs(floor-lastFloorY)>.45){
+    }else if(floor>lastFloorY+WALK_STEP_UP||floor<lastFloorY-1.1){
       // Leaving a high ledge begins a physical fall rather than a teleport.
       airborneFromEdge=true;jumpVelocity=-.01;return null;
     }
