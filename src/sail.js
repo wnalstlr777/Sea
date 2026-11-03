@@ -1,10 +1,8 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {createBowSearchlight} from './searchlight.js';
 
 // Red: fixed / blue: medium / yellow: strong. Vertex colors are masks, not albedo.
 export function createSail(ship, lighting){
-  const searchlight=createBowSearchlight(ship,lighting);
   const time={value:0};
   let root=null,overviewRoot=null;
   new GLTFLoader().load(`${import.meta.env.BASE_URL}models/Ship_Sail.glb`,gltf=>{
@@ -61,7 +59,6 @@ transformed+=normalize(normal)*displacement;`);
   },undefined,error=>console.error('[Sea] Ship_Sail.glb loading failed:',error));
   return {update(t,dt=1/60){
     time.value=t;
-    searchlight.update(dt);
     const overview=ship.userData.overviewDisplay?.visible??false;
     if(root)root.visible=!overview;
     if(overviewRoot)overviewRoot.visible=overview;
