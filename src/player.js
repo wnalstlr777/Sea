@@ -38,7 +38,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // Client-side jump: keep the networked root at deck height because the
   // current Workers protocol only accepts y === SHIP.deckY.
   const jumpButton=document.createElement('button');jumpButton.id='jump-toggle';jumpButton.type='button';jumpButton.textContent='점프';jumpButton.setAttribute('aria-label','점프');document.querySelector('#app').append(jumpButton);
-  const JUMP_SPEED=10.6,GRAVITY=13.5,HEAD_HEIGHT=2.95;
+  // Keep launch velocity; 1.5x gravity shortens airtime to 2/3 and peak height to 2/3.
+  const JUMP_SPEED=10.6,GRAVITY=20.25,HEAD_HEIGHT=2.95;
   const WATER_SURFACE_Y=-1.35, RESPAWN_X=0, RESPAWN_Z=-27;
   let overboard=false, fallOffset=0, waterTime=0, returnFlight=null;
   let landingGrace=0;
@@ -163,7 +164,20 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(lying)standUp();if(sitting)setSitting(false);
     headSupport=null;jumpVelocity=JUMP_SPEED;playJumpSound();
   }
-  jumpButton.addEventListener('click',jump);
+  // Trigger touch jumps on pointerdown, without waiting for click after a held joystick touch.
+  // Prevent the synthesized click from triggering a second jump.
+  let touchJumpPendingClick=false;
+  jumpButton.addEventListener('pointerdown',e=>{
+    if(e.pointerType!=='touch'&&e.pointerType!=='pen')return;
+    e.preventDefault();e.stopPropagation();
+    touchJumpPendingClick=true;
+    jump();
+  });
+  jumpButton.addEventListener('click',e=>{
+    if(touchJumpPendingClick){touchJumpPendingClick=false;e.preventDefault();return;}
+    jump();
+  });
+  jumpButton.addEventListener('pointercancel',()=>{touchJumpPendingClick=false;});
   // Space jumps even after clicking UI buttons. Only editable fields retain Space.
   addEventListener('keydown',e=>{
     if((e.code!=='Space'&&e.key!==' ')||e.repeat||e.altKey||e.ctrlKey||e.metaKey)return;
