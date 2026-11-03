@@ -166,7 +166,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(!enabled)return;
     if(returnFlight)return;
     if(overboard){returnToDeck();return;}
-    if(jumpHeight>.03||jumpVelocity>0)return;
+    // A player standing on another head can jump again to build taller towers.
+    if((jumpHeight>.03&&!headSupport)||jumpVelocity>0)return;
     if(lying)standUp();if(sitting)setSitting(false);
     headSupport=null;jumpVelocity=JUMP_SPEED;playJumpSound();
   }
@@ -235,7 +236,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       jumpPose+=(0-jumpPose)*(1-Math.exp(-step*16));
       return;
     }
-    if(jumpVelocity!==0||jumpHeight>0){
+    if(!headSupport&&(jumpVelocity!==0||jumpHeight>0)){
       const before=jumpHeight;
       jumpHeight+=jumpVelocity*step-.5*GRAVITY*step*step;
       jumpVelocity-=GRAVITY*step;
@@ -266,7 +267,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
     }
     const groundOffset=lastFloorY-VISUAL_DECK_Y;
     jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lying?0:jumpHeight+groundOffset);
-    const targetPose=jumpHeight>.04||jumpVelocity>0?1:0;
+    // A landed player stands upright instead of looping the airborne pose.
+    const targetPose=headSupport?0:(jumpHeight>.04||jumpVelocity>0?1:0);
     jumpPose+=(targetPose-jumpPose)*(1-Math.exp(-step*16));
   }
 
@@ -369,7 +371,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   return {player,update,setCharacter,setEnabled,resetView,deckViewPose,
     launchFireworkPose:()=>{avatar.fireworkPose();player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},
     getFireworkHandPosition:()=>{player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},isSpawnReady:()=>spawnValidated,lieOn,standUp,isLying:()=>lying,
-    getNetworkState:()=>({sitting,lying,jump:jumpHeight>0||jumpVelocity>0,jumpHeight:Math.max(0,jumpHeight),verticalOffset:jumpPivot.position.y-NETWORK_TO_VISUAL_Y,inWater:overboard,returning:Boolean(returnFlight)}),
+    getNetworkState:()=>({sitting,lying,jump:!headSupport&&(jumpHeight>0||jumpVelocity>0),jumpHeight:Math.max(0,jumpHeight),verticalOffset:jumpPivot.position.y-NETWORK_TO_VISUAL_Y,inWater:overboard,returning:Boolean(returnFlight)}),
     isReturning:()=>Boolean(returnFlight),
     handleCorrection(state){
       // Keep the server authoritative; cancel an invalid flight cleanly.
