@@ -179,18 +179,38 @@ export function createPlayer(scene,camera,controls,deckCollision){
   }
   function updateLaunch(dt){
     if(!launchFlight)return false;
-    const f=launchFlight;f.time=Math.min(f.duration,f.time+Math.min(dt,.05));
+    const f=launchFlight;
+    f.time=Math.min(f.duration,f.time+Math.min(dt,.05));
     const t=f.time/f.duration;
-    const x=THREE.MathUtils.lerp(f.startX,f.endX,t),z=THREE.MathUtils.lerp(f.startZ,f.endZ,t);
-    const y=THREE.MathUtils.lerp(f.startY,f.endY,t)+Math.sin(Math.PI*t)*Math.max(7,(f.endY-f.startY)*.24);
+    // Shared cinematic launch path: ease out horizontally, crest above the
+    // destination, then descend with a continuous zero-snap landing.
+    const travel=t*t*(3-2*t);
+    const x=THREE.MathUtils.lerp(f.startX,f.endX,travel);
+    const z=THREE.MathUtils.lerp(f.startZ,f.endZ,travel);
+    const arcHeight=Math.max(7,(f.endY-f.startY)*.24);
+    const arc=Math.sin(Math.PI*t);
+    const y=THREE.MathUtils.lerp(f.startY,f.endY,travel)+arc*arcHeight;
     const dx=x-player.position.x,dz=z-player.position.z;
     player.position.x=x;player.position.z=z;
-    if(enabled){camera.position.x+=dx;controls.target.x+=dx;camera.position.z+=dz;controls.target.z+=dz;}
+    if(enabled){
+      camera.position.x+=dx;controls.target.x+=dx;
+      camera.position.z+=dz;controls.target.z+=dz;
+    }
     jumpHeight=y-lastFloorY;
     jumpPivot.position.y=NETWORK_TO_VISUAL_Y+y-visualBaseY;
-    avatar.update(dt,false,false,1,false,true);
-    if(enabled){const deltaY=(y+1.3-controls.target.y)*(1-Math.exp(-dt*8));controls.target.y+=deltaY;camera.position.y+=deltaY;}
-    if(t>=1){lastFloorY=f.endY;jumpHeight=0;jumpVelocity=0;launchFlight=null;landingGrace=.65;resetView();}
+    // Gradually stop flapping before the feet touch the platform.
+    const landingBlend=THREE.MathUtils.smoothstep(t,.78,1);
+    avatar.update(dt,false,false,1-landingBlend,false,t<.88);
+    if(enabled){
+      const deltaY=(y+1.3-controls.target.y)*(1-Math.exp(-dt*9));
+      controls.target.y+=deltaY;camera.position.y+=deltaY;
+    }
+    if(t>=1){
+      lastFloorY=f.endY;jumpHeight=0;jumpVelocity=0;
+      jumpPivot.position.y=NETWORK_TO_VISUAL_Y+f.endY-visualBaseY;
+      launchFlight=null;landingGrace=.65;
+      // Do not resetView here: it causes the apparent landing teleport.
+    }
     return true;
   }
   function jump(){
