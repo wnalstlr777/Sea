@@ -222,3 +222,12 @@ body.sea-overview #jump-toggle{display:none!important}
   .time-control{padding-right:8px}
   .time-control.sky-auto{padding-right:8px}
 }
+
+/* Compact manual sky panel vertically without changing controls or positions. */
+.time-control:not(.sky-auto){padding-top:8px;padding-bottom:8px;gap:0}
+.time-control:not(.sky-auto) label+label{margin-top:0}
+.time-control:not(.sky-auto) label input[type=range]{margin-top:2px;margin-bottom:0}
+.time-control:not(.sky-auto) #sky-mode-toggle{margin-top:4px}
+@media(max-width:600px){
+  .time-control:not(.sky-auto) label input[type=range]{margin-top:2px;margin-bottom:0}
+}
