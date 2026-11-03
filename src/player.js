@@ -411,6 +411,9 @@ export function createPlayer(scene,camera,controls,deckCollision){
         window.__seaNoDeckWarning=true;
       }
     }
+    if(airborneFromEdge&&lastFloorY+jumpHeight<WATER_SURFACE_Y+.3){
+      startFall();airborneFromEdge=false;
+    }
     if(!overboard&&!returnFlight&&deckCollision.ready()&&spawnValidated&&!lying){
       const stationaryFloor=walkableFloor(player.position.x,player.position.z);
       if(stationaryFloor!==null){lastFloorY=stationaryFloor;}
