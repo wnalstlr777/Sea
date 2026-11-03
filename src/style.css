@@ -162,3 +162,11 @@ body.sea-overview #jump-toggle{display:none!important}
 .time-control label+label{margin-top:5px}
 .time-control label input[type=range]{margin-top:8px;margin-bottom:2px}
 @media(max-width:600px){.time-control label+label{margin-top:3px}.time-control label input[type=range]{margin-top:5px;margin-bottom:0}}
+
+/* Automatic sky mode collapses the panel into a single unobtrusive toggle. */
+.time-control{display:flex;flex-direction:column}
+.time-control #sky-mode-toggle{align-self:center;margin-top:10px}
+.time-control.sky-auto{width:auto;min-width:0;padding:6px;background:transparent;border:0;backdrop-filter:none}
+.time-control.sky-auto label{display:none}
+.time-control.sky-auto #sky-mode-toggle{margin-top:0}
+@media(max-width:600px){.time-control.sky-auto{width:auto;padding:4px;right:16px}}
