@@ -115,7 +115,7 @@ for(let layer=0;layer<6;layer++){
     transparent:true,depthWrite:false,side:THREE.DoubleSide,
     blending:THREE.AdditiveBlending
   });
-  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1.1*fraction,34*fraction,48,32,1,true),material);
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1.1*fraction,38*fraction,48,32,1,true),material);
   mesh.rotation.x=Math.PI/2;
   mesh.renderOrder=4;
   bowBeam.add(mesh);
