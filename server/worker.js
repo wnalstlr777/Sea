@@ -68,6 +68,16 @@ export class SeaRoom extends DurableObject {
     let packet;try{packet=JSON.parse(message);}catch{ws.close(1008,'Invalid JSON');return;}
     if(!packet)return;
     if(packet.type==='emote'){if(EMOTES.includes(packet.icon))this.broadcast({type:'emote',id:data.player.id,icon:packet.icon},ws);return;}
+    if(packet.type==='firework'){
+      if(Number.isInteger(packet.color)&&packet.color>=0&&packet.color<5){
+        // One event per second per player; no particle data crosses the network.
+        if(now-(data.lastFireworkAt||0)>=1000){
+          data.lastFireworkAt=now;ws.serializeAttachment(data);
+          this.broadcast({type:'firework',id:data.player.id,color:packet.color},ws);
+        }
+      }
+      return;
+    }
     if(packet.type!=='state')return;
     const valid=Number.isSafeInteger(packet.seq)&&packet.seq>data.seq&&
       ['x','y','z','rotation'].every(key=>typeof packet[key]==='number'&&Number.isFinite(packet[key]))&&typeof packet.moving==='boolean'&&['sitting','lying','jump','inWater','returning'].every(key=>typeof packet[key]==='boolean')&&typeof packet.jumpHeight==='number'&&Number.isFinite(packet.jumpHeight)&&packet.jumpHeight>=0&&packet.jumpHeight<=4&&typeof packet.verticalOffset==='number'&&Number.isFinite(packet.verticalOffset)&&packet.verticalOffset>=-40&&packet.verticalOffset<=12;
