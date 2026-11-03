@@ -1,7 +1,8 @@
 import {DurableObject} from 'cloudflare:workers';
 import {SHIP} from '../src/deck.js';
 
-const CAPACITY=5,PROTOCOL=1;
+const CAPACITY=5,PROTOCOL=2;
+const EMOTES=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
 // The old rectangular DECK polygon only covered the middle of the enlarged hull.
 // The client uses the exported UCX surfaces to decide deck vs. water.
 // The server keeps a broad finite safety boundary without creating an invisible wall at the bow.
@@ -52,7 +53,7 @@ export class SeaRoom extends DurableObject {
     const occupied=new Set(existing.map(p=>p.slot));let slot=0;while(occupied.has(slot))slot++;
     const id=crypto.randomUUID();
     const names=NICKNAMES.filter(name=>!existing.some(player=>player.nickname===name));
-    const player={id,slot,nickname:names[crypto.getRandomValues(new Uint32Array(1))[0]%names.length],characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot-2)*2,y:SHIP.deckY,z:-27,rotation:0,moving:false};
+    const player={id,slot,nickname:names[crypto.getRandomValues(new Uint32Array(1))[0]%names.length],characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot-2)*2,y:SHIP.deckY,z:-27,rotation:0,moving:false,sitting:false,lying:false,jump:false,jumpHeight:0,inWater:false};
     server.serializeAttachment({player,seq:-1,updatedAt:Date.now(),rateAt:Date.now(),tokens:8,credit:.65});
     this.send(server,{type:'welcome',protocol:PROTOCOL,you:id,players:this.players(),capacity:CAPACITY});
     this.broadcast({type:'join',player},server);
@@ -65,9 +66,11 @@ export class SeaRoom extends DurableObject {
     if(data.tokens<1){ws.close(1008,'Rate limit');return;}data.tokens--;
     ws.serializeAttachment(data);
     let packet;try{packet=JSON.parse(message);}catch{ws.close(1008,'Invalid JSON');return;}
-    if(!packet||packet.type!=='state')return;
+    if(!packet)return;
+    if(packet.type==='emote'){if(EMOTES.includes(packet.icon))this.broadcast({type:'emote',id:data.player.id,icon:packet.icon},ws);return;}
+    if(packet.type!=='state')return;
     const valid=Number.isSafeInteger(packet.seq)&&packet.seq>data.seq&&
-      ['x','y','z','rotation'].every(key=>typeof packet[key]==='number'&&Number.isFinite(packet[key]))&&typeof packet.moving==='boolean';
+      ['x','y','z','rotation'].every(key=>typeof packet[key]==='number'&&Number.isFinite(packet[key]))&&typeof packet.moving==='boolean'&&['sitting','lying','jump','inWater'].every(key=>typeof packet[key]==='boolean')&&typeof packet.jumpHeight==='number'&&Number.isFinite(packet.jumpHeight)&&packet.jumpHeight>=0&&packet.jumpHeight<=4;
     if(!valid){ws.close(1008,'Invalid state');return;}
     data.seq=packet.seq;
     const elapsed=Math.max(0,(now-data.updatedAt)/1000);
@@ -75,7 +78,7 @@ export class SeaRoom extends DurableObject {
     if(Math.abs(packet.y-SHIP.deckY)>.02||!withinSeaBounds(packet)||Math.abs(packet.rotation)>Math.PI*100||distance>Math.min(1.7,data.credit+5.25*elapsed)+.03){
       ws.serializeAttachment(data);this.send(ws,{type:'correction',player:data.player});return;
     }
-    Object.assign(data.player,{x:packet.x,y:SHIP.deckY,z:packet.z,rotation:Math.atan2(Math.sin(packet.rotation),Math.cos(packet.rotation)),moving:packet.moving});
+    Object.assign(data.player,{x:packet.x,y:SHIP.deckY,z:packet.z,rotation:Math.atan2(Math.sin(packet.rotation),Math.cos(packet.rotation)),moving:packet.moving,sitting:packet.sitting,lying:packet.lying,jump:packet.jump,jumpHeight:packet.jumpHeight,inWater:packet.inWater});
     data.credit=Math.max(0,Math.min(1.7,data.credit+5.25*elapsed)-distance);
     data.updatedAt=now;ws.serializeAttachment(data);
     this.broadcast({type:'state',player:data.player},ws);

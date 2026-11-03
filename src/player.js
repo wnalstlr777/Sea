@@ -334,6 +334,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     camera.position.add(delta);controls.target.add(delta);
   }
   return {player,update,setCharacter,setEnabled,resetView,deckViewPose,isSpawnReady:()=>spawnValidated,lieOn,standUp,isLying:()=>lying,
+    getNetworkState:()=>({sitting,lying,jump:jumpHeight>0||jumpVelocity>0,jumpHeight:Math.max(0,jumpHeight),inWater:overboard}),
     isReturning:()=>Boolean(returnFlight),
     handleCorrection(state){
       // Keep the server authoritative; cancel an invalid flight cleanly.

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // Local-only emote prototype. No multiplayer packets are sent yet.
-export function createEmoteWheel({scene,camera,renderer,controls,player,isAvailable}){
+export function createEmoteWheel({scene,camera,renderer,controls,player,isAvailable,onChoose=()=>{}}){
   const icons=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
   const canvas=renderer.domElement;
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),screen=new THREE.Vector3();
@@ -45,7 +45,7 @@ export function createEmoteWheel({scene,camera,renderer,controls,player,isAvaila
   function choose(icon){
     close();selected=icon;bubble.textContent=icon;bubble.style.display='block';
     bubble.style.animation='none';void bubble.offsetWidth;bubble.style.animation='';
-    bubbleUntil=performance.now()+3000;
+    bubbleUntil=performance.now()+3000;onChoose(icon);
   }
   icons.forEach((icon,i)=>{
     const angle=-Math.PI/2+i*Math.PI/4;

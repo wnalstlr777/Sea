@@ -130,7 +130,7 @@ const lieButton=document.createElement('button');lieButton.id='sunbed-interact';
 let nearbyBed=null;const bedProjection=new THREE.Vector3();
 lieButton.onclick=()=>{if(nearbyBed&&!character.isLying())character.lieOn(nearbyBed.anchor);lieButton.style.display='none';};
 const multiplayer=createMultiplayer({scene,camera,controls,character,url:import.meta.env.VITE_MULTIPLAYER_URL?.trim()});
-const emotes=createEmoteWheel({scene,camera,renderer,controls,player:character.player,isAvailable:()=>introFinished&&!overviewActive});
+const emotes=createEmoteWheel({scene,camera,renderer,controls,player:character.player,isAvailable:()=>introFinished&&!overviewActive,onChoose:icon=>multiplayer.sendEmote(icon)});
 controls.maxDistance=320;
 if(new URLSearchParams(location.search).get('view')==='ocean'){introFinished=true;setView(true);}
 const boatMotion=createBoatMotion(camera);
