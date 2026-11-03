@@ -51,6 +51,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   let lastFloorY=VISUAL_DECK_Y,spawnValidated=false;
   const visualBaseY=SHIP.deckY+NETWORK_TO_VISUAL_Y;
   let jumpHeight=0,jumpVelocity=0,headSupport=null,jumpPose=0;
+  let airborneFromEdge=false;
   // Follow the supporting remote's interpolated transform, including rotation.
   const supportLastPosition=new THREE.Vector3();
   let supportLastYaw=0;
@@ -172,7 +173,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     const distance=Math.hypot(target.x-player.position.x,target.z-player.position.z);
     const duration=Math.max(2.8,distance/3.4);
     launchFlight={time:0,duration,startX:player.position.x,startZ:player.position.z,startY:lastFloorY+jumpHeight,endX:target.x,endZ:target.z,endY:y};
-    headSupport=null;jumpVelocity=0;jumpHeight=0;playJumpSound();return true;
+    headSupport=null;airborneFromEdge=false;jumpVelocity=0;jumpHeight=0;playJumpSound();return true;
   }
   function updateLaunch(dt){
     if(!launchFlight)return false;
@@ -186,6 +187,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     jumpHeight=y-lastFloorY;
     jumpPivot.position.y=NETWORK_TO_VISUAL_Y+y-visualBaseY;
     avatar.update(dt,false,false,1,false,true);
+    if(enabled){const deltaY=(y+1.3-controls.target.y)*(1-Math.exp(-dt*8));controls.target.y+=deltaY;camera.position.y+=deltaY;}
     if(t>=1){lastFloorY=f.endY;jumpHeight=0;jumpVelocity=0;launchFlight=null;landingGrace=.65;resetView();}
     return true;
   }
@@ -196,7 +198,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     // A player standing on another head can jump again to build taller towers.
     if((jumpHeight>.03&&!headSupport)||jumpVelocity>0)return;
     if(lying)standUp();if(sitting)setSitting(false);
-    headSupport=null;jumpVelocity=JUMP_SPEED;playJumpSound();
+    headSupport=null;airborneFromEdge=false;jumpVelocity=JUMP_SPEED;playJumpSound();
   }
   // Use Touch Events on iOS for reliable two-finger joystick + jump input.
   // Pointer Events remain a fallback for pen and other touch implementations.
@@ -281,7 +283,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
           }
         }
       }
-      if(jumpHeight<=0){jumpHeight=0;jumpVelocity=0;headSupport=null;}
+      if(jumpHeight<=0&&!airborneFromEdge){jumpHeight=0;jumpVelocity=0;headSupport=null;}
     }
     if(headSupport){
       // Carry the passenger along with the base, rather than letting its
@@ -307,6 +309,13 @@ export function createPlayer(scene,camera,controls,deckCollision){
         jumpHeight=headSupport.userData.headPlatformY-visualBaseY-(lastFloorY-VISUAL_DECK_Y);
         jumpVelocity=0;
       }
+    }
+    // Camera follows the actual foot height during jumps and human towers.
+    if(enabled){
+      const feetY=lastFloorY+jumpHeight;
+      const desiredY=feetY+1.3;
+      const shift=(desiredY-controls.target.y)*(1-Math.exp(-step*8));
+      controls.target.y+=shift;camera.position.y+=shift;
     }
     const groundOffset=lastFloorY-VISUAL_DECK_Y;
     jumpPivot.position.y=NETWORK_TO_VISUAL_Y+(lying?0:jumpHeight+groundOffset);
@@ -367,16 +376,22 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // Query from the actual feet, not a fixed height above the main deck.
   // Only land on elevated UCX after descending onto it; never teleport up from below.
   function walkableFloor(x,z){
+    if(headSupport)return null;
     const feetY=lastFloorY+jumpHeight;
     const floor=deckCollision.floorAt(x,z,feetY+.22);
     if(floor===null)return null;
-    if(headSupport)return null;
-    if(jumpHeight>.03){
+    // Never snap upwards or downwards onto a remote surface. Falling feet must
+    // actually cross the floor plane before a new UCX platform is acquired.
+    if(jumpHeight>.03||jumpVelocity!==0||airborneFromEdge){
       if(jumpVelocity>=0||feetY>floor+.28)return null;
-      jumpHeight=0;jumpVelocity=0;
+      jumpHeight=floor-lastFloorY;jumpVelocity=0;airborneFromEdge=false;
+    }else if(Math.abs(floor-lastFloorY)>.45){
+      // Leaving a high ledge begins a physical fall rather than a teleport.
+      airborneFromEdge=true;jumpVelocity=-.01;return null;
     }
     return floor;
   }
+
   function update(dt){
     landingGrace=Math.max(0,landingGrace-Math.min(dt,.05));
     const flying=Boolean(launchFlight);
@@ -399,7 +414,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(!overboard&&!returnFlight&&deckCollision.ready()&&spawnValidated&&!lying){
       const stationaryFloor=walkableFloor(player.position.x,player.position.z);
       if(stationaryFloor!==null){lastFloorY=stationaryFloor;}
-      else if(landingGrace<=0&&jumpHeight<=.03&&!headSupport){startFall();}
+      else if(landingGrace<=0&&!headSupport&&!airborneFromEdge&&jumpHeight<=.03&&jumpVelocity===0){startFall();}
     }
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
@@ -419,7 +434,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     // The exported UCX surfaces, not the old rectangular deck, determine support.
     const floor=walkableFloor(player.position.x,player.position.z);
     if(!overboard&&floor!==null){lastFloorY=floor;}
-    if(!overboard&&spawnValidated&&deckCollision.ready()&&floor===null&&landingGrace<=0&&jumpHeight<=.03&&!headSupport){
+    if(!overboard&&spawnValidated&&deckCollision.ready()&&floor===null&&landingGrace<=0&&!airborneFromEdge&&jumpHeight<=.03&&jumpVelocity===0){
       if(lying)standUp();if(sitting)setSitting(false);
       startFall();
     }
