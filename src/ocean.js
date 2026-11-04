@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {Water} from 'three/addons/objects/Water.js';
 import {ImprovedNoise} from 'three/addons/math/ImprovedNoise.js';
+import {oceanHeightAt} from './ocean-height.js';
 
 // Bake a seamless normal / turbulence map once. Mipmaps filter distant ripples.
 function createSurfaceTexture(){
@@ -223,5 +224,5 @@ export function createOcean(){
     uniforms.mirrorSampler.value=mirror.material.uniforms.mirrorSampler.value;
     uniforms.textureMatrix.value=mirror.material.uniforms.textureMatrix.value;
   }
-  return {mesh,uniforms,setReflectionResolution,setStarReflectionEnabled:enabled=>{reflectStars=enabled;}};
+  return {mesh,uniforms,heightAt:(x,z)=>oceanHeightAt(uniforms,x,z,rings,sectors),setReflectionResolution,setStarReflectionEnabled:enabled=>{reflectStars=enabled;}};
 }

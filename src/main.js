@@ -72,7 +72,7 @@ const ocean=createOcean();scene.add(ocean.mesh);
 const lighting=createLighting(scene,ocean,camera);
 const seaAudio=createSeaAudio(document.querySelector('#music-toggle'));
 const seagulls=createSeagulls(scene,camera,seaAudio);
-const marineLife=createMarineLife(scene,camera,seaAudio);
+const marineLife=createMarineLife(scene,camera,seaAudio,{ocean,viewportHeight:()=>renderer.domElement.height});
 const horn=createShipHorn();
 const ship=createShip();scene.add(ship);
 const sail=createSail(ship);
