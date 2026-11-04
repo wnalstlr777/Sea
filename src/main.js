@@ -328,11 +328,11 @@ for(const pad of launchPads){
 }
 fireworks.update(wallDt);controls.update();updateIntro(dt);updateLoadingCover();updateOverviewSway(dt,naturalTime);updateBowBeam(dt);sail.update(naturalTime);
 bowPoseButton.style.display='none';
-if(!overviewActive&&!character.isLying()&&Math.hypot(character.player.position.x-bowPoseAnchor.x,character.player.position.z-bowPoseAnchor.z)<BOW_POSE_RADIUS){
+if(!overviewActive&&!character.isLying()&&!character.isTitanicPosing()&&Math.hypot(character.player.position.x-bowPoseAnchor.x,character.player.position.z-bowPoseAnchor.z)<BOW_POSE_RADIUS){
   const bowFloor=deckCollision.floorAt(bowPoseAnchor.x,bowPoseAnchor.z,VISUAL_DECK_Y+5);
   if(bowFloor!==null&&Math.abs(character.player.position.y+NETWORK_TO_VISUAL_Y+character.getNetworkState().verticalOffset-bowFloor)<1.4){
     camera.updateMatrixWorld();
-    bowPoseProjection.set(bowPoseAnchor.x,bowFloor+1.8,bowPoseAnchor.z).project(camera);
+    bowPoseProjection.set(bowPoseAnchor.x,bowFloor+1.8,bowPoseAnchor.z-0.75).project(camera);
   if(bowPoseProjection.z>0&&bowPoseProjection.z<1){
     bowPoseButton.style.left=`${(bowPoseProjection.x*.5+.5)*innerWidth}px`;
     bowPoseButton.style.top=`${(-bowPoseProjection.y*.5+.5)*innerHeight}px`;
