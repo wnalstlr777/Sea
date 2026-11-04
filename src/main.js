@@ -212,11 +212,11 @@ addEventListener('keydown',e=>{
 },{capture:true});
 renderer.domElement.addEventListener('pointerdown',()=>{if(intro)finishIntro();});
 const bowPoseButton=document.createElement('button');
-bowPoseButton.type='button';bowPoseButton.textContent='🙌';bowPoseButton.title='바다를 향해 양팔 벌리기';bowPoseButton.setAttribute('aria-label','타이타닉 포즈');
+bowPoseButton.type='button';bowPoseButton.innerHTML='<svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="16" cy="6" r="3" fill="currentColor" stroke="none"/><path d="M16 11v11M3 13h26M16 22l-6 8M16 22l6 8"/></svg>';bowPoseButton.title='바다를 향해 양팔 벌리기';bowPoseButton.setAttribute('aria-label','타이타닉 포즈');
 bowPoseButton.style.cssText='position:fixed;z-index:30;display:none;width:48px;height:48px;border:1px solid #ffffffaa;border-radius:50%;background:#07313ddd;color:white;font-size:25px;cursor:pointer;transform:translate(-50%,-100%)';
 document.querySelector('#app').append(bowPoseButton);
-bowPoseButton.onclick=()=>character.toggleTitanicPose();
-const bowPoseAnchor=new THREE.Vector3(0,VISUAL_DECK_Y+3,-43);
+bowPoseButton.onclick=()=>character.toggleTitanicPose(bowPoseAnchor);
+const bowPoseAnchor=new THREE.Vector3(0,VISUAL_DECK_Y,-43);
 const bowPoseProjection=new THREE.Vector3();
 const lieButton=document.createElement('button');lieButton.id='sunbed-interact';lieButton.type='button';lieButton.textContent='🛏️';lieButton.title='선베드에 눕기';lieButton.setAttribute('aria-label','선베드에 눕기');lieButton.style.cssText='position:fixed;z-index:30;display:none;width:44px;height:44px;min-width:44px;max-width:44px;min-height:44px;line-height:1;padding:0;font-size:23px;border:1px solid #ffffffaa;border-radius:50%;background:#07313ddd;color:white;cursor:pointer;transform:translate(-50%,-100%);box-shadow:0 2px 12px #0005';document.querySelector('#app').append(lieButton);
 let nearbyBed=null;const bedProjection=new THREE.Vector3();
@@ -328,10 +328,10 @@ for(const pad of launchPads){
 fireworks.update(wallDt);controls.update();updateIntro(dt);updateLoadingCover();updateOverviewSway(dt,naturalTime);updateBowBeam(dt);sail.update(naturalTime);
 bowPoseButton.style.display='none';
 if(!overviewActive&&!character.isLying()&&Math.hypot(character.player.position.x-bowPoseAnchor.x,character.player.position.z-bowPoseAnchor.z)<4){
-  bowPoseProjection.copy(bowPoseAnchor).project(camera);
+  bowPoseProjection.copy(bowPoseAnchor).add(new THREE.Vector3(1.25,NETWORK_TO_VISUAL_Y+1.7,0)).project(camera);
   if(bowPoseProjection.z>0&&bowPoseProjection.z<1){
     bowPoseButton.style.left=`${(bowPoseProjection.x*.5+.5)*innerWidth}px`;
-    bowPoseButton.style.top=`\${(-bowPoseProjection.y*.5+.5)*innerHeight}px`;
+    bowPoseButton.style.top=`${(-bowPoseProjection.y*.5+.5)*innerHeight}px`;
     bowPoseButton.style.display='block';
   }
 }
