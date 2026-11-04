@@ -313,8 +313,13 @@ for(const pad of launchPads){
     if(floor!==null)pad.root.position.y=floor+.35;
   }
   const distance=Math.hypot(character.player.position.x-pad.root.position.x,character.player.position.z-pad.root.position.z);
-  if(distance>1.35)pad.armed=true;
-  if(pad.armed&&distance<.78&&!overviewActive&&introFinished&&!character.isLying()){
+  // The pad activates only when the avatar's feet actually reach its top.
+  // Checking X/Z alone incorrectly triggers it from elevated walkways.
+  const feetY=character.player.position.y+NETWORK_TO_VISUAL_Y+character.getNetworkState().verticalOffset;
+  const padTopY=pad.root.position.y+.15;
+  const touchingPad=Math.abs(feetY-padTopY)<.55;
+  if(distance>1.35||!touchingPad)pad.armed=true;
+  if(pad.armed&&distance<.78&&touchingPad&&!overviewActive&&introFinished&&!character.isLying()){
     if(character.launchTo(pad.target))pad.armed=false;
   }
 }
