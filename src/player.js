@@ -170,12 +170,11 @@ export function createPlayer(scene,camera,controls,deckCollision){
   }
   function launchTo(target){
     if(!enabled||overboard||returnFlight||launchFlight||lying||!spawnValidated)return false;
-    const y=deckCollision.floorAt(target.x,target.z,target.y+2);
-    if(y===null||Math.abs(y-target.y)>3)return false;
-    const distance=Math.hypot(target.x-player.position.x,target.z-player.position.z);
-    const duration=Math.max(2.8,distance/3.4);
-    launchFlight={time:0,duration,startX:player.position.x,startZ:player.position.z,startY:lastFloorY+jumpHeight,endX:target.x,endZ:target.z,endY:y};
-    headSupport=null;airborneFromEdge=false;jumpVelocity=0;jumpHeight=0;playJumpSound();return true;
+    const rise=Math.max(10,target.y-lastFloorY+5);
+    launchFlight={height:lastFloorY+jumpHeight,velocity:Math.sqrt(2*GRAVITY*rise)};
+    headSupport=null;airborneFromEdge=false;jumpVelocity=0;jumpHeight=0;
+    if(sitting)setSitting(false);
+    playJumpSound();return true;
   }
   function updateLaunch(dt){
     if(!launchFlight)return false;
