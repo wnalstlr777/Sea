@@ -171,7 +171,7 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
     const blend=1-Math.exp(-Math.min(.1,dt)*12);
     for(let i=0;i<2;i++){
       arms[i].rotation.x+=(0-arms[i].rotation.x)*blend;
-      arms[i].rotation.z+=((i===0?Math.PI/2:-Math.PI/2)-arms[i].rotation.z)*blend;
+      arms[i].rotation.z+=((i===0?-Math.PI/2:Math.PI/2)-arms[i].rotation.z)*blend;
       elbows[i].rotation.x+=(0-elbows[i].rotation.x)*blend;
       legs[i].rotation.x+=(0-legs[i].rotation.x)*blend;
     }
