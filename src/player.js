@@ -210,7 +210,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       const shift=(f.height+1.3-controls.target.y)*(1-Math.exp(-step*7));
       controls.target.y+=shift;camera.position.y+=shift;
     }
-    avatar.update(step,false,false,launchFlight?1:0,false,Boolean(launchFlight));
+    avatar.update(step,false,false,launchFlight?1:0,false,Boolean(launchFlight&&f.velocity<-7));
     player.userData.moving=movement.lengthSq()>1e-8;
     return true;
   }
@@ -284,6 +284,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       followWaterHeight(shift);
       jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
       jumpPose+=(0-jumpPose)*(1-Math.exp(-step*16));
+      avatar.update(step,false,false,fallAirborne?1:0,!fallAirborne,fallAirborne&&fallVelocity<-7);
       return;
     }
     if(!headSupport&&(jumpVelocity!==0||jumpHeight>0)){
