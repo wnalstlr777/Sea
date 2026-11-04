@@ -318,7 +318,9 @@ for(const pad of launchPads){
   const feetY=character.player.position.y+NETWORK_TO_VISUAL_Y+character.getNetworkState().verticalOffset;
   const padTopY=pad.root.position.y+.15;
   const touchingPad=Math.abs(feetY-padTopY)<.55;
-  if(distance>1.35)pad.armed=true; // Re-arm only after leaving, not merely while airborne above the pad.
+  // Re-arm after the player leaves the pad surface vertically or horizontally.
+  // Landing back on the same pad then launches again like a trampoline.
+  if(distance>1.35||!touchingPad)pad.armed=true;
   if(pad.armed&&distance<.78&&touchingPad&&!overviewActive&&introFinished&&!character.isLying()){
     if(character.launchTo(pad.target))pad.armed=false;
   }
