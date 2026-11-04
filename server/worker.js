@@ -80,7 +80,7 @@ export class SeaRoom extends DurableObject {
     }
     if(packet.type!=='state')return;
     const valid=Number.isSafeInteger(packet.seq)&&packet.seq>data.seq&&
-      ['x','y','z','rotation'].every(key=>typeof packet[key]==='number'&&Number.isFinite(packet[key]))&&typeof packet.moving==='boolean'&&['sitting','lying','jump','inWater','returning'].every(key=>typeof packet[key]==='boolean')&&typeof packet.jumpHeight==='number'&&Number.isFinite(packet.jumpHeight)&&packet.jumpHeight>=0&&packet.jumpHeight<=64&&typeof packet.verticalOffset==='number'&&Number.isFinite(packet.verticalOffset)&&packet.verticalOffset>=-40&&packet.verticalOffset<=64;
+      ['x','y','z','rotation'].every(key=>typeof packet[key]==='number'&&Number.isFinite(packet[key]))&&typeof packet.moving==='boolean'&&['sitting','lying','jump','inWater','returning'].every(key=>typeof packet[key]==='boolean')&&typeof packet.jumpHeight==='number'&&Number.isFinite(packet.jumpHeight)&&packet.jumpHeight>=0&&packet.jumpHeight<=160&&typeof packet.verticalOffset==='number'&&Number.isFinite(packet.verticalOffset)&&packet.verticalOffset>=-40&&packet.verticalOffset<=160;
     if(!valid){ws.close(1008,'Invalid state');return;}
     data.seq=packet.seq;
     const elapsed=Math.max(0,(now-data.updatedAt)/1000);
