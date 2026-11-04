@@ -483,7 +483,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     toggleTitanicPose:()=>{if(overboard||returnFlight||launchFlight||lying)return false;titanicPose=!titanicPose;if(titanicPose){setSitting(false);player.rotation.y=0;}return titanicPose;},
     launchFireworkPose:()=>{avatar.fireworkPose();player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},
     getFireworkHandPosition:()=>{player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},isSpawnReady:()=>spawnValidated,lieOn,standUp,isLying:()=>lying,
-    launchTo,getNetworkState:()=>({sitting,lying,jump:!!launchFlight||!headSupport&&(jumpHeight>0||jumpVelocity>0),jumpHeight:Math.max(0,jumpHeight),verticalOffset:jumpPivot.position.y-NETWORK_TO_VISUAL_Y,inWater:overboard,returning:Boolean(returnFlight||launchFlight)}),
+    launchTo,getNetworkState:()=>({sitting,lying,jump:!!launchFlight||airborneFromEdge||(overboard&&fallAirborne)||!headSupport&&(jumpHeight>0||jumpVelocity>0),jumpHeight:Math.max(0,jumpHeight),verticalOffset:jumpPivot.position.y-NETWORK_TO_VISUAL_Y,inWater:overboard,returning:Boolean(returnFlight||launchFlight)}),
     isReturning:()=>Boolean(returnFlight),
     handleCorrection(state){
       // Keep the server authoritative; cancel an invalid flight cleanly.
