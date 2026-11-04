@@ -5,7 +5,9 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 export function createWhaleModel({load= url=>new GLTFLoader().loadAsync(url),url=`${import.meta.env?.BASE_URL??'./'}models/whale_animated.glb`}={}){
   const root=new THREE.Group();root.name='whale';root.visible=false;
   const model=new THREE.Group();model.name='whale-model';model.rotation.y=-Math.PI/2;root.add(model);
-  const state={root,ready:false,active:false,mixer:null,actions:{},current:null,contacts:[],blowhole:null};
+  const silhouette=new THREE.Group();silhouette.name='whale-shallow-silhouette';silhouette.visible=false;
+  const waterSkins=[];
+  const state={root,silhouette,ready:false,active:false,mixer:null,actions:{},current:null,contacts:[],blowhole:null};
   const p=new THREE.Vector3(),box=new THREE.Box3();
   state.loadPromise=load(url).then(gltf=>{
     // Normalize independently of a moving encounter root if loading finishes late.
@@ -19,6 +21,20 @@ export function createWhaleModel({load= url=>new GLTFLoader().loadAsync(url),url
       if(!o.isMesh)return;mesh.push(o);o.castShadow=false;o.receiveShadow=false;
       // Animated fin/tail bounds change each frame; one low-poly whale is cheaper to keep drawable.
       o.frustumCulled=false;
+      // A small local water projection reveals only shallow submerged parts.
+      // The original skinned mesh, texture and the ocean's opacity stay unchanged.
+      const geometry=new THREE.BufferGeometry(),positions=new Float32Array(o.geometry.attributes.position.count*3),alpha=new Float32Array(o.geometry.attributes.position.count);
+      geometry.setAttribute('position',new THREE.BufferAttribute(positions,3).setUsage(THREE.DynamicDrawUsage));
+      geometry.setAttribute('aAlpha',new THREE.BufferAttribute(alpha,1).setUsage(THREE.DynamicDrawUsage));geometry.setIndex(o.geometry.index);
+      const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,
+        uniforms:{tint:{value:new THREE.Color('#245263')}},
+        vertexShader:`attribute float aAlpha;varying float alpha;void main(){alpha=aAlpha;gl_Position=projectionMatrix*viewMatrix*vec4(position,1.);}`,
+        fragmentShader:`uniform vec3 tint;varying float alpha;void main(){if(alpha<.002)discard;gl_FragColor=vec4(tint,alpha);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`});
+      const overlay=new THREE.Mesh(geometry,material);overlay.name='whale-local-water-projection';overlay.frustumCulled=false;overlay.renderOrder=2;silhouette.add(overlay);
+      waterSkins.push({mesh:o,geometry,positions,alpha,material});
     });
     // Source landmark checked in Blender: dorsal head around (-.65, 0, .296).
     // Converted into glTF Y-up mesh coordinates here. Keep vertex attachments skinned.
@@ -49,6 +65,7 @@ export function createWhaleModel({load= url=>new GLTFLoader().loadAsync(url),url
       }
     }
     state.ready=true;root.userData.loadingState='ready';root.userData.animationClips=clips.map(c=>c.name);
+    root.userData.animationDurations=Object.fromEntries(clips.map(c=>[c.name,c.duration]));
     return state;
   }).catch(error=>{root.userData.loadingState='error';console.error('[Sea] Whale GLB loading failed',error);return state;});
   root.userData.loadingState='loading';
@@ -73,5 +90,21 @@ export function createWhaleModel({load= url=>new GLTFLoader().loadAsync(url),url
     attachment.mesh.getVertexPosition(attachment.index,target);
     attachment.mesh.localToWorld(target);return true;
   };
+  state.updateWaterSilhouette=(heightAt,{visible=true,fade=1,daylight=1}={})=>{
+    silhouette.visible=state.active&&root.visible&&visible&&fade>.001;
+    if(!silhouette.visible)return;
+    for(const skin of waterSkins){
+      skin.material.uniforms.tint.value.set('#245263').multiplyScalar(.35+.65*daylight);
+      for(let i=0;i<skin.alpha.length;i++){
+        skin.mesh.getVertexPosition(i,p);p.applyMatrix4(skin.mesh.matrixWorld);
+        const water=heightAt(p.x,p.z),depth=water-p.y;
+        const shallow=1-THREE.MathUtils.smoothstep(depth,2,9);
+        skin.alpha[i]=depth>0?Math.min(1,depth/1.2)*shallow*.30*fade:0;
+        const k=i*3;skin.positions[k]=p.x;skin.positions[k+1]=water+.48;skin.positions[k+2]=p.z;
+      }
+      skin.geometry.attributes.position.needsUpdate=true;skin.geometry.attributes.aAlpha.needsUpdate=true;
+    }
+  };
   return state;
 }
+

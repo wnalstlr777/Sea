@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {createWhaleModel} from './whale-model.js';
 import {createWhaleWaterEffects} from './whale-water-effects.js';
 
-// One encounter at a time. Scheduling, ship clearance and paths are unchanged.
+// One encounter at a time. Preserve scheduling and lateral motion; surface closer and higher.
 export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchMedia==='function'&&matchMedia('(max-width: 600px), (pointer: coarse)').matches,loadWhale,viewportHeight}={}){
   const group=new THREE.Group();group.name='marine-life';scene.add(group);
   const grey=new THREE.MeshStandardMaterial({color:'#657d89',roughness:.45});
@@ -20,7 +20,7 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     }
     root.visible=false;group.add(root);return {root,tail};
   }
-  const dolphin=makeDolphin(),whale=createWhaleModel(loadWhale?{load:loadWhale}:undefined);group.add(whale.root);
+  const dolphin=makeDolphin(),whale=createWhaleModel(loadWhale?{load:loadWhale}:undefined);group.add(whale.root,whale.silhouette);
   const heightAt=(x,z)=>ocean?.heightAt(x,z)??0;
   const effects=createWhaleWaterEffects(group,{heightAt,compact,daylight:()=>ocean?.uniforms.daylight?.value??1,viewportHeight});
   group.userData.whale=whale;group.userData.whaleEffectBudget=effects.stats;
@@ -33,13 +33,17 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
   const sphereBounds=new THREE.Sphere(new THREE.Vector3(),95),frustum=new THREE.Frustum(),viewProjection=new THREE.Matrix4();
   let next=12,age=-1,current=null,encounters=0,didSplash=false,didSpout=false;
   let didBreak=false,didDive=false,previousDistance=-Infinity,nextRipple=0,inView=false;
+  const dorsalDistances=[],dorsalCrossings=[];let nextBodyRipple=0;
   function start(){
     current=encounters++%3===2?whale:dolphin;current.root.visible=false;age=0;didSplash=false;didSpout=false;
     didBreak=false;didDive=false;previousDistance=-Infinity;nextRipple=0;
+    dorsalDistances.length=0;dorsalCrossings.length=0;nextBodyRipple=0;
     if(current===whale)whale.startEncounter();
     camera.getWorldDirection(direction);direction.y=0;direction.normalize();right.crossVectors(direction,THREE.Object3D.DEFAULT_UP).normalize();
     const side=Math.random()<.5?-1:1;
-    origin.copy(camera.position).addScaledVector(direction,current===whale?170:65).addScaledVector(right,side*(current===whale?70:26));origin.y=0;
+    // Keep the leading head in a narrow mobile viewport while retaining lateral travel.
+    const lateral=current===whale?(compact?-35+side*8:side*30-15):side*26;
+    origin.copy(camera.position).addScaledVector(direction,current===whale?125:65).addScaledVector(right,lateral);origin.y=0;
     const clearance=current===whale?85:20;
     if(Math.abs(origin.x)<clearance&&Math.abs(origin.z)<(current===whale?120:55))origin.x=side*(clearance+5);
     current.root.rotation.y=Math.atan2(-right.x,-right.z);
@@ -47,17 +51,25 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     group.userData.lastEncounter=current===whale?'whale':'dolphin';
   }
   function whaleSurface(dt,t,duration){
-    const verticalSpeed=16*Math.PI/duration*Math.cos(Math.PI*Math.min(1,t));
-    whale.update(dt,Math.abs(verticalSpeed)<2&&t>.25&&t<.75,24/duration);
+    const verticalSpeed=24*Math.PI/duration*Math.cos(Math.PI*Math.min(1,t)),travelSpeed=24/duration;
+    // Zero vertical speed at the crest is not an idle whale: it is still swimming forward.
+    whale.update(dt,travelSpeed<1.2&&Math.abs(verticalSpeed)<2,travelSpeed);
     whale.root.updateMatrixWorld(true);
     whale.root.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.update();});
     camera.updateMatrixWorld();viewProjection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(viewProjection);
     sphereBounds.center.copy(whale.root.position);sphereBounds.center.y+=15;inView=frustum.intersectsSphere(sphereBounds);
+    whale.updateWaterSilhouette(heightAt,{visible:inView,fade:THREE.MathUtils.smoothstep(t,0,.05)*(1-THREE.MathUtils.smoothstep(t,.95,1)),daylight:ocean?.uniforms.daylight?.value??1});
     let distance=-Infinity;
-    for(const attachment of whale.contacts){
+    for(let i=0;i<whale.contacts.length;i++){
+      const attachment=whale.contacts[i];
       whale.readAttachment(attachment,blowhole);const d=blowhole.y-heightAt(blowhole.x,blowhole.z);
       if(d>distance){distance=d;contact.copy(blowhole);}
+      const old=dorsalDistances[i],crossed=dorsalCrossings[i]??0;
+      if(old<0&&d>=0&&!(crossed&1)){dorsalCrossings[i]=crossed|1;if(inView)effects.ripple(blowhole,1.45,current.root.rotation.y);}
+      else if(old>=0&&d<0&&verticalSpeed<0&&!(crossed&2)){dorsalCrossings[i]=crossed|2;if(inView)effects.ripple(blowhole,1.0,current.root.rotation.y);}
+      dorsalDistances[i]=d;
     }
+    if(didBreak&&!didDive&&age>=nextBodyRipple&&distance>0){nextBodyRipple=age+1.0;if(inView)effects.ripple(whale.root.position,.8,current.root.rotation.y,true);}
     if(distance> -3.5&&distance<0&&verticalSpeed>0&&age>=nextRipple){
       nextRipple=age+.7;if(inView)effects.ripple(contact,.7,current.root.rotation.y);
     }
@@ -89,7 +101,7 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     age+=dt;const isWhale=current===whale,duration=isWhale?11:4.5,t=age/duration;
     current.root.position.copy(origin).addScaledVector(right,(t-.5)*(isWhale?24:20));
     const arc=Math.sin(Math.PI*Math.min(1,t));
-    current.root.position.y=isWhale?-16+arc*16:-1.4+arc*5.5;
+    current.root.position.y=isWhale?heightAt(current.root.position.x,current.root.position.z)-17+arc*24:-1.4+arc*5.5;
     current.root.rotation.x=isWhale?Math.cos(t*Math.PI)*.08:Math.cos(t*Math.PI)*-.65;
     current.root.visible=!isWhale||whale.active;
     if(isWhale&&whale.active)whaleSurface(dt,t,duration);
@@ -105,7 +117,8 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
         }
       }
     }
-    if(t>=1){current.root.visible=false;splash.visible=false;age=-1;next=24+Math.random()*22;}
+    if(t>=1){current.root.visible=false;whale.silhouette.visible=false;splash.visible=false;age=-1;next=24+Math.random()*22;}
   }
   return {update,group};
 }
+

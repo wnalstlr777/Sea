@@ -60,7 +60,7 @@ test('existing encounter schedule/path survives; surface and breath events fire 
       elapsed+=.05;life.update(.05);
       if(life.group.userData.lastEncounter==='whale'&&!markedWhale){markedWhale=true;encounters.push('whale');whaleStart=elapsed;}
       if(whale.root.visible){
-        const age=elapsed-whaleStart,expected=-16+Math.sin(Math.PI*Math.min(1,age/11))*16;
+        const age=elapsed-whaleStart,expected=-17+Math.sin(Math.PI*Math.min(1,age/11))*24;
         assert.ok(Math.abs(whale.root.position.y-expected)<1e-6);
         if(previous){const motion=whale.root.position.clone().sub(previous);motion.y=0;
           const forward=new THREE.Vector3(0,0,-1).applyQuaternion(whale.root.quaternion);forward.y=0;
@@ -72,7 +72,8 @@ test('existing encounter schedule/path survives; surface and breath events fire 
       if(encounters.length===4)break;
     }
     assert.deepEqual(encounters,['dolphin','dolphin','whale','dolphin']);assert.equal(breaths,1);assert.equal(splashes,1);assert.equal(dives,1);
-    assert.ok(sawBreak&&sawDive&&sawSwim&&sawIdle,JSON.stringify({sawBreak,sawDive,sawSwim,sawIdle}));
+    assert.ok(sawBreak&&sawDive&&sawSwim,JSON.stringify({sawBreak,sawDive,sawSwim}));
+    assert.equal(sawIdle,false,'Forward swimming must not switch to weak idle at the surfacing crest');
     assert.equal(life.group.getObjectsByProperty('name','whale').length,1);
 });
 
@@ -93,3 +94,48 @@ test('ocean height follows shader travel/time and curved horizon, including wave
   // All geometric waves are filtered out at the very distant horizon.
   assert.ok(Math.abs(oceanHeightAt(u,10000,0)+100000000/120000)<1e-8);
 });
+
+test('real GLB tail deforms vertically while the body stays steady; fin animation remains active',async()=>{
+  const whale=createWhaleModel({load:asset});await whale.loadPromise;whale.startEncounter();
+  let mesh;whale.root.traverse(o=>{if(o.isSkinnedMesh)mesh=o;});
+  const a=mesh.geometry.attributes.position;let index=0;
+  for(let i=1;i<a.count;i++)if(a.getX(i)>a.getX(index))index=i;
+  const tail=[],body=[],fin=[];const action=whale.actions.swim;action.reset().play();
+  const bodyBone=whale.root.getObjectByName('Body'),finBone=whale.root.getObjectByName('Fin_L');
+  for(let i=0;i<=32;i++){
+    whale.mixer.setTime(i*action.getClip().duration/32);whale.root.updateMatrixWorld(true);mesh.skeleton.update();
+    const p=mesh.getVertexPosition(index,new THREE.Vector3());mesh.localToWorld(p);tail.push(p.clone());
+    body.push(bodyBone.getWorldPosition(new THREE.Vector3()));fin.push(finBone.quaternion.clone());
+  }
+  const span=(points,key)=>Math.max(...points.map(p=>p[key]))-Math.min(...points.map(p=>p[key]));
+  assert.ok(span(tail,'y')>10);assert.ok(span(tail,'x')<span(tail,'y')*.01);
+  assert.ok(span(body,'y')<2.5);assert.ok(fin.some(q=>q.angleTo(fin[0])>.02));
+});
+
+test('local shallow-water silhouette fades by depth without changing the GLB or global water',async()=>{
+  const whale=createWhaleModel({load:asset});await whale.loadPromise;whale.startEncounter();whale.root.visible=true;
+  let mesh;whale.root.traverse(o=>{if(o.isSkinnedMesh)mesh=o;});const geometry=mesh.geometry;
+  whale.root.position.y=-10;whale.root.updateMatrixWorld(true);mesh.skeleton.update();
+  whale.updateWaterSilhouette(()=>0,{visible:true,fade:1});
+  const overlay=whale.silhouette.children[0];assert.ok([...overlay.geometry.attributes.aAlpha.array].some(a=>a>0));
+  assert.ok([...overlay.geometry.attributes.position.array].filter((_,i)=>i%3===1).every(y=>Math.abs(y-.48)<1e-5));
+  whale.root.position.y=-100;whale.root.updateMatrixWorld(true);mesh.skeleton.update();whale.updateWaterSilhouette(()=>0,{visible:true});
+  assert.ok([...overlay.geometry.attributes.aAlpha.array].every(a=>a===0));
+  whale.updateWaterSilhouette(()=>0,{visible:false});assert.equal(whale.silhouette.visible,false);
+  assert.equal(mesh.geometry,geometry);assert.equal(geometry.index.count/3,1092);
+});
+
+test('visible wide ripples track wave height with depth clearance and linger after a dive',()=>{
+  const parent=new THREE.Group(),heightAt=(x,z)=>Math.sin(x*.1)*.4+Math.cos(z*.2)*.2;
+  const effects=createWhaleWaterEffects(parent,{heightAt});effects.ripple(new THREE.Vector3(12,0,-25),1.5,.3);
+  effects.update(.1,true,null,null);
+  const ring=parent.children.find(o=>o.name==='whale-surface-ripple'&&o.visible);
+  assert.ok(ring);assert.ok(ring.material.opacity>.5);assert.equal(ring.material.depthWrite,false);assert.equal(ring.material.polygonOffset,true);
+  const p=ring.geometry.attributes.position;
+  for(let i=0;i<p.count;i++)assert.ok(Math.abs(p.getY(i)-heightAt(p.getX(i),p.getZ(i))-.5)<1e-5);
+  const first=new THREE.Vector3().fromBufferAttribute(p,0),second=new THREE.Vector3().fromBufferAttribute(p,1);
+  assert.ok(first.distanceTo(second)>.6);
+  effects.update(3,true,null,null);assert.equal(ring.visible,true);
+  effects.update(2,true,null,null);assert.equal(ring.visible,false);
+});
+
