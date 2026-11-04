@@ -210,7 +210,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       const shift=(f.height+1.3-controls.target.y)*(1-Math.exp(-step*7));
       controls.target.y+=shift;camera.position.y+=shift;
     }
-    avatar.update(step,false,false,launchFlight?1:0,false,Boolean(launchFlight&&f.velocity<-7));
+    if(!overboard)avatar.update(step,false,false,launchFlight?1:0,false,Boolean(launchFlight&&f.velocity<-7));
     player.userData.moving=movement.lengthSq()>1e-8;
     return true;
   }
@@ -430,7 +430,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     updateJump(dt);
     updateLie(dt);
     if(flying){player.userData.moving=false;return;}
-    if(!enabled){player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose,overboard,false,titanicPose);return;}
+    if(!enabled){player.userData.moving=false;if(!lying&&!overboard)avatar.update(dt,false,sitting,jumpPose,overboard,false,titanicPose);return;}
     if(deckCollision.ready()&&!spawnValidated){
       const safe=deckCollision.safeSpot(player.position.x,player.position.z)
         ||deckCollision.safeSpot(0,-33)
@@ -454,7 +454,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
     const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
     if((!spawnValidated&&deckCollision.ready())||returnFlight||(!x&&!z)){
-      player.userData.moving=false;if(!lying)avatar.update(dt,false,sitting,jumpPose,overboard);return;
+      player.userData.moving=false;if(!lying&&!overboard)avatar.update(dt,false,sitting,jumpPose,overboard,airborneFromEdge&&jumpVelocity<-7);return;
     }
     if(lying)standUp();
     if(sitting)setSitting(false);
@@ -475,7 +475,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
     }
     const delta=player.position.clone().sub(previous);
     if(delta.lengthSq()>1e-8)player.rotation.y=Math.atan2(-delta.x,-delta.z);
-    player.userData.moving=delta.lengthSq()>1e-8;avatar.update(dt,player.userData.moving&&!overboard,sitting,jumpPose,overboard,false,titanicPose);
+    player.userData.moving=delta.lengthSq()>1e-8;
+    if(!overboard)avatar.update(dt,player.userData.moving,sitting,jumpPose,false,airborneFromEdge&&jumpVelocity<-7,titanicPose);
     camera.position.add(delta);controls.target.add(delta);
   }
   return {player,update,setCharacter,setEnabled,resetView,deckViewPose,
