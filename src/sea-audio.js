@@ -1,6 +1,8 @@
+import {createWhaleAudio} from './whale-audio.js';
+
 // Original procedural jazz and sea ambience. No third-party recordings or melodies.
 export function createSeaAudio(button){
-  let context,musicBus,effectsBus,noiseBuffer,waves,enabled=true,nextNote=0,step=0,scheduler=null;
+  let context,musicBus,effectsBus,noiseBuffer,waves,whaleAudio,enabled=true,volume=1,nextNote=0,step=0,scheduler=null;
   const voices=new Set();
   const hz=midi=>440*2**((midi-69)/12);
   const chords=[[60,64,67,71,74],[57,60,64,67,71],[50,53,57,60,64],[55,59,62,65,69]];
@@ -9,10 +11,11 @@ export function createSeaAudio(button){
     if(context)return;
     const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;
     context=new Audio();musicBus=context.createGain();musicBus.gain.value=0;musicBus.connect(context.destination);
-    effectsBus=context.createGain();effectsBus.gain.value=.35;effectsBus.connect(context.destination);
+    effectsBus=context.createGain();effectsBus.gain.value=.35*volume;effectsBus.connect(context.destination);
     noiseBuffer=context.createBuffer(1,context.sampleRate*8,context.sampleRate);
     const samples=noiseBuffer.getChannelData(0);let brown=0;
     for(let i=0;i<samples.length;i++){brown=(brown+(Math.random()*2-1)*.025)/1.025;samples[i]=brown*4;}
+    whaleAudio=createWhaleAudio(context,effectsBus,{waterNoise:noiseBuffer,isAudible:()=>enabled&&volume>0&&context.state==='running'&&!document.hidden});
     waves=context.createBufferSource();waves.buffer=noiseBuffer;waves.loop=true;
     const filter=context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=1400;
     const waveGain=context.createGain();waveGain.gain.value=.095;
@@ -32,8 +35,7 @@ export function createSeaAudio(button){
     if(context.state==='suspended')context.resume().then(()=>{if(enabled)update();}).catch(()=>{});
     else if(enabled)update();
   }
-  // Attempt autoplay immediately; browsers may require a user gesture.
-  unlock();
+  // Allocate/resume audio only after a real user gesture; encounter events cannot unlock it.
   addEventListener('pointerdown',unlock);addEventListener('keydown',e=>{if(!e.repeat)unlock();});
   function tone(frequency,at,duration,volume,bus,type='sine',endFrequency=frequency){
     if(!context)return;
@@ -66,20 +68,21 @@ export function createSeaAudio(button){
   button.addEventListener('click',()=>{
     unlock();if(!context)return;enabled=!enabled;
     if(enabled){step=0;nextNote=context.currentTime+.02;startScheduler();update();}
-    else{clearInterval(scheduler);scheduler=null;for(const voice of voices){try{voice.stop();}catch{}}}
-    musicBus.gain.setTargetAtTime(enabled?.38:0,context.currentTime,.08);
+    else{clearInterval(scheduler);scheduler=null;for(const voice of voices){try{voice.stop();}catch{}}whaleAudio.stopAll();}
+    musicBus.gain.setTargetAtTime(enabled?.38*volume:0,context.currentTime,.08);
+    effectsBus.gain.setTargetAtTime(enabled?.35*volume:0,context.currentTime,.08);
     button.setAttribute('aria-pressed',String(enabled));button.setAttribute('aria-label',enabled?'음악 켜짐, 눌러서 끄기':'음악 꺼짐, 눌러서 켜기');button.title=enabled?'음악 끄기':'음악 켜기';
   });
   function update(){
     if(!context)return;
     if(document.hidden){musicBus.gain.setTargetAtTime(0,context.currentTime,.1);nextNote=context.currentTime+.02;return;}
     if(!enabled||context.state!=='running')return;
-    musicBus.gain.setTargetAtTime(.38,context.currentTime,.08);
+    musicBus.gain.setTargetAtTime(.38*volume,context.currentTime,.08);
     if(nextNote<context.currentTime)nextNote=context.currentTime+.02;
     while(nextNote<context.currentTime+1.5){schedule(nextNote,step);nextNote+=(step++%2===0?2:1)*(60/84/3);}
   }
   function effect(kind){
-    if(context?.state!=='running'||document.hidden)return false;
+    if(!enabled||volume<=0||context?.state!=='running'||document.hidden)return false;
     const now=context.currentTime;
     if(kind==='seagull')for(let i=0;i<3;i++)tone(1250+i*170,now+i*.22,.19,.15,effectsBus,'triangle',820+i*80);
     if(kind==='dolphin')for(let i=0;i<4;i++)tone(1700+i*350,now+i*.12,.12,.08,effectsBus,'sine',3300+i*260);
@@ -95,6 +98,15 @@ export function createSeaAudio(button){
     if(kind==='splash')hiss(now,.8,.40,effectsBus,650);
     return true;
   }
-  document.addEventListener('visibilitychange',()=>{if(context){if(document.hidden)musicBus.gain.setTargetAtTime(0,context.currentTime,.1);else if(enabled)unlock();}});
-  return {update,seagull:()=>effect('seagull'),dolphin:()=>effect('dolphin'),whale:()=>effect('whale'),whaleSpout:()=>effect('whaleSpout'),splash:()=>effect('splash')};
+  document.addEventListener('visibilitychange',()=>{if(context){if(document.hidden){musicBus.gain.setTargetAtTime(0,context.currentTime,.1);effectsBus.gain.setTargetAtTime(0,context.currentTime,.1);whaleAudio.stopAll();}else if(enabled){effectsBus.gain.setTargetAtTime(.35*volume,context.currentTime,.08);unlock();}}});
+  function setVolume(value){
+    if(!Number.isFinite(value))return;
+    volume=Math.max(0,Math.min(1,value));
+    if(context){musicBus.gain.setTargetAtTime(enabled?.38*volume:0,context.currentTime,.08);effectsBus.gain.setTargetAtTime(enabled?.35*volume:0,context.currentTime,.08);if(!volume)whaleAudio.stopAll();}
+  }
+  return {update,setVolume,seagull:()=>effect('seagull'),dolphin:()=>effect('dolphin'),whale:()=>effect('whale'),whaleSpout:()=>effect('whaleSpout'),splash:()=>effect('splash'),
+    whaleSplash:options=>whaleAudio?.play('Whale_Splash',options)??false,
+    whaleBlow:options=>whaleAudio?.play('Whale_Blow',options)??false,
+    whaleDive:options=>whaleAudio?.play('Whale_Dive',options)??false,
+    updateWhale:options=>whaleAudio?.update(options)};
 }

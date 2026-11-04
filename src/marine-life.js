@@ -43,7 +43,7 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     const clearance=current===whale?85:20;
     if(Math.abs(origin.x)<clearance&&Math.abs(origin.z)<(current===whale?120:55))origin.x=side*(clearance+5);
     current.root.rotation.y=Math.atan2(-right.x,-right.z);
-    if(current===whale)audio.whale();else audio.dolphin();
+    if(current!==whale)audio.dolphin(); // Whale sounds belong to surface events, never ordinary swimming.
     group.userData.lastEncounter=current===whale?'whale':'dolphin';
   }
   function whaleSurface(dt,t,duration){
@@ -65,19 +65,21 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
       didBreak=true;
       if(Number.isFinite(previousDistance))contact.lerp(previousContact,distance/(distance-previousDistance));
       contact.y=heightAt(contact.x,contact.z)+.08;
-      if(inView)effects.splash(contact);audio.splash();
+      if(inView){effects.splash(contact);audio.whaleSplash?.({position:contact,camera,visible:inView,speed:verticalSpeed});}
     }
     if(didBreak&&!didDive&&verticalSpeed<0&&previousDistance>=0&&distance<0){
-      didDive=true;contact.y=heightAt(contact.x,contact.z)+.08;if(inView)effects.splash(contact,.5);
+      didDive=true;contact.y=heightAt(contact.x,contact.z)+.08;
+      if(inView){effects.splash(contact,.5);audio.whaleDive?.({position:contact,camera,visible:inView,speed:verticalSpeed});}
     }
     previousDistance=distance;previousContact.copy(contact);
     const breath=age-duration*.37;
     const hasBlowhole=whale.readAttachment(whale.blowhole,blowhole);
     const above=hasBlowhole&&blowhole.y>heightAt(blowhole.x,blowhole.z)+.1;
     // Original breath window and one-shot audio event, with an underwater emission guard.
-    if(!didSpout&&breath>=0&&breath<2.2&&above){didSpout=true;audio.whaleSpout();if(inView)effects.beginBreath();}
+    if(!didSpout&&breath>=0&&breath<2.2&&above){didSpout=true;if(inView){effects.beginBreath();audio.whaleBlow?.({position:blowhole,camera,visible:inView});}}
     normal.set(0,1,0).applyQuaternion(whale.root.quaternion);
     effects.update(dt,inView,above?blowhole:null,normal);
+    audio.updateWhale?.({position:blowhole,camera,visible:inView});
     group.userData.whaleSurface={didBreak,didDive,didSpout};
   }
   function update(dt){

@@ -48,13 +48,17 @@ test('late loading never pops into an ongoing encounter; missing clips still per
 
 test('existing encounter schedule/path survives; surface and breath events fire once',async()=>{
     const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(75,1.6,.5,2000);camera.position.set(0,12,0);camera.lookAt(0,0,-170);
-    let elapsed=0,whaleStart=0,breaths=0;const encounters=[];
-    const audio={dolphin(){encounters.push('dolphin');},whale(){encounters.push('whale');whaleStart=elapsed;},whaleSpout(){breaths++;},splash(){}};
+    let elapsed=0,whaleStart=0,breaths=0,splashes=0,dives=0,markedWhale=false;const encounters=[];
+    const audio={dolphin(){encounters.push('dolphin');},whale(){assert.fail('No ordinary-swimming whale sound');},whaleSpout(){assert.fail('Use synchronized Whale_Blow');},splash(){},
+      whaleSplash({position,speed}){splashes++;assert.ok(Math.abs(position.y-.08)<1e-6);assert.ok(speed>0);},
+      whaleBlow({position}){breaths++;assert.ok(position.y>0);},
+      whaleDive({position}){dives++;assert.ok(Math.abs(position.y-.08)<1e-6);}};
     const life=createMarineLife(scene,camera,audio,{loadWhale:asset,compact:true,ocean:{heightAt:()=>0,uniforms:{daylight:{value:1}}}});
     const whale=life.group.userData.whale;await whale.loadPromise;
     let sawBreak=false,sawDive=false,sawSwim=false,sawIdle=false,previous=null;
     for(let i=0;i<5000;i++){
       elapsed+=.05;life.update(.05);
+      if(life.group.userData.lastEncounter==='whale'&&!markedWhale){markedWhale=true;encounters.push('whale');whaleStart=elapsed;}
       if(whale.root.visible){
         const age=elapsed-whaleStart,expected=-16+Math.sin(Math.PI*Math.min(1,age/11))*16;
         assert.ok(Math.abs(whale.root.position.y-expected)<1e-6);
@@ -67,7 +71,7 @@ test('existing encounter schedule/path survives; surface and breath events fire 
       }
       if(encounters.length===4)break;
     }
-    assert.deepEqual(encounters,['dolphin','dolphin','whale','dolphin']);assert.equal(breaths,1);
+    assert.deepEqual(encounters,['dolphin','dolphin','whale','dolphin']);assert.equal(breaths,1);assert.equal(splashes,1);assert.equal(dives,1);
     assert.ok(sawBreak&&sawDive&&sawSwim&&sawIdle,JSON.stringify({sawBreak,sawDive,sawSwim,sawIdle}));
     assert.equal(life.group.getObjectsByProperty('name','whale').length,1);
 });
