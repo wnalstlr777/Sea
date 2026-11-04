@@ -443,7 +443,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
         window.__seaNoDeckWarning=true;
       }
     }
-    if(!overboard&&!returnFlight&&deckCollision.ready()&&spawnValidated&&!lying){
+    if(!overboard&&!returnFlight&&deckCollision.ready()&&spawnValidated&&!lying&&!titanicPose){
       const stationaryFloor=walkableFloor(player.position.x,player.position.z);
       if(stationaryFloor!==null){lastFloorY=stationaryFloor;}
       else if(landingGrace<=0&&!headSupport&&!airborneFromEdge&&jumpHeight<=.03&&jumpVelocity===0){
@@ -480,6 +480,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     camera.position.add(delta);controls.target.add(delta);
   }
   return {player,update,setCharacter,setEnabled,resetView,deckViewPose,
+    isTitanicPosing:()=>titanicPose,
     toggleTitanicPose:(anchor)=>{if(overboard||returnFlight||launchFlight||lying||!spawnValidated)return false;if(titanicPose){titanicPose=false;return false;}if(!anchor||Math.hypot(player.position.x-anchor.x,player.position.z-anchor.z)>1.35)return false;const floor=deckCollision.floorAt(anchor.x,anchor.z,lastFloorY+4);if(floor===null)return false;setSitting(false);headSupport=null;airborneFromEdge=false;jumpHeight=0;jumpVelocity=0;jumpPose=0;const dx=anchor.x-player.position.x,dz=anchor.z-player.position.z;player.position.x=anchor.x;player.position.z=anchor.z;lastFloorY=floor;jumpPivot.position.y=NETWORK_TO_VISUAL_Y+floor-VISUAL_DECK_Y;camera.position.x+=dx;camera.position.z+=dz;controls.target.x+=dx;controls.target.z+=dz;player.rotation.y=0;titanicPose=true;avatar.update(.05,false,false,0,false,false,true);return true;},
     launchFireworkPose:()=>{avatar.fireworkPose();player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},
     getFireworkHandPosition:()=>{player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},isSpawnReady:()=>spawnValidated,lieOn,standUp,isLying:()=>lying,
