@@ -47,6 +47,33 @@ export function createShip(){
     displayPivot.visible=false;
     ship.add(displayPivot);
     ship.add(root);ship.userData.model=root;ship.userData.colliders=colliders;
+    // Glass was exported in the same Blender coordinates as Ship.glb.
+    // Apply the identical scale, Y rotation, and origin offset.
+    new GLTFLoader().load(`${import.meta.env.BASE_URL}models/Ship_001_Glass.glb`,glassGltf=>{
+      const glass=glassGltf.scene;
+      glass.name='ship-glass';
+      glass.scale.copy(root.scale);
+      glass.rotation.copy(root.rotation);
+      glass.position.copy(root.position);
+      glass.traverse(obj=>{
+        if(!obj.isMesh)return;
+        obj.castShadow=false;
+        obj.receiveShadow=true;
+        const glassMaterial=new THREE.MeshPhysicalMaterial({
+          color:0xb6d9e8,metalness:0,roughness:.12,
+          transparent:true,opacity:.28,depthWrite:false,
+          side:THREE.DoubleSide
+        });
+        obj.material=glassMaterial;
+      });
+      ship.add(glass);
+      // Overview uses a duplicate under the same pivot as the hull.
+      const overviewGlass=glass.clone(true);
+      overviewGlass.position.sub(displayPivot.position);
+      displayPivot.add(overviewGlass);
+      ship.userData.overviewVisualMeshes.push(...glass.children.filter(obj=>obj.isMesh));
+    },undefined,error=>console.warn('[Sea] Optional ship glass failed to load:',error));
+
 
     ship.userData.overviewDisplay=displayPivot;
     ship.userData.overviewVisualMeshes=[];
