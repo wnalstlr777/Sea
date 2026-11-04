@@ -457,9 +457,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(lying)standUp();
     if(sitting)setSitting(false);
     titanicPose=false;
-    // Riding passengers stay upright and travel with their support. Jump
-    // remains available to leave the tower or climb to the next level.
-    if(headSupport){player.userData.moving=false;avatar.update(dt,false,sitting,jumpPose,overboard);return;}
+    // Allow walking while standing on another player's head. The support
+    // check in updateJump releases the passenger once they step off.
     camera.getWorldDirection(forward);forward.y=0;forward.normalize();right.crossVectors(forward,THREE.Object3D.DEFAULT_UP).normalize();movement.copy(forward).multiplyScalar(z).addScaledVector(right,x);if(movement.length()>1)movement.normalize();movement.multiplyScalar(5.25*dt);
     if(returnFlight){avatar.update(dt,false,false,jumpPose);return;}
     const previous=player.position.clone();
