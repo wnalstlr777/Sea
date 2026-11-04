@@ -178,38 +178,40 @@ export function createPlayer(scene,camera,controls,deckCollision){
   }
   function updateLaunch(dt){
     if(!launchFlight)return false;
-    const f=launchFlight;
-    f.time=Math.min(f.duration,f.time+Math.min(dt,.05));
-    const t=f.time/f.duration;
-    // Shared cinematic launch path: ease out horizontally, crest above the
-    // destination, then descend with a continuous zero-snap landing.
-    const travel=t*t*(3-2*t);
-    const x=THREE.MathUtils.lerp(f.startX,f.endX,travel);
-    const z=THREE.MathUtils.lerp(f.startZ,f.endZ,travel);
-    const arcHeight=Math.max(7,(f.endY-f.startY)*.24);
-    const arc=Math.sin(Math.PI*t);
-    const y=THREE.MathUtils.lerp(f.startY,f.endY,travel)+arc*arcHeight;
-    const dx=x-player.position.x,dz=z-player.position.z;
-    player.position.x=x;player.position.z=z;
+    const f=launchFlight,step=Math.min(dt,.05),before=f.height;
+    f.height+=f.velocity*step-.5*GRAVITY*step*step;
+    f.velocity-=GRAVITY*step;
+    const x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'))+stick.x;
+    const z=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'))-stick.y;
+    camera.getWorldDirection(forward);forward.y=0;forward.normalize();
+    right.crossVectors(forward,THREE.Object3D.DEFAULT_UP).normalize();
+    movement.copy(forward).multiplyScalar(z).addScaledVector(right,x);
+    if(movement.lengthSq()>1)movement.normalize();
+    movement.multiplyScalar(5.25*step);
+    player.position.add(movement);
+    if(enabled){camera.position.x+=movement.x;controls.target.x+=movement.x;camera.position.z+=movement.z;controls.target.z+=movement.z;}
+    if(movement.lengthSq()>1e-8)player.rotation.y=Math.atan2(-movement.x,-movement.z);
+    lastMoveX=step>0?movement.x/step:0;lastMoveZ=step>0?movement.z/step:0;
+    if(f.velocity<0){
+      const floor=deckCollision.floorAt(player.position.x,player.position.z,before+.2);
+      if(floor!==null&&before>=floor-.15&&f.height<=floor){
+        f.height=floor;lastFloorY=floor;jumpHeight=0;jumpVelocity=0;
+        launchFlight=null;landingGrace=.45;
+      }
+    }
+    if(launchFlight){
+      jumpHeight=f.height-lastFloorY;
+      if(f.height<WATER_SURFACE_Y+.3){
+        jumpVelocity=f.velocity;launchFlight=null;startFall();
+      }
+    }
+    if(!overboard)jumpPivot.position.y=NETWORK_TO_VISUAL_Y+f.height-visualBaseY;
     if(enabled){
-      camera.position.x+=dx;controls.target.x+=dx;
-      camera.position.z+=dz;controls.target.z+=dz;
+      const shift=(f.height+1.3-controls.target.y)*(1-Math.exp(-step*7));
+      controls.target.y+=shift;camera.position.y+=shift;
     }
-    jumpHeight=y-lastFloorY;
-    jumpPivot.position.y=NETWORK_TO_VISUAL_Y+y-visualBaseY;
-    // Gradually stop flapping before the feet touch the platform.
-    const landingBlend=THREE.MathUtils.smoothstep(t,.78,1);
-    avatar.update(dt,false,false,1-landingBlend,false,t<.88);
-    if(enabled){
-      const deltaY=(y+1.3-controls.target.y)*(1-Math.exp(-dt*9));
-      controls.target.y+=deltaY;camera.position.y+=deltaY;
-    }
-    if(t>=1){
-      lastFloorY=f.endY;jumpHeight=0;jumpVelocity=0;
-      jumpPivot.position.y=NETWORK_TO_VISUAL_Y+f.endY-visualBaseY;
-      launchFlight=null;landingGrace=.65;
-      // Do not resetView here: it causes the apparent landing teleport.
-    }
+    avatar.update(step,false,false,launchFlight?1:0,false,Boolean(launchFlight));
+    player.userData.moving=movement.lengthSq()>1e-8;
     return true;
   }
   function jump(){
