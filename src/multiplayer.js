@@ -127,7 +127,10 @@ export function createMultiplayer({scene,camera,controls,character,url}){
 
       if(state.lying){remote.avatar.mesh.position.set(0,.58,-1.08);remote.avatar.mesh.quaternion.copy(lieQuat);}
       else{remote.avatar.mesh.position.set(0,0,0);remote.avatar.mesh.rotation.set(0,Math.PI,0);}
-      if(!state.lying)remote.avatar.update(dt,state.moving,!!state.sitting,!!state.jump||!!state.returning?1:0,!!state.inWater);
+      // Match the local fast-fall arm flapping using the received height samples.
+      const fallingSpeed=b.time>a.time?(heightB-heightA)*1000/(b.time-a.time):0;
+      const flapping=!!state.jump&&!state.returning&&fallingSpeed<-7;
+      if(!state.lying)remote.avatar.update(dt,state.moving,!!state.sitting,!!state.jump||!!state.returning?1:0,!!state.inWater,flapping);
       // Follow the actual animated head height: seated heads sit lower, and
       // the verticalOffset already includes any supporting player beneath.
       remote.root.userData.headPlatformEnabled=!state.lying&&!state.inWater&&!state.returning;
