@@ -216,7 +216,7 @@ bowPoseButton.type='button';bowPoseButton.innerHTML='<svg width="30" height="30"
 bowPoseButton.style.cssText='position:fixed;z-index:30;display:none;width:48px;height:48px;border:1px solid #ffffffaa;border-radius:50%;background:#07313ddd;color:white;font-size:25px;cursor:pointer;transform:translate(-50%,-100%)';
 document.querySelector('#app').append(bowPoseButton);
 bowPoseButton.onclick=()=>character.toggleTitanicPose(bowPoseAnchor);
-const bowPoseAnchor=new THREE.Vector3(0,VISUAL_DECK_Y,-43);
+const bowPoseAnchor=new THREE.Vector3(0,VISUAL_DECK_Y,-43.35);
 const BOW_POSE_RADIUS=1.35;
 const bowPoseProjection=new THREE.Vector3();
 const lieButton=document.createElement('button');lieButton.id='sunbed-interact';lieButton.type='button';lieButton.textContent='🛏️';lieButton.title='선베드에 눕기';lieButton.setAttribute('aria-label','선베드에 눕기');lieButton.style.cssText='position:fixed;z-index:30;display:none;width:44px;height:44px;min-width:44px;max-width:44px;min-height:44px;line-height:1;padding:0;font-size:23px;border:1px solid #ffffffaa;border-radius:50%;background:#07313ddd;color:white;cursor:pointer;transform:translate(-50%,-100%);box-shadow:0 2px 12px #0005';document.querySelector('#app').append(lieButton);
