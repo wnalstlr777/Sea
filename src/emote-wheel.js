@@ -18,9 +18,15 @@ export function createEmoteWheel({scene,camera,renderer,controls,player,isAvaila
     @keyframes sea-emote-pop{from{opacity:0;scale:.45}to{opacity:1;scale:1}}
     @media(max-width:600px){#sea-emote-wheel{width:210px;height:210px}#sea-emote-wheel button{width:46px;height:46px;font-size:24px}}
   `;document.head.append(style);
-  let open=false,held=null,holdTimer=null,bubbleUntil=0,selected=null;
+  let open=false,activeTarget=null,held=null,holdTimer=null,bubbleUntil=0,selected=null;
   function project(object,height){
-    object.getWorldPosition(screen);screen.y+=height;screen.project(camera);
+    // Track the actual rendered avatar (including jump/swim pivot and remote transforms).
+    const bounds=new THREE.Box3().setFromObject(object);
+    if(!bounds.isEmpty()){
+      bounds.getCenter(screen);
+      screen.y=bounds.max.y+(height===3.15?.55:0);
+    }else{object.getWorldPosition(screen);screen.y+=height;}
+    screen.project(camera);
     const rect=canvas.getBoundingClientRect();
     return {x:rect.left+(screen.x+1)*rect.width/2,y:rect.top+(1-screen.y)*rect.height/2,visible:screen.z>-1&&screen.z<1};
   }
@@ -33,14 +39,14 @@ export function createEmoteWheel({scene,camera,renderer,controls,player,isAvaila
     for(const root of candidates){if(raycaster.intersectObject(root,true).some(hit=>hit.object.isMesh&&hit.object.visible))return root;}
     return null;
   }
-  function close(){open=false;wheel.classList.remove('open');}
+  function close(){open=false;activeTarget=null;wheel.style.visibility='visible';wheel.classList.remove('open');}
   function show(target){
     if(!isAvailable())return;
     const p=project(target,1.7);if(!p.visible)return;
     const margin=118;
     wheel.style.left=`${Math.max(margin,Math.min(innerWidth-margin,p.x))}px`;
     wheel.style.top=`${Math.max(margin,Math.min(innerHeight-margin,p.y))}px`;
-    open=true;wheel.classList.add('open');
+    activeTarget=target;open=true;wheel.classList.add('open');
   }
   function choose(icon){
     close();selected=icon;bubble.textContent=icon;bubble.style.display='block';
@@ -84,6 +90,19 @@ export function createEmoteWheel({scene,camera,renderer,controls,player,isAvaila
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
   function update(){
     if(open&&!isAvailable())close();
+    if(open&&activeTarget){
+      if(!activeTarget.parent){close();}
+      else{
+        const p=project(activeTarget,1.7);
+        if(!p.visible){wheel.style.visibility='hidden';}
+        else{
+          wheel.style.visibility='visible';
+          const margin=118;
+          wheel.style.left=`${Math.max(margin,Math.min(innerWidth-margin,p.x))}px`;
+          wheel.style.top=`${Math.max(margin,Math.min(innerHeight-margin,p.y))}px`;
+        }
+      }
+    }
     if(!selected)return;
     if(performance.now()>bubbleUntil){bubble.style.display='none';selected=null;return;}
     const p=project(player,3.15);
