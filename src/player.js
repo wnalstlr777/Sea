@@ -277,10 +277,12 @@ export function createPlayer(scene,camera,controls,deckCollision){
         const steering=keys.has('KeyW')||keys.has('KeyA')||keys.has('KeyS')||keys.has('KeyD')||
           keys.has('ArrowUp')||keys.has('ArrowDown')||keys.has('ArrowLeft')||keys.has('ArrowRight')||stick.lengthSq()>.01;
         const dx=steering?0:fallDriftX*step,dz=steering?0:fallDriftZ*step;
-        player.position.x+=dx;player.position.z+=dz;
+        const resolved=deckCollision.blockedMove(player.position.x,player.position.z,dx,dz,visualBaseY+fallOffset);
+        const actualDx=resolved.x-player.position.x,actualDz=resolved.z-player.position.z;
+        player.position.x=resolved.x;player.position.z=resolved.z;
         if(enabled){
-          camera.position.x+=dx;controls.target.x+=dx;
-          camera.position.z+=dz;controls.target.z+=dz;
+          camera.position.x+=actualDx;controls.target.x+=actualDx;
+          camera.position.z+=actualDz;controls.target.z+=actualDz;
         }
         // Drag gently slows the horizontal momentum in the air.
         const drag=Math.exp(-step*.38);fallDriftX*=drag;fallDriftZ*=drag;
