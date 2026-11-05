@@ -32,11 +32,11 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
   const contact=new THREE.Vector3(),previousContact=new THREE.Vector3(),blowhole=new THREE.Vector3(),normal=new THREE.Vector3();
   const sphereBounds=new THREE.Sphere(new THREE.Vector3(),95),frustum=new THREE.Frustum(),viewProjection=new THREE.Matrix4();
   let next=12,age=-1,current=null,encounters=0,didSplash=false,didSpout=false;
-  let didBreak=false,didDive=false,previousDistance=-Infinity,nextRipple=0,inView=false;
+  let didBreak=false,didDive=false,didCall=false,previousDistance=-Infinity,nextRipple=0,inView=false;
   const dorsalDistances=[],dorsalCrossings=[];let nextBodyRipple=0;
   function start(){
     current=encounters++%3===2?whale:dolphin;current.root.visible=false;age=0;didSplash=false;didSpout=false;
-    didBreak=false;didDive=false;previousDistance=-Infinity;nextRipple=0;
+    didBreak=false;didDive=false;didCall=false;previousDistance=-Infinity;nextRipple=0;
     dorsalDistances.length=0;dorsalCrossings.length=0;nextBodyRipple=0;
     if(current===whale)whale.startEncounter();
     camera.getWorldDirection(direction);direction.y=0;direction.normalize();right.crossVectors(direction,THREE.Object3D.DEFAULT_UP).normalize();
@@ -53,7 +53,8 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
   function whaleSurface(dt,t,duration){
     const verticalSpeed=24*Math.PI/duration*Math.cos(Math.PI*Math.min(1,t)),travelSpeed=24/duration;
     // Zero vertical speed at the crest is not an idle whale: it is still swimming forward.
-    whale.update(dt,travelSpeed<1.2&&Math.abs(verticalSpeed)<2,travelSpeed);
+    // Keep the rigged tail swimming through the ascent, crest and dive.
+    whale.update(dt,false,Math.max(2.2,travelSpeed));
     whale.root.updateMatrixWorld(true);
     whale.root.traverse(o=>{if(o.isSkinnedMesh)o.skeleton.update();});
     camera.updateMatrixWorld();viewProjection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(viewProjection);
@@ -66,12 +67,12 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
       if(d>distance){distance=d;contact.copy(blowhole);}
       const old=dorsalDistances[i],crossed=dorsalCrossings[i]??0;
       if(old<0&&d>=0&&!(crossed&1)){dorsalCrossings[i]=crossed|1;if(inView)effects.ripple(blowhole,1.45,current.root.rotation.y);}
-      else if(old>=0&&d<0&&verticalSpeed<0&&!(crossed&2)){dorsalCrossings[i]=crossed|2;if(inView)effects.ripple(blowhole,1.0,current.root.rotation.y);}
+      else if(old>=0&&d<0&&verticalSpeed<0&&!(crossed&2)){dorsalCrossings[i]=crossed|2;if(inView)effects.ripple(blowhole,1.5,current.root.rotation.y);}
       dorsalDistances[i]=d;
     }
-    if(didBreak&&!didDive&&age>=nextBodyRipple&&distance>0){nextBodyRipple=age+1.0;if(inView)effects.ripple(whale.root.position,.8,current.root.rotation.y,true);}
+    if(didBreak&&!didDive&&age>=nextBodyRipple&&distance>0){nextBodyRipple=age+1.0;if(inView)effects.ripple(contact,1.25,current.root.rotation.y,true);}
     if(distance> -3.5&&distance<0&&verticalSpeed>0&&age>=nextRipple){
-      nextRipple=age+.7;if(inView)effects.ripple(contact,.7,current.root.rotation.y);
+      nextRipple=age+.7;if(inView)effects.ripple(contact,1.15,current.root.rotation.y);
     }
     if(!didBreak&&previousDistance<0&&distance>=0){
       didBreak=true;
@@ -88,7 +89,7 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     const hasBlowhole=whale.readAttachment(whale.blowhole,blowhole);
     const above=hasBlowhole&&blowhole.y>heightAt(blowhole.x,blowhole.z)+.1;
     // Original breath window and one-shot audio event, with an underwater emission guard.
-    if(!didSpout&&breath>=0&&breath<2.2&&above){didSpout=true;if(inView){effects.beginBreath();audio.whaleBlow?.({position:blowhole,camera,visible:inView});}}
+    if(!didSpout&&breath>=0&&breath<2.2&&above){didSpout=true;if(inView){effects.beginBreath();audio.whaleBlow?.({position:blowhole,camera,visible:inView});if(!didCall){didCall=true;audio.whaleCall?.({position:blowhole,camera,visible:inView});}}}
     normal.set(0,1,0).applyQuaternion(whale.root.quaternion);
     effects.update(dt,inView,above?blowhole:null,normal);
     audio.updateWhale?.({position:blowhole,camera,visible:inView});
@@ -102,7 +103,7 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     current.root.position.copy(origin).addScaledVector(right,(t-.5)*(isWhale?24:20));
     const arc=Math.sin(Math.PI*Math.min(1,t));
     current.root.position.y=isWhale?heightAt(current.root.position.x,current.root.position.z)-17+arc*24:-1.4+arc*5.5;
-    current.root.rotation.x=isWhale?Math.cos(t*Math.PI)*.08:Math.cos(t*Math.PI)*-.65;
+    current.root.rotation.x=isWhale?Math.cos(Math.min(1,t)*Math.PI)*.20:Math.cos(t*Math.PI)*-.65;
     current.root.visible=!isWhale||whale.active;
     if(isWhale&&whale.active)whaleSurface(dt,t,duration);
     else{
