@@ -180,10 +180,10 @@ export function createOcean(){
         float width=3.8+aft*.085;
         float bend=(tex.b-.5)*1.5*(1.-exp(-aft*.03));
         float core=exp(-pow((world.x+bend)/width,2.));
-        float sternMask=smoothstep(-30.,-22.,world.z)*(1.-smoothstep(80.,240.,aft));
+        float sternMask=smoothstep(-30.,-22.,world.z)*(1.-smoothstep(53.,160.,aft));
         // Larger, lengthwise-stretched wake foam: fewer repeats across the beam,
         // substantially fewer along the stern trail. Break up obvious UV tiling.
-        vec2 wakeUV=water/vec2(27.0,65.0);
+        vec2 wakeUV=water/vec2(27.0,85.0);
         wakeUV.x+=(tex.b-.5)*.17+sin(water.y*.021+time*.07)*.055;
         wakeUV.y+=(tex.a-.5)*.19+sin(water.x*.037-time*.05)*.08;
         vec4 fine=texture2D(surfaceMap,wakeUV+vec2(time*.003,-time*.002));
@@ -191,7 +191,7 @@ export function createOcean(){
         float lace=smoothstep(.58,.86,fine.a);
         float propulsion=clamp(speed/8.,0.,1.)*wake;
         float foam=clamp(core*sternMask*(.08+bubbles*.55+lace*.2)*propulsion,0.,.7);
-        vec3 foamColor=mix(vec3(.07,.12,.2),vec3(.78,.86,.85),daylight);
+        vec3 foamColor=mix(vec3(.10,.16,.23),vec3(.86,.92,.92),daylight);
         foamColor=mix(foamColor,skyHorizon,.18);
         color=mix(color,foamColor,foam);
         // Keep foreground and mid-distance texture; blend before the curved tangent.
