@@ -29,7 +29,7 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
   splashGeometry.setAttribute('position',new THREE.BufferAttribute(drops,3).setUsage(THREE.DynamicDrawUsage));
   const splash=new THREE.Points(splashGeometry,new THREE.PointsMaterial({color:'#d4f6ff',size:.3,transparent:true,opacity:.8,depthWrite:false}));splash.visible=false;splash.frustumCulled=false;group.add(splash);
   const origin=new THREE.Vector3(),direction=new THREE.Vector3(),right=new THREE.Vector3();
-  const contact=new THREE.Vector3(),previousContact=new THREE.Vector3(),blowhole=new THREE.Vector3(),normal=new THREE.Vector3();
+  const contact=new THREE.Vector3(),previousContact=new THREE.Vector3(),surfaceContact=new THREE.Vector3(),blowhole=new THREE.Vector3(),normal=new THREE.Vector3();
   const sphereBounds=new THREE.Sphere(new THREE.Vector3(),95),frustum=new THREE.Frustum(),viewProjection=new THREE.Matrix4();
   let next=12,age=-1,current=null,encounters=0,didSplash=false,didSpout=false;
   let didBreak=false,didDive=false,didCall=false,previousDistance=-Infinity,nextRipple=0,inView=false;
@@ -60,29 +60,31 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     camera.updateMatrixWorld();viewProjection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);frustum.setFromProjectionMatrix(viewProjection);
     sphereBounds.center.copy(whale.root.position);sphereBounds.center.y+=15;inView=frustum.intersectsSphere(sphereBounds);
     whale.updateWaterSilhouette(heightAt,{visible:inView,fade:THREE.MathUtils.smoothstep(t,0,.05)*(1-THREE.MathUtils.smoothstep(t,.95,1)),daylight:ocean?.uniforms.daylight?.value??1});
+    // Shift wake origins inward from the leading head vertex toward the whale's body.
+    const bodySurface=p=>{surfaceContact.copy(p).lerp(whale.root.position,.42);surfaceContact.y=heightAt(surfaceContact.x,surfaceContact.z)+.12;return surfaceContact;};
     let distance=-Infinity;
     for(let i=0;i<whale.contacts.length;i++){
       const attachment=whale.contacts[i];
       whale.readAttachment(attachment,blowhole);const d=blowhole.y-heightAt(blowhole.x,blowhole.z);
       if(d>distance){distance=d;contact.copy(blowhole);}
       const old=dorsalDistances[i],crossed=dorsalCrossings[i]??0;
-      if(old<0&&d>=0&&!(crossed&1)){dorsalCrossings[i]=crossed|1;if(inView)effects.ripple(blowhole,1.45,current.root.rotation.y);}
-      else if(old>=0&&d<0&&verticalSpeed<0&&!(crossed&2)){dorsalCrossings[i]=crossed|2;if(inView)effects.ripple(blowhole,1.5,current.root.rotation.y);}
+      if(old<0&&d>=0&&!(crossed&1)){dorsalCrossings[i]=crossed|1;if(inView)effects.ripple(bodySurface(blowhole),1.45,current.root.rotation.y);}
+      else if(old>=0&&d<0&&verticalSpeed<0&&!(crossed&2)){dorsalCrossings[i]=crossed|2;if(inView)effects.ripple(bodySurface(blowhole),1.5,current.root.rotation.y);}
       dorsalDistances[i]=d;
     }
-    if(didBreak&&!didDive&&age>=nextBodyRipple&&distance>0){nextBodyRipple=age+1.0;if(inView)effects.ripple(contact,1.25,current.root.rotation.y,true);}
+    if(didBreak&&!didDive&&age>=nextBodyRipple&&distance>0){nextBodyRipple=age+1.0;if(inView)effects.ripple(bodySurface(contact),1.25,current.root.rotation.y,true);}
     if(distance> -3.5&&distance<0&&verticalSpeed>0&&age>=nextRipple){
-      nextRipple=age+.7;if(inView)effects.ripple(contact,1.15,current.root.rotation.y);
+      nextRipple=age+.7;if(inView)effects.ripple(bodySurface(contact),1.15,current.root.rotation.y);
     }
     if(!didBreak&&previousDistance<0&&distance>=0){
       didBreak=true;
       if(Number.isFinite(previousDistance))contact.lerp(previousContact,distance/(distance-previousDistance));
       contact.y=heightAt(contact.x,contact.z)+.08;
-      if(inView){effects.splash(contact);audio.whaleSplash?.({position:contact,camera,visible:inView,speed:verticalSpeed});}
+      if(inView){effects.splash(bodySurface(contact));audio.whaleSplash?.({position:contact,camera,visible:inView,speed:verticalSpeed});}
     }
     if(didBreak&&!didDive&&verticalSpeed<0&&previousDistance>=0&&distance<0){
       didDive=true;contact.y=heightAt(contact.x,contact.z)+.08;
-      if(inView){effects.splash(contact,.5);audio.whaleDive?.({position:contact,camera,visible:inView,speed:verticalSpeed});}
+      if(inView){effects.splash(bodySurface(contact),.5);audio.whaleDive?.({position:contact,camera,visible:inView,speed:verticalSpeed});}
     }
     previousDistance=distance;previousContact.copy(contact);
     const breath=age-2.0;
@@ -109,7 +111,7 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
       const emerge=THREE.MathUtils.smoothstep(age,0,2);
       const dive=THREE.MathUtils.smoothstep(age,11.5,15.5);
       const seaLevel=heightAt(current.root.position.x,current.root.position.z);
-      current.root.position.y=seaLevel-17+emerge*24-dive*25;
+      current.root.position.y=seaLevel-17+emerge*19-dive*25;
       // Brief head lift on emergence, level cruising, then head-first dive.
       // Keep the tail elevated briefly at the end instead of pitching up throughout.
       const headLift=1-THREE.MathUtils.smoothstep(age,1.1,2.8);
