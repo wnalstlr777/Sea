@@ -91,7 +91,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // Water camera follows horizontal motion but stays above the surface.
   function followWaterHeight(shift){
     if(!enabled)return; // Overview owns the camera while swimming continues.
-    const desiredTarget=Math.max(3.0,controls.target.y+shift);
+    // Preserve the orbit offset without forcing the camera to a new elevation.
+    const desiredTarget=controls.target.y+shift;
     const delta=desiredTarget-controls.target.y;
     controls.target.y=desiredTarget;
     camera.position.y+=delta;
@@ -162,7 +163,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       const orbit=new THREE.Vector3(0,3.7,12.0);
       if(enabled){
         controls.target.set(player.position.x,landedY+1.3,player.position.z);
-        camera.position.copy(controls.target).add(orbit);
+        camera.position.copy(controls.target).add(deckCameraOffset||orbit);
         controls.update();
       }
       deckCameraOffset=null;
