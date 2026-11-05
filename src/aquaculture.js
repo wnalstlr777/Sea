@@ -98,7 +98,9 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
    if(school){const a=state.schools.find(s=>s.id===school.id);context={school};interact.textContent=a.availableAt>time?`치어가 다시 모이는 중 · ${Math.ceil((a.availableAt-time)/1000)}초`:mine.fry>=5?'치어 보유 한도 5/5':'🥅 뜰채로 치어 채집 (2초)';interact.disabled=a.availableAt>time||mine.fry>=5;}
    else{const p=state.pens.find(nearPen);if(p){context={pen:p};const action=penAction(p);interact.textContent=`가두리 ${p.id} · ${p.members.length}/3명\n${p.members.map(m=>m.nickname+(m.mine?' (나)':'')).join(' · ')||'참여자 없음'}\n${action?.text||''}`;interact.disabled=action?.disabled||false;}}
   }
+  interact.classList.toggle('aqua-pen-interact',!!context?.pen);
   interact.hidden=!context||!panel.hidden;
+  if(context?.pen&&!interact.hidden){const p=context.pen;project(interact,p.x,ocean.heightAt(p.x,p.z)+2.3,p.z,true);}
   if(collecting){interact.hidden=!available;interact.disabled=true;const progress=(performance.now()-collecting.start)/collecting.duration;interact.textContent=`🥅 채집 중 ${Math.min(100,Math.floor(progress*100))}%`;
    if(!collecting.net){collecting.net=createNet();scene.add(collecting.net);}character.setNetPose(progress);collecting.net.position.copy(character.getFireworkHandPosition());collecting.net.rotation.set(Math.sin(progress*Math.PI)*-.6,character.player.rotation.y,Math.PI-.45);
    if(progress>=1){const c=collecting;collecting=null;scene.remove(c.net);request('collectFinish',{challengeId:c.challengeId}).then(result=>{if(result)notify('치어 1마리를 채집했습니다! 가두리로 가져가 보세요.');});}
