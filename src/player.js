@@ -44,6 +44,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   const WATER_SURFACE_Y=-1.35, RESPAWN_X=0, RESPAWN_Z=-27;
   let waterHeightAt=()=>0;
   let overboard=false, fallOffset=0, waterTime=0, returnFlight=null,launchFlight=null;
+  let waterJumpCooldown=0;
   let landingGrace=0;
   let fallVelocity=0,fallDriftX=0,fallDriftZ=0,fallAirborne=false;
   let lastMoveX=0,lastMoveZ=0;
@@ -219,7 +220,12 @@ export function createPlayer(scene,camera,controls,deckCollision){
   function jump(){
     if(!enabled)return;
     if(returnFlight||launchFlight)return;
-    if(overboard){returnToDeck();return;}
+    if(overboard){
+      if(fallAirborne||waterJumpCooldown>0)return;
+      // Jump from the tube under player control; only real UCX deck contact lands.
+      fallAirborne=true;fallVelocity=12.8;waterJumpCooldown=.75;
+      playJumpSound();return;
+    }
     // A player standing on another head can jump again to build taller towers.
     if((jumpHeight>.03&&!headSupport)||jumpVelocity>0)return;
     if(lying)standUp();if(sitting)setSitting(false);titanicPose=false;
@@ -258,6 +264,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     // Overview disables controls, not physics. Keep head support and the
     // vertical network offset alive so human towers remain in photos.
     const step=Math.min(dt,.05);
+    waterJumpCooldown=Math.max(0,waterJumpCooldown-step);
     if(updateLaunch(step))return;
     if(updateReturnFlight(step))return;
     if(overboard){
@@ -277,7 +284,18 @@ export function createPlayer(scene,camera,controls,deckCollision){
         }
         // Drag gently slows the horizontal momentum in the air.
         const drag=Math.exp(-step*.38);fallDriftX*=drag;fallDriftZ*=drag;
-        if(fallOffset<=desired){fallOffset=desired;fallAirborne=false;waterTime=0;}
+        // Only a descending jump that crosses a real deck surface can board.
+        if(fallVelocity<0){
+          const feetY=visualBaseY+fallOffset;
+          const floor=deckCollision.floorAt(player.position.x,player.position.z,feetY+Math.max(.2,-fallVelocity*step+.2));
+          if(floor!==null&&floor>WATER_SURFACE_Y+1&&feetY<=floor&&feetY>=floor-1.2){
+            fallOffset=floor-visualBaseY;lastFloorY=floor;
+            overboard=false;player.userData.inWater=false;fallAirborne=false;
+            fallVelocity=0;landingGrace=.5;waterJumpCooldown=0;
+            contact.visible=true;deckCameraOffset=null;
+          }
+        }
+        if(overboard&&fallOffset<=desired){fallOffset=desired;fallAirborne=false;waterTime=0;}
       }else{
         waterTime+=step;
         fallOffset=desired+Math.sin(waterTime*1.5)*.04;
@@ -286,7 +304,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       followWaterHeight(shift);
       jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
       jumpPose+=(0-jumpPose)*(1-Math.exp(-step*16));
-      avatar.update(step,false,false,fallAirborne?1:0,!fallAirborne,fallAirborne&&fallVelocity<-7);
+      avatar.update(step,false,false,fallAirborne?1:0,overboard&&!fallAirborne,fallAirborne&&fallVelocity<-7);
       return;
     }
     if(!headSupport&&(jumpVelocity!==0||jumpHeight>0)){
