@@ -274,6 +274,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       const old=fallOffset;
       if(fallAirborne){
         // Continuous ballistic motion from the deck edge (no sudden vertical drop).
+        const previousWaterFeet=visualBaseY+fallOffset;
         fallOffset+=fallVelocity*step-.5*GRAVITY*step*step;
         fallVelocity-=GRAVITY*step;
         const steering=keys.has('KeyW')||keys.has('KeyA')||keys.has('KeyS')||keys.has('KeyD')||
@@ -291,8 +292,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
         // Only a descending jump that crosses a real deck surface can board.
         if(fallVelocity<0){
           const feetY=visualBaseY+fallOffset;
-          const floor=deckCollision.floorAt(player.position.x,player.position.z,feetY+Math.max(.2,-fallVelocity*step+.2));
-          if(floor!==null&&floor>WATER_SURFACE_Y+1&&feetY<=floor&&feetY>=floor-1.2){
+          const floor=deckCollision.floorAt(player.position.x,player.position.z,previousWaterFeet+.25);
+          if(floor!==null&&floor>WATER_SURFACE_Y+1&&previousWaterFeet>=floor-.12&&feetY<=floor){
             fallOffset=floor-visualBaseY;lastFloorY=floor;
             overboard=false;player.userData.inWater=false;fallAirborne=false;
             fallVelocity=0;landingGrace=.5;waterJumpCooldown=0;
