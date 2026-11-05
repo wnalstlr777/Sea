@@ -110,8 +110,12 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
       const dive=THREE.MathUtils.smoothstep(age,11.5,15.5);
       const seaLevel=heightAt(current.root.position.x,current.root.position.z);
       current.root.position.y=seaLevel-17+emerge*24-dive*25;
-      // Bow the head downward first, leaving the trailing tail as the final silhouette.
-      current.root.rotation.x=THREE.MathUtils.lerp(.12,-.43,THREE.MathUtils.smoothstep(age,11.5,14));
+      // Brief head lift on emergence, level cruising, then head-first dive.
+      // Keep the tail elevated briefly at the end instead of pitching up throughout.
+      const headLift=1-THREE.MathUtils.smoothstep(age,1.1,2.8);
+      const headDive=THREE.MathUtils.smoothstep(age,11.5,13.6);
+      const tailFinish=THREE.MathUtils.smoothstep(age,13.6,14.5);
+      current.root.rotation.x=.18*headLift-.36*headDive+.14*tailFinish;
     }else{
       current.root.position.y=-1.4+arc*5.5;
       current.root.rotation.x=Math.cos(t*Math.PI)*-.65;
