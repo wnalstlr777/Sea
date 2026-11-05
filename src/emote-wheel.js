@@ -20,12 +20,11 @@ export function createEmoteWheel({scene,camera,renderer,controls,player,isAvaila
   `;document.head.append(style);
   let open=false,activeTarget=null,held=null,holdTimer=null,bubbleUntil=0,selected=null;
   function project(object,height){
-    // Track the actual rendered avatar (including jump/swim pivot and remote transforms).
-    const bounds=new THREE.Box3().setFromObject(object);
-    if(!bounds.isEmpty()){
-      bounds.getCenter(screen);
-      screen.y=bounds.max.y+(height===3.15?.55:0);
-    }else{object.getWorldPosition(screen);screen.y+=height;}
+    // Use the animated head joint, not the whole avatar bounding box (which
+    // can include contact meshes and shifts dramatically when swimming).
+    const head=object.getObjectByName('sea-avatar-head');
+    if(head){head.getWorldPosition(screen);screen.y+=height===3.15?.8:.45;}
+    else{object.getWorldPosition(screen);screen.y+=height;}
     screen.project(camera);
     const rect=canvas.getBoundingClientRect();
     return {x:rect.left+(screen.x+1)*rect.width/2,y:rect.top+(1-screen.y)*rect.height/2,visible:screen.z>-1&&screen.z<1};
