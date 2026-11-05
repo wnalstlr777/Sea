@@ -15,7 +15,8 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  const summary=element('p','aqua-summary','서버에 연결하는 중입니다.'),harvest=element('button','aqua-harvest'),penList=element('div','aqua-pen-list'),guide=element('p','aqua-guide','바다에서는 튜브가 자동 장착됩니다. 치어 채집 → 가두리 참여·방류 → 먹이 주기 → 12시간 후 수확! 배로 돌아갈 땐 점프 버튼을 누르세요.');
  const bookHeading=element('h3','','나의 물고기 도감'),book=element('div','aqua-book');panel.append(summary,harvest,penList,guide,bookHeading,book);app.append(panel);
  // Pen status is displayed by the existing proximity interaction button, not a floating label.
- const schoolLabels=SCHOOLS.map(p=>{const el=element('div','aqua-school-label','🐟 치어');app.append(el);return {school:p,el};});
+ const penLabels=PENS.map(p=>{const el=element('div','aqua-world-label');el.hidden=true;app.append(el);return {pen:p,el};});
+  const schoolLabels=SCHOOLS.map(p=>{const el=element('div','aqua-school-label','🐟 치어');app.append(el);return {school:p,el};});
  const projection=new THREE.Vector3(),netActions=new Map();let state=null,serverAt=0,receivedAt=performance.now(),busy=false,collecting=null,observePending=false,lastTick=-1,donePending=false,toastUntil=0,context=null,lastRefresh=0;
  const now=()=>serverAt?serverAt+(performance.now()-receivedAt):Date.now();
  function notify(text){toast.textContent=text;toast.hidden=false;toastUntil=performance.now()+5000;}
@@ -91,7 +92,14 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   if(available&&performance.now()-lastRefresh>15000){lastRefresh=performance.now();multiplayer.aquaSnapshot();}
   tube.visible=s.inWater&&!s.returning;setTubeColor(tube,character.player.userData.tubeColor||0);tube.material.emissiveIntensity=.2+Math.max(0,character.player.userData.waterKickPulse||0)*.55;character.player.updateWorldMatrix(true,true);const tubeFeet=character.player.children[0].getWorldPosition(new THREE.Vector3()).y;tube.position.set(character.player.position.x,tubeFeet+1.5,character.player.position.z);tube.rotation.z=Math.sin(time*.0017)*.025;
   world.update(time,state,tube.userData.color);
-  for(const {school,el} of schoolLabels){const p=schoolPosition(school,time),a=state?.schools.find(s=>s.id===school.id),distance=Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z);project(el,p.x,ocean.heightAt(p.x,p.z)+.7,p.z,available&&onWater&&!!a&&panel.hidden&&a.availableAt<=time&&distance<=3.5);}
+  for(const {pen,el} of penLabels){
+    const p=state?.pens.find(item=>item.id===pen.id);
+    const distance=Math.hypot(character.player.position.x-pen.x,character.player.position.z-pen.z);
+    const visible=available&&!!p&&panel.hidden&&distance<=3.2;
+    if(visible)el.textContent=p.cycle?`가두리 ${p.id} · ${p.members.length}/3명\\n먹이 ${p.cycle.feeds.length}/3 · ${p.cycle.feeds.length>=3?'성장 중':'양식 중'}`:`가두리 ${p.id} · ${p.members.length}/3명\\n치어 방류 대기`;
+    project(el,pen.x,ocean.heightAt(pen.x,pen.z)+2.2,pen.z,visible);
+   }
+   for(const {school,el} of schoolLabels){const p=schoolPosition(school,time),a=state?.schools.find(s=>s.id===school.id),distance=Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z);project(el,p.x,ocean.heightAt(p.x,p.z)+.7,p.z,available&&onWater&&!!a&&panel.hidden&&a.availableAt<=time&&distance<=3.5);}
   context=null;
   if(available&&mine&&onWater&&!busy){
    const school=SCHOOLS.find(school=>{const p=schoolPosition(school,time);return Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z)<=2;});
@@ -111,7 +119,8 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  }
  function setOverview(hidden){
   world.root.visible=!hidden;
-  for(const {el} of schoolLabels)el.hidden=hidden;
+  for(const {el} of penLabels)el.hidden=hidden;
+   for(const {el} of schoolLabels)el.hidden=hidden;
   if(hidden){interact.hidden=true;tutorial.hidden=true;toast.hidden=true;}
  }
  return {update,world,setOverview,getState:()=>state};
