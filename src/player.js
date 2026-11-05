@@ -485,7 +485,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(returnFlight){avatar.update(dt,false,false,jumpPose);return;}
     const previous=player.position.clone();
     lastMoveX=dt>0?movement.x/dt:0;lastMoveZ=dt>0?movement.z/dt:0;
-    player.position.add(movement);
+    const resolved=deckCollision.blockedMove(player.position.x,player.position.z,movement.x,movement.z,lastFloorY+jumpHeight);
+    player.position.set(resolved.x,player.position.y,resolved.z);
     // The exported UCX surfaces, not the old rectangular deck, determine support.
     const floor=walkableFloor(player.position.x,player.position.z);
     if(!overboard&&floor!==null){lastFloorY=floor;}
