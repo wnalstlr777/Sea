@@ -203,13 +203,17 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
     for(let i=0;i<2;i++){
       const side=i===0?-1:1;
       // Upper arms extend sideways, with elbows out at the tube's outer rim.
+      // Each water jump briefly throws both hands overhead, then re-grips the tube.
+      // Reuse the existing kick pulse so arms, legs and tube glow stay synchronized.
+      const cheer=Math.max(0,Math.min(1,waterKickPulse));
       const armX=-.22;
-      const armZ=side*(1.42+THREE.MathUtils.degToRad(20));
-      arms[i].rotation.x+=(armX-arms[i].rotation.x)*blend;
-      arms[i].rotation.z+=(armZ-arms[i].rotation.z)*blend;
-      elbows[i].rotation.x+=(-.18-elbows[i].rotation.x)*blend;
-      // Bend forearms down onto the ring, rather than holding both arms straight.
-      elbows[i].rotation.z+=(-side*.85-elbows[i].rotation.z)*blend;
+      const armZ=side*(1.42+THREE.MathUtils.degToRad(20)+(2.85-(1.42+THREE.MathUtils.degToRad(20)))*cheer);
+      const armBlend=1-Math.exp(-Math.min(.1,dt)*22);
+      arms[i].rotation.x+=(armX-arms[i].rotation.x)*armBlend;
+      arms[i].rotation.z+=(armZ-arms[i].rotation.z)*armBlend;
+      elbows[i].rotation.x+=(-.18-elbows[i].rotation.x)*armBlend;
+      // Straighten the forearms during the cheer, then hold the tube again.
+      elbows[i].rotation.z+=((-side*.85)*(1-cheer)-elbows[i].rotation.z)*armBlend;
       // While jumping with the tube, only the feet paddle alternately.
       const kicking=(jumpPhase??0)>.5;
       const kick=kicking?Math.sin(walkTime*15+i*Math.PI)*.42:0;
