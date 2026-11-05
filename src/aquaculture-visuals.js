@@ -23,7 +23,7 @@ export function createNet(){const group=new THREE.Group();group.name='fry-catchi
 export function createAquaWorld(scene,heightAt){
  const root=new THREE.Group();root.name='shared-aquaculture';scene.add(root);
  const ringGeo=new THREE.TorusGeometry(2.5,.18,8,48).rotateX(Math.PI/2),meshGeo=new THREE.CylinderGeometry(2.36,2.2,3.2,24,4,true).translate(0,-1.6,0);
- const pens=PENS.map((pen,i)=>{const group=new THREE.Group();group.name='fish-pen-'+pen.id;group.position.set(pen.x,0,pen.z);group.add(new THREE.Mesh(ringGeo,new THREE.MeshStandardMaterial({color:i?'#acbba5':'#c8bea8',roughness:.9})),new THREE.Mesh(meshGeo,new THREE.MeshBasicMaterial({color:'#a8c2b7',wireframe:true,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false,depthTest:true})));// Local translucent net overlay keeps the submerged grid visible without changing the opaque ocean shader.
+ const pens=PENS.map((pen,i)=>{const group=new THREE.Group();group.name='fish-pen-'+pen.id;group.position.set(pen.x,0,pen.z);group.add(new THREE.Mesh(ringGeo,new THREE.MeshStandardMaterial({color:i?'#acbba5':'#c8bea8',roughness:.9,emissive:'#79e6cb',emissiveIntensity:0})),new THREE.Mesh(meshGeo,new THREE.MeshBasicMaterial({color:'#a8c2b7',wireframe:true,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false,depthTest:true})));// Local translucent net overlay keeps the submerged grid visible without changing the opaque ocean shader.
  root.add(group);return {pen,group,pulse:-10000};});
  const body=new THREE.SphereGeometry(.09,6,4).scale(1.8,.65,.7),tail=new THREE.ConeGeometry(.07,.13,3).rotateZ(Math.PI/2).translate(-.19,0,0);
  const fish=new THREE.InstancedMesh(mergeGeometries([body,tail]),new THREE.MeshStandardMaterial({color:'#94cbc4',roughness:.7}),50);body.dispose();tail.dispose();fish.name='fry-schools-instanced';fish.frustumCulled=false;root.add(fish);
@@ -43,7 +43,8 @@ export function createAquaWorld(scene,heightAt){
     dummy.position.set(x,heightAt(x,z)+.1+Math.sin(seconds*3+n)*.035,z);dummy.rotation.set(0,-angle-Math.PI/2,0);dummy.scale.setScalar(availability&&availability.availableAt<=now?1:0);dummy.updateMatrix();fish.setMatrixAt(i,dummy.matrix);
    }
    for(let i=0;i<pens.length;i++){
-    const p=pens[i],c=state?.pens.find(c=>c.id===p.pen.id)?.cycle,water=heightAt(p.pen.x,p.pen.z),age=now-p.pulse;
+    const p=pens[i],status=state?.pens.find(c=>c.id===p.pen.id),c=status?.cycle,water=heightAt(p.pen.x,p.pen.z),age=now-p.pulse;
+    p.group.children[0].material.emissiveIntensity=status?.members.length>=3?.95:0;
     p.group.position.y=water+.14;p.group.rotation.x=Math.sin(seconds*.7+i)*.018;p.group.rotation.z=Math.cos(seconds*.6+i)*.018;
     const angle=seconds*.65+i,x=p.pen.x+Math.sin(angle)*1.1,z=p.pen.z+Math.cos(angle)*1.1,hop=age>=0&&age<1300?Math.sin(age/1300*Math.PI)*.6:0;
     dummy.position.set(x,heightAt(x,z)+.15+hop,z);dummy.rotation.set(0,-angle,hop*.3);dummy.scale.setScalar(c?1+Math.min(1,(now-c.startedAt)/(c.completesAt-c.startedAt))*.8:0);dummy.updateMatrix();fish.setMatrixAt(48+i,dummy.matrix);
