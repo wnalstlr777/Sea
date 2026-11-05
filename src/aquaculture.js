@@ -63,14 +63,15 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   projection.set(x,y,z).project(camera);
   const screenX=(projection.x*.5+.5)*innerWidth;
   const screenY=(-projection.y*.5+.5)*innerHeight;
-  // Hide markers once their 3D anchor leaves the screen; don't pin distant labels to its edge.
-  el.hidden=!visible||projection.z<0||projection.z>1||screenX<0||screenX>innerWidth||screenY<0||screenY>innerHeight;
-  if(el.hidden)return;
-  // Keep the full bubble readable even when its anchor is near either edge.
-  const halfWidth=el.getBoundingClientRect().width/2;
+  // Do not clamp labels to the viewport. Hide them as soon as their full bubble
+  // would be clipped at an edge while the camera rotates away.
+  const halfWidth=el.offsetWidth/2;
+  const height=el.offsetHeight;
   const margin=8;
-  el.style.left=`${Math.max(halfWidth+margin,Math.min(innerWidth-halfWidth-margin,screenX))}px`;
-  el.style.top=`${Math.max(8,screenY)}px`;
+  el.hidden=!visible||projection.z<0||projection.z>1||screenX-halfWidth<margin||screenX+halfWidth>innerWidth-margin||screenY-height<margin||screenY>innerHeight-margin;
+  if(el.hidden)return;
+  el.style.left=`${screenX}px`;
+  el.style.top=`${screenY}px`;
  }
  multiplayer.onAquaculture(packet=>{
   if(packet.type==='aquaError'){summary.textContent='양식 서버 연결을 확인해 주세요.';notify(packet.error);return;}
