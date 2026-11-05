@@ -34,7 +34,7 @@ export function createAquaWorld(scene,heightAt){
  return {root,pens,
   feed(penId,now){const p=pens.find(p=>p.pen.id===penId);if(p)p.pulse=now;},
   splash(x,z,now){const s=splashes.reduce((a,b)=>a.at<b.at?a:b);s.at=now;s.mesh.position.set(x,heightAt(x,z)+.15,z);},
-  update(now,state){
+  update(now,state,tubeColor=0){
    const seconds=now*.001;root.visible=true;
    for(let i=0;i<48;i++){
     const school=SCHOOLS[Math.floor(i/12)],n=i%12,center=schoolPosition(school,now),availability=state?.schools.find(s=>s.id===school.id);
@@ -44,7 +44,9 @@ export function createAquaWorld(scene,heightAt){
    }
    for(let i=0;i<pens.length;i++){
     const p=pens[i],status=state?.pens.find(c=>c.id===p.pen.id),c=status?.cycle,water=heightAt(p.pen.x,p.pen.z),age=now-p.pulse;
-    p.group.children[0].material.emissiveIntensity=status?.members.length>=3?.95:0;
+    const ringMaterial=p.group.children[0].material;
+    ringMaterial.emissive.set(TUBE_COLORS[tubeColor]||TUBE_COLORS[0]);
+    ringMaterial.emissiveIntensity=status?.members.length>=3?.95:0;
     p.group.position.y=water+.14;p.group.rotation.x=Math.sin(seconds*.7+i)*.018;p.group.rotation.z=Math.cos(seconds*.6+i)*.018;
     const angle=seconds*.65+i,x=p.pen.x+Math.sin(angle)*1.1,z=p.pen.z+Math.cos(angle)*1.1,hop=age>=0&&age<1300?Math.sin(age/1300*Math.PI)*.6:0;
     dummy.position.set(x,heightAt(x,z)+.15+hop,z);dummy.rotation.set(0,-angle,hop*.3);dummy.scale.setScalar(c?1+Math.min(1,(now-c.startedAt)/(c.completesAt-c.startedAt))*.8:0);dummy.updateMatrix();fish.setMatrixAt(48+i,dummy.matrix);
