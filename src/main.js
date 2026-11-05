@@ -52,6 +52,7 @@ function overviewCameraPose(){
 function setView(overview){
   if(intro){intro=null;introFinished=true;}
   overviewActive=overview;
+  if(typeof sunbeds!=='undefined')sunbeds.group.visible=!overview;
   document.body.classList.toggle('sea-overview',overview);
   const button=document.querySelector('#camera-toggle');
   button.setAttribute('aria-pressed',String(overview));
@@ -169,6 +170,8 @@ function updateOverviewSway(dt,seconds){
 }
 const deckCollision=createDeckCollision(ship);
 const sunbeds=createSunbeds(scene);
+// Hide sunbeds in the full-ship overview; restore them in deck view.
+sunbeds.group.visible=!overviewActive;
 const jellyfish=createJellyfish(scene);
 const character=createPlayer(scene,camera,controls,deckCollision);
 // Step-on launch pads behind the sunbeds. Targets are UCX_Bottom05 (cabin roof)
