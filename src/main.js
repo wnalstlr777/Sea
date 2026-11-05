@@ -170,7 +170,7 @@ function updateOverviewSway(dt,seconds){
 const deckCollision=createDeckCollision(ship);
 const jellyfish=createJellyfish(scene);
 const character=createPlayer(scene,camera,controls,deckCollision);
-// Step-on launch pads behind the sunbeds. Targets are UCX_Bottom05 (cabin roof)
+// Step-on launch pads on the deck. Targets are UCX_Bottom05 (cabin roof)
 // and UCX_Bottom06 (mast lookout) from the supplied Ship.glb.
 const launchPads=[];
 for(const [x,label,target,color] of [
@@ -345,8 +345,6 @@ if(!overviewActive&&!character.isLying()&&!character.isTitanicPosing()&&Math.hyp
   }
   }
 }
-nearbyBed=null;
-lieButton.style.display='none';
 camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);aquaculture.update(dt);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
 // Read-only diagnostics for smoke checks and performance inspection.
 window.oceanCruise={renderer,scene,camera,controls,ship,player:character.player,lighting,params,uniforms:ocean.uniforms};
