@@ -73,6 +73,14 @@ const lighting=createLighting(scene,ocean,camera);
 const seaAudio=createSeaAudio(document.querySelector('#music-toggle'));
 const seagulls=createSeagulls(scene,camera,seaAudio);
 const marineLife=createMarineLife(scene,camera,seaAudio,{ocean,viewportHeight:()=>renderer.domElement.height});
+// Manual whale encounter for quick visual testing, using the normal encounter pipeline.
+const whaleButton=document.createElement('button');
+whaleButton.type='button';whaleButton.id='whale-summon';whaleButton.textContent='🐋 고래 등장';
+whaleButton.setAttribute('aria-label','고래 등장');
+whaleButton.addEventListener('click',()=>{marineLife.summonWhale();settingsPanel.open=false;});
+const whaleSection=document.createElement('div');whaleSection.className='section';whaleSection.textContent='MARINE LIFE / 해양 생물';
+const whaleControls=document.createElement('div');whaleControls.className='time-presets';whaleControls.append(whaleButton);
+const sliders=document.querySelector('#sliders');sliders.before(whaleSection,whaleControls);
 const horn=createShipHorn();
 const ship=createShip();scene.add(ship);
 const sail=createSail(ship);
