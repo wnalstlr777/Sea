@@ -167,6 +167,8 @@ function raiseRightHand(){arms[1].rotation.set(Math.PI,0,0);elbows[1].rotation.x
 function fireworkPose(){fireworkPoseUntil=performance.now()+1500;raiseRightHand();}
 function rightHandWorldPosition(){hana.updateWorldMatrix(true,true);return arms[1].localToWorld(new THREE.Vector3(0,-.72,0));}
 function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=false,titanic=false){
+  // Release the tube grip when returning to deck poses.
+  if(!inWater){const release=1-Math.exp(-Math.min(.1,dt)*18);for(const elbow of elbows)elbow.rotation.z+=(0-elbow.rotation.z)*release;}
   if(titanic){
     const blend=1-Math.exp(-Math.min(.1,dt)*12);
     for(let i=0;i<2;i++){
@@ -200,11 +202,14 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
     sitBlend=0;hana.position.y=0;
     for(let i=0;i<2;i++){
       const side=i===0?-1:1;
-      const armX=-.38;
-      const armZ=side*1.05;
+      // Upper arms extend sideways, with elbows out at the tube's outer rim.
+      const armX=-.22;
+      const armZ=side*1.22;
       arms[i].rotation.x+=(armX-arms[i].rotation.x)*blend;
       arms[i].rotation.z+=(armZ-arms[i].rotation.z)*blend;
-      elbows[i].rotation.x+=(-.3-elbows[i].rotation.x)*blend;
+      elbows[i].rotation.x+=(-.18-elbows[i].rotation.x)*blend;
+      // Bend forearms down onto the ring, rather than holding both arms straight.
+      elbows[i].rotation.z+=(-side*1.05-elbows[i].rotation.z)*blend;
       legs[i].rotation.x+=(0-legs[i].rotation.x)*blend;
       knees[i].rotation.x+=(.22-knees[i].rotation.x)*blend;
     }
