@@ -5,7 +5,7 @@ export function createFireworks(scene,character,onLaunch){
   const button=document.createElement('button');
   button.id='fireworks-toggle';
   button.type='button';
-  button.textContent='🎆 폭죽';
+  button.textContent='폭죽';
   button.setAttribute('aria-label','폭죽 발사');
   document.querySelector('#app').append(button);
 
