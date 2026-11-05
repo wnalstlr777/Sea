@@ -82,7 +82,7 @@ export function createWhaleWaterEffects(parent,{heightAt,compact=false,daylight=
       const age=time-r.born;r.mesh.visible=visible&&age<r.life;
       if(!r.mesh.visible)continue;
       const radius=r.initial+r.speed*age,fade=1-age/r.life;
-      r.mesh.material.opacity=.82*Math.pow(fade,1.15);
+      r.mesh.material.opacity=.68*Math.pow(fade,1.15);
       r.mesh.material.color.setRGB(.18+.48*daylight(),.28+.50*daylight(),.35+.47*daylight());
       for(let i=0;i<=segments;i++){
         const angle=i/segments*Math.PI*2,irregular=1+.06*Math.sin(angle*3+r.heading),c=Math.cos(r.heading),s=Math.sin(r.heading);
