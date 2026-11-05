@@ -51,7 +51,7 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     group.userData.lastEncounter=current===whale?'whale':'dolphin';
   }
   function whaleSurface(dt,t,duration){
-    const verticalSpeed=t<.15?22:t<.77?0:-12,travelSpeed=2.2;
+    const verticalSpeed=age<2?22:age<11.5?0:-12,travelSpeed=2.2;
     // Zero vertical speed at the crest is not an idle whale: it is still swimming forward.
     // Keep the rigged tail swimming through the ascent, crest and dive.
     whale.update(dt,false,Math.max(2.2,travelSpeed));

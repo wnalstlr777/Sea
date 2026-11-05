@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {createWhalePose} from './whale-pose.js';
 
 // The GLB is Y-up, with its head along source -X. The encounter travels along -Z.
 export function createWhaleModel({load= url=>new GLTFLoader().loadAsync(url),url=`${import.meta.env?.BASE_URL??'./'}models/whale_animated.glb`}={}){
@@ -9,6 +10,7 @@ export function createWhaleModel({load= url=>new GLTFLoader().loadAsync(url),url
   const model=new THREE.Group();model.name='whale-model';model.rotation.y=-Math.PI/2;root.add(model);
   const silhouette=new THREE.Group();silhouette.name='whale-shallow-silhouette';silhouette.visible=false;
   const waterSkins=[];
+  const levelPoses=[];
   const state={root,silhouette,ready:false,active:false,mixer:null,actions:{},current:null,contacts:[],blowhole:null};
   const p=new THREE.Vector3(),box=new THREE.Box3();
   state.loadPromise=load(url).then(gltf=>{
@@ -66,6 +68,7 @@ export function createWhaleModel({load= url=>new GLTFLoader().loadAsync(url),url
         if(clip)state.actions[key]=state.mixer.clipAction(clip).setLoop(THREE.LoopRepeat,Infinity);
       }
     }
+    for(const m of mesh)if(m.isSkinnedMesh)levelPoses.push(createWhalePose(m,root));
     state.ready=true;root.userData.loadingState='ready';root.userData.animationClips=clips.map(c=>c.name);
     root.userData.animationDurations=Object.fromEntries(clips.map(c=>[c.name,c.duration]));
     return state;
@@ -77,7 +80,7 @@ export function createWhaleModel({load= url=>new GLTFLoader().loadAsync(url),url
     state.current=null;state.mixer?.stopAllAction();
   };
   state.update=(dt,idle,speed)=>{
-    if(!state.active||!state.mixer)return;
+    if(!state.active)return;
     const next=state.actions[idle?'idle':'swim']??state.actions.swim??state.actions.idle;
     if(next&&next!==state.current){
       next.reset().setEffectiveWeight(1).play();
@@ -85,7 +88,8 @@ export function createWhaleModel({load= url=>new GLTFLoader().loadAsync(url),url
       state.current=next;
     }
     if(next)next.timeScale=idle?.95:THREE.MathUtils.clamp(speed/(24/11),.85,1.15);
-    state.mixer.update(dt);
+    state.mixer?.update(dt);
+    for(const level of levelPoses)level();
   };
   state.readAttachment=(attachment,target)=>{
     if(!attachment)return false;
