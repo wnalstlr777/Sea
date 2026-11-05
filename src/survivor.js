@@ -251,7 +251,8 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
   body.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.016:0;
   head.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.020:0;
 }
-return {mesh:hana,update,fireworkPose,rightHandWorldPosition};
+function netPose(progress){const swing=Math.sin(Math.max(0,Math.min(1,progress))*Math.PI);arms[1].rotation.x=-.5-swing*.85;arms[1].rotation.z=.3;elbows[1].rotation.x=-.4-swing*.45;}
+return {mesh:hana,update,fireworkPose,rightHandWorldPosition,netPose};
 }
 
 export function disposeSurvivor(root){

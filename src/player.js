@@ -42,6 +42,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   // Reach the 2.95m head platform (previous 10.6m/s jump peaked at only 2.77m).
   const JUMP_SPEED=11.6,GRAVITY=20.25;
   const WATER_SURFACE_Y=-1.35, RESPAWN_X=0, RESPAWN_Z=-27;
+  let waterHeightAt=()=>0;
   let overboard=false, fallOffset=0, waterTime=0, returnFlight=null,launchFlight=null;
   let landingGrace=0;
   let fallVelocity=0,fallDriftX=0,fallDriftZ=0,fallAirborne=false;
@@ -248,7 +249,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   addEventListener('keydown',e=>{
     if((e.code!=='Space'&&e.key!==' ')||e.repeat||e.altKey||e.ctrlKey||e.metaKey)return;
     const target=e.target;
-    if(target?.isContentEditable||target?.closest?.('input,textarea,select,[contenteditable]'))return;
+    if(target?.isContentEditable||target?.closest?.('input,textarea,select,[contenteditable],[data-aqua-ui]'))return;
     e.preventDefault();
     jump();
   }, {capture:true});
@@ -259,7 +260,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(updateLaunch(step))return;
     if(updateReturnFlight(step))return;
     if(overboard){
-      const desired=WATER_SURFACE_Y-visualBaseY;
+      const desired=WATER_SURFACE_Y+waterHeightAt(player.position.x,player.position.z)-visualBaseY;
       const old=fallOffset;
       if(fallAirborne){
         // Continuous ballistic motion from the deck edge (no sudden vertical drop).
@@ -278,7 +279,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
         if(fallOffset<=desired){fallOffset=desired;fallAirborne=false;waterTime=0;}
       }else{
         waterTime+=step;
-        fallOffset=desired+Math.sin(waterTime*5.0)*.32+Math.sin(waterTime*8.1)*.09;
+        fallOffset=desired+Math.sin(waterTime*1.5)*.04;
       }
       const shift=fallOffset-old;
       followWaterHeight(shift);
@@ -480,6 +481,8 @@ export function createPlayer(scene,camera,controls,deckCollision){
     camera.position.add(delta);controls.target.add(delta);
   }
   return {player,update,setCharacter,setEnabled,resetView,deckViewPose,
+    setWaterHeightSampler:sample=>{waterHeightAt=sample;},
+    setNetPose:progress=>avatar.netPose(progress),
     isTitanicPosing:()=>titanicPose,
     toggleTitanicPose:(anchor)=>{if(overboard||returnFlight||launchFlight||lying||!spawnValidated)return false;if(titanicPose){titanicPose=false;return false;}if(!anchor||Math.hypot(player.position.x-anchor.x,player.position.z-anchor.z)>1.35)return false;const floor=deckCollision.floorAt(anchor.x,anchor.z,lastFloorY+4);if(floor===null)return false;setSitting(false);headSupport=null;airborneFromEdge=false;jumpHeight=0;jumpVelocity=0;jumpPose=0;const dx=anchor.x-player.position.x,dz=anchor.z-player.position.z;player.position.x=anchor.x;player.position.z=anchor.z;lastFloorY=floor;jumpPivot.position.y=NETWORK_TO_VISUAL_Y+floor-VISUAL_DECK_Y;camera.position.x+=dx;camera.position.z+=dz;controls.target.x+=dx;controls.target.z+=dz;player.rotation.y=0;titanicPose=true;avatar.update(.05,false,false,0,false,false,true);return true;},
     launchFireworkPose:()=>{avatar.fireworkPose();player.updateWorldMatrix(true,true);return avatar.rightHandWorldPosition();},

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {createSurvivor,disposeSurvivor,appearanceForPlayer} from './survivor.js';
 import {NETWORK_TO_VISUAL_Y} from './ship.js';
 import {createPlayerRecordsClient} from './player-records.js';
+import {createTube} from './aquaculture-visuals.js';
 
 export function createMultiplayer({scene,camera,controls,character,url}){
   const panel=document.createElement('div');panel.className='multiplayer-status';
@@ -11,6 +12,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   const names=document.createElement('div');names.className='player-names';document.querySelector('#app').append(names);
   const projected=new THREE.Vector3(),remotes=new Map();
   let fireworkHandler=null;
+  let aquaHandler=null;const aquaPending=new Map();
   let records=null,connecting=false;
   const EMOTES=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
   const lieQuat=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2)
@@ -22,6 +24,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   function clear(){for(const id of [...remotes.keys()])remove(id);localLabel?.remove();localLabel=null;}
   function occupancy(){message(`함께 항해 중 · ${remotes.size+1}/${capacity}명`);}
   function setLocal(state){
+    character.player.userData.tubeColor=state.tubeColor||0;
     const look=appearanceForPlayer(state.id);character.setCharacter(look.model,look.hairColor);
     const delta=new THREE.Vector3(state.x,state.y,state.z).sub(character.player.position);
     character.player.position.add(delta);character.player.rotation.y=state.rotation;
@@ -34,7 +37,8 @@ export function createMultiplayer({scene,camera,controls,character,url}){
     root.userData.playerId=state.id;avatar.mesh.rotation.y=Math.PI;const motionPivot=new THREE.Group();motionPivot.position.y=NETWORK_TO_VISUAL_Y;motionPivot.add(avatar.mesh);root.add(motionPivot);scene.add(root);
     root.position.set(state.x,state.y,state.z);root.rotation.y=state.rotation;
     const emoteLabel=label('');emoteLabel.style.fontSize='34px';emoteLabel.style.background='transparent';emoteLabel.style.padding='0';
-    remotes.set(state.id,{root,avatar,motionPivot,label:label(state.nickname),emoteLabel,emoteUntil:0,jumpHeight:0,samples:[{...state,time:performance.now()}]});
+    const tube=createTube(state.tubeColor||0);root.add(tube);
+    remotes.set(state.id,{root,avatar,motionPivot,tube,label:label(state.nickname),emoteLabel,emoteUntil:0,jumpHeight:0,samples:[{...state,time:performance.now()}]});
   }
   function receive(state){
     if(state.id===self)return;
@@ -67,6 +71,10 @@ export function createMultiplayer({scene,camera,controls,character,url}){
         ready=true;attempt=0;seq=0;lastSent=null;character.setEnabled(true);occupancy();return;
       }
       if(!ready)return;
+      if(packet.type==='aquaResult'){
+        const pending=aquaPending.get(packet.requestId);if(pending){clearTimeout(pending.timer);aquaPending.delete(packet.requestId);packet.ok?pending.resolve(packet):pending.reject(new Error(packet.error));}
+      }
+      if(['aquaState','aquaRefresh','aquaEvent','aquaError'].includes(packet.type))aquaHandler?.(packet);
       if(packet.type==='join'){add(packet.player);occupancy();}
       if(packet.type==='state')receive(packet.player);
       if(packet.type==='emote'&&EMOTES.includes(packet.icon)){const remote=remotes.get(packet.id);if(remote){remote.emoteLabel.textContent=packet.icon;remote.emoteUntil=performance.now()+3000;}}
@@ -128,6 +136,9 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       const targetHeight=THREE.MathUtils.lerp(heightA,heightB,alpha);
       remote.jumpHeight+=(targetHeight-remote.jumpHeight)*Math.min(1,dt*24);
       remote.motionPivot.position.y=NETWORK_TO_VISUAL_Y+(state.lying?0:remote.jumpHeight);
+      remote.tube.visible=!!state.inWater&&!state.returning&&!state.jump;
+      remote.tube.position.y=remote.motionPivot.position.y+1.5;
+      remote.tube.rotation.z=Math.sin(performance.now()*.0017+remote.root.position.x)*.025;
       // Invisible one-way head collider, updated from the interpolated avatar height.
       // Swimming, lying and returning players cannot act as head platforms.
 
@@ -150,6 +161,18 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   addEventListener('pageshow',event=>{if(event.persisted&&url){stopped=false;socket=null;connect();}});
   addEventListener('online',()=>{if(url&&!ready&&!blocked){clearTimeout(retryTimer);retryTimer=null;connect();}});
   return {update,
+    onAquaculture(handler){aquaHandler=handler;},
+    aquaSnapshot(){if(ready&&socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:'aqua',action:'snapshot'}));},
+    aquaRequest(action,data={}){
+      if(!ready||socket?.readyState!==WebSocket.OPEN)return Promise.reject(new Error('멀티플레이 연결 후 이용할 수 있습니다.'));
+      const requestId=crypto.randomUUID(),packet=JSON.stringify({type:'aqua',requestId,action,...data});
+      return new Promise((resolve,reject)=>{
+        let retried=false;const pending={resolve,reject,timer:null};
+        const wait=()=>{pending.timer=setTimeout(()=>{if(!retried&&socket?.readyState===WebSocket.OPEN){retried=true;socket.send(packet);wait();}else{aquaPending.delete(requestId);reject(new Error('응답을 확인하지 못했습니다. 잠시 후 기록을 다시 확인해 주세요.'));}},6000);};
+        aquaPending.set(requestId,pending);socket.send(packet);wait();
+      });
+    },
+    forEachRemote(callback){for(const remote of remotes.values())callback(remote);},
     onFirework(handler){fireworkHandler=handler;},
     sendFirework(color){if(ready&&socket?.readyState===WebSocket.OPEN&&Number.isInteger(color)&&color>=0&&color<5)socket.send(JSON.stringify({type:'firework',color}));},
     sendEmote(icon){if(ready&&socket?.readyState===WebSocket.OPEN&&EMOTES.includes(icon))socket.send(JSON.stringify({type:'emote',icon}));},dispose(){stopped=true;clearTimeout(retryTimer);clearInterval(sendTimer);clearInterval(heartbeat);socket?.close(1000);clear();panel.remove();names.remove();}};

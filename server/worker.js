@@ -2,6 +2,8 @@ import {DurableObject} from 'cloudflare:workers';
 import {SHIP} from '../src/deck.js';
 import {PlayerRecords,countryCode,socketCredentials,credentialHash,STALE_MS,kstDate} from './records.js';
 import {adminPage,adminAuthorized} from './admin.js';
+import {Aquaculture,AquaError} from './aquaculture.js';
+import {tubeColorFor} from '../src/aquaculture-data.js';
 
 const CAPACITY=20,PROTOCOL=2;
 const EMOTES=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
@@ -23,8 +25,8 @@ export default {
     const url=new URL(request.url);
     const origin=request.headers.get('Origin');
     if((url.pathname==='/admin'||url.pathname==='/admin/')&&request.method==='GET')return adminPage();
-    if(url.pathname==='/admin/data'){
-      if(request.method!=='GET')return json({error:'Method not allowed'},405);
+    if(url.pathname==='/admin/data'||url.pathname==='/admin/aqua'){
+      if(request.method!=='GET'&&!(url.pathname==='/admin/aqua'&&request.method==='POST'))return json({error:'Method not allowed'},405);
       if(origin&&origin!==url.origin)return json({error:'Origin not allowed'},403);
       return env.ROOM.get(env.ROOM.idFromName('public')).fetch(request);
     }
@@ -52,6 +54,7 @@ export class SeaRoom extends DurableObject {
     // in-memory membership map keeps the object awake. No game state is saved.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping','pong'));
     this.records=new PlayerRecords(ctx,env,()=>this.members());
+    this.aquaculture=new Aquaculture(ctx,this.records);
     this.adminPassword=env.ADMIN_PASSWORD;
     this.limits=new Map();this.cache=new Map();this.rateSalt=crypto.randomUUID();
   }
@@ -70,6 +73,33 @@ export class SeaRoom extends DurableObject {
     return value.count<=(kind==='connect'?60:30);
   }
   reportRecordsError(){console.warn('[Sea] Player records temporarily unavailable');}
+  async farmPacket(ws,packet){
+    const attachment=ws.deserializeAttachment(),pid=attachment?.tracking?.playerId;
+    if(!pid){this.send(ws,{type:packet.action==='snapshot'?'aquaError':'aquaResult',requestId:packet.requestId,ok:false,error:'플레이어 기록 연결을 확인한 뒤 다시 접속해 주세요.'});return;}
+    try{
+      if(packet.action==='snapshot'){this.send(ws,{type:'aquaState',state:await this.aquaculture.snapshot(pid)});return;}
+      const result=await this.aquaculture.action(pid,attachment.player,packet.action,packet,packet.requestId);
+      this.send(ws,{type:'aquaResult',requestId:packet.requestId,...result});
+      if(['collectStart','collectFinish','release','feed'].includes(packet.action))this.broadcast({type:'aquaEvent',action:packet.action,actorId:attachment.player.id,schoolId:packet.schoolId||result.schoolId,penId:packet.penId,endsAt:result.endsAt});
+      if(['observe','tutorialDone','harvest'].includes(packet.action)){const state=await this.aquaculture.snapshot(pid);for(const peer of this.members())if(peer.deserializeAttachment()?.tracking?.playerId===pid)this.send(peer,{type:'aquaState',state});}
+      else if(packet.action!=='collectStart')await this.farmBroadcast();
+    }catch(error){this.send(ws,{type:packet.action==='snapshot'?'aquaError':'aquaResult',requestId:packet.requestId,ok:false,error:error instanceof AquaError?error.message:'양식 기록을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.'});}
+  }
+  async farmBroadcast(){this.broadcast({type:'aquaRefresh'});}
+  async adminFarm(request){
+    const reply=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
+    if(!await this.allow(request,'admin-farm'))return reply({error:'Rate limit'},429);
+    if(!await adminAuthorized(request,this.adminPassword))return reply({error:'Unauthorized'},401);
+    try{
+      if(request.method==='POST'){
+        const text=await request.text();if(text.length>2048)return reply({error:'Request too large'},413);
+        let data;try{data=JSON.parse(text);}catch{return reply({error:'Invalid JSON'},400);}
+        if(!data||typeof data!=='object')return reply({error:'Invalid request'},400);
+        await this.aquaculture.admin(data.action,data,data.requestId);await this.farmBroadcast();
+      }
+      return reply(await this.aquaculture.run(()=>this.aquaculture.snapshotNow(null,Date.now(),true)));
+    }catch(error){return reply({error:error instanceof AquaError?error.message:'양식 서버에 연결할 수 없습니다.'},error instanceof AquaError?400:503);}
+  }
   async adminData(request,url){
     const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
     const respond=(body,status=200)=>Response.json(body,{status,headers});
@@ -115,7 +145,8 @@ export class SeaRoom extends DurableObject {
   async fetch(request){
     const url=new URL(request.url);
     if(url.pathname==='/admin/data')return this.adminData(request,url);
-    if(url.pathname==='/health')return json({ok:true,protocol:PROTOCOL,players:this.players().length,capacity:CAPACITY});
+    if(url.pathname==='/admin/aqua')return this.adminFarm(request);
+    if(url.pathname==='/health'){if(this.aquaculture.status!=='ready')this.ctx.waitUntil(this.aquaculture.ready().catch(()=>{}));return json({ok:true,protocol:PROTOCOL,players:this.players().length,capacity:CAPACITY,aquaculture:this.aquaculture.status});}
     if(url.pathname!=='/room')return this.analytics(request,url);
     if(!await this.allow(request,'connect'))return json({error:'Rate limit'},429);
     const credentials=socketCredentials(request);let identity=null,resume=null;
@@ -136,11 +167,13 @@ export class SeaRoom extends DurableObject {
     const names=NICKNAMES.filter(name=>!existing.some(player=>player.nickname===name));
     const player={id,slot,nickname:names[crypto.getRandomValues(new Uint32Array(1))[0]%names.length],characterId:crypto.getRandomValues(new Uint8Array(1))[0]<128?'hina':'daeun',x:(slot%5-2)*1.5,y:SHIP.deckY,z:-27+Math.floor(slot/5)*1.5,rotation:0,moving:false,sitting:false,lying:false,jump:false,jumpHeight:0,verticalOffset:0,inWater:false,returning:false};
     if(identity)player.nickname=identity.nickname;
+    player.tubeColor=tubeColorFor(identity?.player_id||id);
     const now=Date.now(),tracking=identity&&resume?{playerId:identity.player_id,sessionId:resume.sessionId,openedAt:resume.openedAt,checkpointAt:now,country:countryCode(request.headers.get('X-Sea-Country'))}:null;
     server.serializeAttachment({player,tracking,lastActivity:now,seq:-1,updatedAt:now,rateAt:now,tokens:8,credit:.65});
     this.send(server,{type:'welcome',protocol:PROTOCOL,you:id,players:this.players(),capacity:CAPACITY,...(tracking?{sessionId:tracking.sessionId}:{})});
     this.broadcast({type:'join',player},server);
     if(tracking)this.ctx.waitUntil(this.records.open(tracking).catch(()=>this.reportRecordsError()));
+    if(tracking)this.ctx.waitUntil(this.aquaculture.snapshot(tracking.playerId).then(state=>this.send(server,{type:'aquaState',state})).catch(()=>{}));
     return new Response(null,{status:101,webSocket:client,headers:credentials.protocol?{'Sec-WebSocket-Protocol':credentials.protocol}:undefined});
   }
   webSocketMessage(ws,message){
@@ -151,6 +184,9 @@ export class SeaRoom extends DurableObject {
     ws.serializeAttachment(data);
     let packet;try{packet=JSON.parse(message);}catch{ws.close(1008,'Invalid JSON');return;}
     if(!packet)return;
+    if(packet.type==='aqua'){
+      this.ctx.waitUntil(this.farmPacket(ws,packet));return;
+    }
     if(packet.type==='emote'){if(EMOTES.includes(packet.icon))this.broadcast({type:'emote',id:data.player.id,icon:packet.icon},ws);return;}
     if(packet.type==='firework'){
       if(Number.isInteger(packet.color)&&packet.color>=0&&packet.color<5){
@@ -188,11 +224,16 @@ export class SeaRoom extends DurableObject {
   }
   async alarm(){
     try{await this.records.flush();}catch{this.reportRecordsError();}
+    let farmRetry=false;
+    try{if(await this.aquaculture.run(()=>this.aquaculture.tickNow()))await this.farmBroadcast();}catch{farmRetry=true;}
     for(const ws of this.members()){
       const a=ws.deserializeAttachment(),heartbeat=this.ctx.getWebSocketAutoResponseTimestamp(ws)?.getTime()||0;
       if(Date.now()-Math.max(a.lastActivity||a.updatedAt,heartbeat)>STALE_MS){await this.leave(ws);try{ws.close(4000,'Heartbeat timeout');}catch{}}
     }
-    if(!this.members().some(ws=>ws.deserializeAttachment()?.tracking)&&!await this.records.hasPending())await this.ctx.storage.deleteAlarm();
+    if(!this.members().some(ws=>ws.deserializeAttachment()?.tracking)&&!await this.records.hasPending()){
+      const next=farmRetry?Date.now()+60000:await this.aquaculture.nextAlarm();
+      if(next)await this.ctx.storage.setAlarm(next);else await this.ctx.storage.deleteAlarm();
+    }
   }
   async webSocketClose(ws,code){await this.leave(ws);try{ws.close(code===1006?1000:code);}catch{}}
   async webSocketError(ws){await this.leave(ws);try{ws.close(1011,'Connection error');}catch{}}

@@ -100,7 +100,7 @@ export class PlayerRecords {
       const stale=old.filter(key=>!(key in chunks));if(stale.length)await tx.delete(stale);
     });
   }
-  async schedule(){if(!await this.ctx.storage.getAlarm())await this.ctx.storage.setAlarm(Date.now()+CHECKPOINT_MS);}
+  async schedule(){const next=await this.ctx.storage.getAlarm(),due=Date.now()+CHECKPOINT_MS;if(!next||next>due)await this.ctx.storage.setAlarm(due);}
   open(tracking){return this.flush([{...tracking,from:tracking.checkpointAt,to:tracking.checkpointAt,open:true}]);}
   flush(extra=[],now=Date.now()){
     return this.queue(async()=>{
