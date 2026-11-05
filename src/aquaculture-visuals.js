@@ -46,7 +46,9 @@ export function createAquaWorld(scene,heightAt){
     const p=pens[i],status=state?.pens.find(c=>c.id===p.pen.id),c=status?.cycle,water=heightAt(p.pen.x,p.pen.z),age=now-p.pulse;
     const ringMaterial=p.group.children[0].material;
     ringMaterial.emissive.set(TUBE_COLORS[tubeColor]||TUBE_COLORS[0]);
-    ringMaterial.emissiveIntensity=status?.members.length>=3?.28:0;
+    // Slow, gentle 3-second breathing glow, slightly brighter than the tube.
+     const glow=.24+.08*(.5+.5*Math.sin(seconds*Math.PI*2/3));
+     ringMaterial.emissiveIntensity=status?.members.length>=3?glow:0;
     p.group.position.y=water+.14;p.group.rotation.x=Math.sin(seconds*.7+i)*.018;p.group.rotation.z=Math.cos(seconds*.6+i)*.018;
     const angle=seconds*.65+i,x=p.pen.x+Math.sin(angle)*1.1,z=p.pen.z+Math.cos(angle)*1.1,hop=age>=0&&age<1300?Math.sin(age/1300*Math.PI)*.6:0;
     dummy.position.set(x,heightAt(x,z)+.15+hop,z);dummy.rotation.set(0,-angle,hop*.3);dummy.scale.setScalar(c?1+Math.min(1,(now-c.startedAt)/(c.completesAt-c.startedAt))*.8:0);dummy.updateMatrix();fish.setMatrixAt(48+i,dummy.matrix);
