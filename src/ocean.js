@@ -181,8 +181,13 @@ export function createOcean(){
         float bend=(tex.b-.5)*1.5*(1.-exp(-aft*.03));
         float core=exp(-pow((world.x+bend)/width,2.));
         float sternMask=smoothstep(-30.,-22.,world.z)*(1.-smoothstep(80.,240.,aft));
-        vec4 fine=texture2D(surfaceMap,water/14.0+vec2(time*.006,-time*.004));
-        float bubbles=smoothstep(.4,.68,fine.b*.65+tex.b*.35);
+        // Larger, lengthwise-stretched wake foam: fewer repeats across the beam,
+        // substantially fewer along the stern trail. Break up obvious UV tiling.
+        vec2 wakeUV=water/vec2(27.0,65.0);
+        wakeUV.x+=(tex.b-.5)*.17+sin(water.y*.021+time*.07)*.055;
+        wakeUV.y+=(tex.a-.5)*.19+sin(water.x*.037-time*.05)*.08;
+        vec4 fine=texture2D(surfaceMap,wakeUV+vec2(time*.003,-time*.002));
+        float bubbles=smoothstep(.36,.72,fine.b*.72+tex.b*.28);
         float lace=smoothstep(.58,.86,fine.a);
         float propulsion=clamp(speed/8.,0.,1.)*wake;
         float foam=clamp(core*sternMask*(.08+bubbles*.55+lace*.2)*propulsion,0.,.7);
