@@ -34,8 +34,8 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
   let next=12,age=-1,current=null,encounters=0,didSplash=false,didSpout=false;
   let didBreak=false,didDive=false,didCall=false,previousDistance=-Infinity,nextRipple=0,inView=false;
   const dorsalDistances=[],dorsalCrossings=[];let nextBodyRipple=0;
-  function start(){
-    current=encounters++%3===2?whale:dolphin;current.root.visible=false;age=0;didSplash=false;didSpout=false;
+  function start(forceWhale=false){
+    current=forceWhale?whale:(encounters++%3===2?whale:dolphin);current.root.visible=false;age=0;didSplash=false;didSpout=false;
     didBreak=false;didDive=false;didCall=false;previousDistance=-Infinity;nextRipple=0;
     dorsalDistances.length=0;dorsalCrossings.length=0;nextBodyRipple=0;
     if(current===whale)whale.startEncounter();
@@ -51,7 +51,7 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     group.userData.lastEncounter=current===whale?'whale':'dolphin';
   }
   function whaleSurface(dt,t,duration){
-    const verticalSpeed=24*Math.PI/duration*Math.cos(Math.PI*Math.min(1,t)),travelSpeed=24/duration;
+    const verticalSpeed=t<.15?22:t<.77?0:-12,travelSpeed=2.2;
     // Zero vertical speed at the crest is not an idle whale: it is still swimming forward.
     // Keep the rigged tail swimming through the ascent, crest and dive.
     whale.update(dt,false,Math.max(2.2,travelSpeed));
@@ -85,7 +85,7 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
       if(inView){effects.splash(contact,.5);audio.whaleDive?.({position:contact,camera,visible:inView,speed:verticalSpeed});}
     }
     previousDistance=distance;previousContact.copy(contact);
-    const breath=age-duration*.37;
+    const breath=age-2.0;
     const hasBlowhole=whale.readAttachment(whale.blowhole,blowhole);
     const above=hasBlowhole&&blowhole.y>heightAt(blowhole.x,blowhole.z)+.1;
     // Original breath window and one-shot audio event, with an underwater emission guard.
@@ -99,11 +99,23 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     if(globalThis.document?.hidden)return;
     dt=Math.min(dt,.25);
     if(age<0){effects.update(dt,inView,null,null);next-=dt;if(next<=0)start();return;}
-    age+=dt;const isWhale=current===whale,duration=isWhale?11:4.5,t=age/duration;
-    current.root.position.copy(origin).addScaledVector(right,(t-.5)*(isWhale?24:20));
+    age+=dt;const isWhale=current===whale,duration=isWhale?15.5:4.5,t=age/duration;
+    // Whale: surface (0-2s), blow/call (2-3.5s), glide (3.5-11.5s),
+    // head-first dive (11.5-14s), then tail flukes linger above water (14-15.5s).
+    const glide=isWhale?THREE.MathUtils.clamp((age-2)/12,0,1):t;
+    current.root.position.copy(origin).addScaledVector(right,(glide-.5)*(isWhale?35:20));
     const arc=Math.sin(Math.PI*Math.min(1,t));
-    current.root.position.y=isWhale?heightAt(current.root.position.x,current.root.position.z)-17+arc*24:-1.4+arc*5.5;
-    current.root.rotation.x=isWhale?Math.cos(Math.min(1,t)*Math.PI)*.20:Math.cos(t*Math.PI)*-.65;
+    if(isWhale){
+      const emerge=THREE.MathUtils.smoothstep(age,0,2);
+      const dive=THREE.MathUtils.smoothstep(age,11.5,15.5);
+      const seaLevel=heightAt(current.root.position.x,current.root.position.z);
+      current.root.position.y=seaLevel-17+emerge*24-dive*25;
+      // Bow the head downward first, leaving the trailing tail as the final silhouette.
+      current.root.rotation.x=THREE.MathUtils.lerp(.12,-.43,THREE.MathUtils.smoothstep(age,11.5,14));
+    }else{
+      current.root.position.y=-1.4+arc*5.5;
+      current.root.rotation.x=Math.cos(t*Math.PI)*-.65;
+    }
     current.root.visible=!isWhale||whale.active;
     if(isWhale&&whale.active)whaleSurface(dt,t,duration);
     else{
@@ -120,6 +132,12 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     }
     if(t>=1){current.root.visible=false;whale.silhouette.visible=false;splash.visible=false;age=-1;next=24+Math.random()*22;}
   }
-  return {update,group};
+  function summonWhale(){
+    // Reuse the regular encounter lifecycle; no duplicate models or effects.
+    if(current===whale&&age>=0)return false;
+    current?.root&&(current.root.visible=false);
+    age=-1;next=0;start(true);return true;
+  }
+  return {update,group,summonWhale};
 }
 
