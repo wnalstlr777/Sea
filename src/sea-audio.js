@@ -108,5 +108,6 @@ export function createSeaAudio(button){
     whaleSplash:options=>whaleAudio?.play('Whale_Splash',options)??false,
     whaleBlow:options=>whaleAudio?.play('Whale_Blow',options)??false,
     whaleDive:options=>whaleAudio?.play('Whale_Dive',options)??false,
+    whaleCall:options=>whaleAudio?.play('Whale_Call',options)??false,
     updateWhale:options=>whaleAudio?.update(options)};
 }
