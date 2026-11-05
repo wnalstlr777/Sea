@@ -14,7 +14,6 @@ import {createSeagulls} from './seagulls.js';
 import {createShipHorn} from './ship-horn.js';
 import {createSeaAudio} from './sea-audio.js';
 import {createMarineLife} from './marine-life.js';
-import {createSunbeds} from './sunbeds.js';
 import {createJellyfish} from './jellyfish.js';
 import {createEmoteWheel} from './emote-wheel.js';
 import {createFireworks} from './fireworks.js';
@@ -53,7 +52,6 @@ function overviewCameraPose(){
 function setView(overview){
   if(intro){intro=null;introFinished=true;}
   overviewActive=overview;
-  if(typeof sunbeds!=='undefined')sunbeds.group.visible=!overview;
   document.body.classList.toggle('sea-overview',overview);
   const button=document.querySelector('#camera-toggle');
   button.setAttribute('aria-pressed',String(overview));
@@ -170,9 +168,6 @@ function updateOverviewSway(dt,seconds){
   pivot.rotation.z=overviewSway*THREE.MathUtils.degToRad(.6)*Math.sin(phase*.83+1.3);
 }
 const deckCollision=createDeckCollision(ship);
-const sunbeds=createSunbeds(scene);
-// Hide sunbeds in the full-ship overview; restore them in deck view.
-sunbeds.group.visible=!overviewActive;
 const jellyfish=createJellyfish(scene);
 const character=createPlayer(scene,camera,controls,deckCollision);
 // Step-on launch pads behind the sunbeds. Targets are UCX_Bottom05 (cabin roof)
@@ -231,9 +226,6 @@ bowPoseButton.onclick=()=>character.toggleTitanicPose(bowPoseAnchor);
 const bowPoseAnchor=new THREE.Vector3(0,VISUAL_DECK_Y,-44.0);
 const BOW_POSE_RADIUS=1.35;
 const bowPoseProjection=new THREE.Vector3();
-const lieButton=document.createElement('button');lieButton.id='sunbed-interact';lieButton.type='button';lieButton.textContent='🛏️';lieButton.title='선베드에 눕기';lieButton.setAttribute('aria-label','선베드에 눕기');lieButton.style.cssText='position:fixed;z-index:30;display:none;width:44px;height:44px;min-width:44px;max-width:44px;min-height:44px;line-height:1;padding:0;font-size:23px;border:1px solid #ffffffaa;border-radius:50%;background:#07313ddd;color:white;cursor:pointer;transform:translate(-50%,-100%);box-shadow:0 2px 12px #0005';document.querySelector('#app').append(lieButton);
-let nearbyBed=null;const bedProjection=new THREE.Vector3();
-lieButton.onclick=()=>{if(nearbyBed&&!character.isLying())character.lieOn(nearbyBed.anchor);lieButton.style.display='none';};
 const multiplayer=createMultiplayer({scene,camera,controls,character,url:import.meta.env.VITE_MULTIPLAYER_URL?.trim()});
 const aquaculture=createAquaculture({scene,camera,character,multiplayer,ocean,isAvailable:()=>introFinished&&!overviewActive});
 multiplayer.onFirework((color,remote)=>fireworks.launchRemote(color,remote));
@@ -354,8 +346,7 @@ if(!overviewActive&&!character.isLying()&&!character.isTitanicPosing()&&Math.hyp
   }
 }
 nearbyBed=null;
-if(!overviewActive&&!character.isLying())for(const bed of sunbeds.beds){if(Math.hypot(character.player.position.x-bed.position.x,character.player.position.z-bed.position.z)<1.6){nearbyBed=bed;break;}}
 lieButton.style.display='none';
-camera.updateMatrixWorld();if(nearbyBed){bedProjection.copy(nearbyBed.position).add(new THREE.Vector3(0,2.2,0)).project(camera);if(bedProjection.z>0&&bedProjection.z<1){lieButton.style.left=`${(bedProjection.x*.5+.5)*innerWidth}px`;lieButton.style.top=`${(-bedProjection.y*.5+.5)*innerHeight}px`;lieButton.style.display='block';}}camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);aquaculture.update(dt);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
+camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);aquaculture.update(dt);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
 // Read-only diagnostics for smoke checks and performance inspection.
 window.oceanCruise={renderer,scene,camera,controls,ship,player:character.player,lighting,params,uniforms:ocean.uniforms};
