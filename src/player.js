@@ -223,7 +223,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     if(overboard){
       if(fallAirborne||waterJumpCooldown>0)return;
       // Jump from the tube under player control; only real UCX deck contact lands.
-      fallAirborne=true;fallVelocity=12.8;waterJumpCooldown=.75;
+      fallAirborne=true;fallVelocity=16.5;waterJumpCooldown=.75;
       playJumpSound();return;
     }
     // A player standing on another head can jump again to build taller towers.
