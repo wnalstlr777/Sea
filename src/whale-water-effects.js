@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export function createWhaleWaterEffects(parent,{heightAt,compact=false,daylight=()=>1,viewportHeight=()=>globalThis.innerHeight??720}){
-  const capacity=compact?144:360,ringCount=compact?5:10,segments=compact?24:40;
+  const capacity=compact?192:480,ringCount=compact?5:10,segments=compact?24:40;
   const positions=new Float32Array(capacity*3),sizes=new Float32Array(capacity),alphas=new Float32Array(capacity);
   const initial=new Float32Array(capacity*3),velocity=new Float32Array(capacity*3),birth=new Float32Array(capacity),life=new Float32Array(capacity),kind=new Uint8Array(capacity);
   const geometry=new THREE.BufferGeometry();
@@ -31,7 +31,7 @@ export function createWhaleWaterEffects(parent,{heightAt,compact=false,daylight=
     const i=cursor++%capacity,k=i*3;initial[k]=p.x;initial[k+1]=p.y;initial[k+2]=p.z;
     velocity[k]=v.x;velocity[k+1]=v.y;velocity[k+2]=v.z;
     birth[i]=time;kind[i]=type;life[i]=type===2?random(1.2,2.4):random(.7,1.6);
-    sizes[i]=type===2?random(2.3,4.4):random(.65,1.35);alphas[i]=0;
+    sizes[i]=type===2?random(3.4,6.0):random(.85,1.65);alphas[i]=0;
   }
   function ripple(p,strength=1,heading=0,body=false){
     const r=rings[ringCursor++%ringCount];r.x=p.x;r.z=p.z;r.born=time;r.life=4.8;
@@ -51,14 +51,14 @@ export function createWhaleWaterEffects(parent,{heightAt,compact=false,daylight=
   function update(dt,visible,blowhole,normal){
     time+=dt;
     const breathAge=time-breathStart;
-    if(breathAge>=0&&breathAge<1.05&&blowhole){
+    if(breathAge>=0&&breathAge<1.35&&blowhole){
       // Follow the animated/skinned blowhole during emission. Released drops stay in world space.
-      breathLeft+=dt*(compact?175:380)*Math.max(.15,1-breathAge/1.15);
+      breathLeft+=dt*(compact?220:460)*Math.max(.15,1-breathAge/1.45);
       if(visible){
         emitPosition.copy(blowhole);emitDirection.copy(normal??up).normalize();
         while(breathLeft>=1){
-          breathLeft--;const speed=random(24,39)*(1-breathAge*.30);
-          v.copy(emitDirection).multiplyScalar(speed);v.x+=random(-4,4);v.z+=random(-4,4);
+          breathLeft--;const speed=random(29,44)*(1-breathAge*.25);
+          v.copy(emitDirection).multiplyScalar(speed);v.x+=random(-7,7);v.z+=random(-7,7);
           particle(emitPosition,v,Math.random()<.8?2:1);
         }
       }else breathLeft=0;
