@@ -4,6 +4,8 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 // The GLB is Y-up, with its head along source -X. The encounter travels along -Z.
 export function createWhaleModel({load= url=>new GLTFLoader().loadAsync(url),url=`${import.meta.env?.BASE_URL??'./'}models/whale_animated.glb`}={}){
   const root=new THREE.Group();root.name='whale';root.visible=false;
+  // Pitch around the whale's local side axis before applying its travel heading.
+  root.rotation.order='YXZ';
   const model=new THREE.Group();model.name='whale-model';model.rotation.y=-Math.PI/2;root.add(model);
   const silhouette=new THREE.Group();silhouette.name='whale-shallow-silhouette';silhouette.visible=false;
   const waterSkins=[];

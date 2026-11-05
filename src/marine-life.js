@@ -101,23 +101,24 @@ export function createMarineLife(scene,camera,audio,{ocean,compact=typeof matchM
     if(globalThis.document?.hidden)return;
     dt=Math.min(dt,.25);
     if(age<0){effects.update(dt,inView,null,null);next-=dt;if(next<=0)start();return;}
-    age+=dt;const isWhale=current===whale,duration=isWhale?15.5:4.5,t=age/duration;
+    age+=dt;const isWhale=current===whale,duration=isWhale?18:4.5,t=age/duration;
     // Whale: surface (0-2s), blow/call (2-3.5s), glide (3.5-11.5s),
-    // head-first dive (11.5-14s), then tail flukes linger above water (14-15.5s).
+    // Head-first dive (11.5-13.6s), exposed tail (13.6-15.6s), final descent (15.6-18s).
     const glide=isWhale?THREE.MathUtils.clamp((age-2)/12,0,1):t;
     current.root.position.copy(origin).addScaledVector(right,(glide-.5)*(isWhale?35:20));
     const arc=Math.sin(Math.PI*Math.min(1,t));
     if(isWhale){
       const emerge=THREE.MathUtils.smoothstep(age,0,2);
-      const dive=THREE.MathUtils.smoothstep(age,11.5,15.5);
+      const dive=THREE.MathUtils.smoothstep(age,11.5,13.6);
+      const tailDescent=THREE.MathUtils.smoothstep(age,15.6,18);
       const seaLevel=heightAt(current.root.position.x,current.root.position.z);
-      current.root.position.y=seaLevel-17+emerge*19-dive*25;
+      current.root.position.y=seaLevel-17+emerge*19-dive*16-tailDescent*36;
       // Brief head lift on emergence, level cruising, then head-first dive.
-      // Keep the tail elevated briefly at the end instead of pitching up throughout.
+      // The model faces -Z: negative X pitch lowers its head and raises its tail.
+      // Hold that pitch and depth for two seconds before sinking tail-last.
       const headLift=1-THREE.MathUtils.smoothstep(age,1.1,2.8);
       const headDive=THREE.MathUtils.smoothstep(age,11.5,13.6);
-      const tailFinish=THREE.MathUtils.smoothstep(age,13.6,14.5);
-      current.root.rotation.x=.18*headLift-.36*headDive+.14*tailFinish;
+      current.root.rotation.x=.18*headLift-.65*headDive;
     }else{
       current.root.position.y=-1.4+arc*5.5;
       current.root.rotation.x=Math.cos(t*Math.PI)*-.65;
