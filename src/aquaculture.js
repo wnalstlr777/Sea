@@ -97,5 +97,11 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   toast.hidden=performance.now()>toastUntil;
   if(Math.floor(time/1000)!==lastTick){lastTick=Math.floor(time/1000);if(!panel.hidden&&state){for(const p of state.pens){const label=panel.querySelector(`[data-pen-clock="${p.id}"]`),button=panel.querySelector(`[data-pen-action="${p.id}"]`),a=penAction(p);if(label?.firstChild)label.firstChild.nodeValue=p.cycle?`먹이 ${p.cycle.feeds.length}/3 · 남은 ${clock(p.cycle.completesAt-time)}`:'치어 1마리를 방류하면 시작합니다.';if(button&&a){button.textContent=a.text;button.disabled=busy||!a.action||a.disabled||!nearPen(p);}}}}
  }
- return {update,world,getState:()=>state};
+ function setOverview(hidden){
+  world.root.visible=!hidden;
+  for(const {el} of labels)el.hidden=hidden;
+  for(const {el} of schoolLabels)el.hidden=hidden;
+  if(hidden){interact.hidden=true;tutorial.hidden=true;toast.hidden=true;}
+ }
+ return {update,world,setOverview,getState:()=>state};
 }
