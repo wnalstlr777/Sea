@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {createSurvivor,disposeSurvivor,appearanceForPlayer} from './survivor.js';
 import {NETWORK_TO_VISUAL_Y} from './ship.js';
+import {createPlayerRecordsClient} from './player-records.js';
 
 export function createMultiplayer({scene,camera,controls,character,url}){
   const panel=document.createElement('div');panel.className='multiplayer-status';
@@ -10,6 +11,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   const names=document.createElement('div');names.className='player-names';document.querySelector('#app').append(names);
   const projected=new THREE.Vector3(),remotes=new Map();
   let fireworkHandler=null;
+  let records=null,connecting=false;
   const EMOTES=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
   const lieQuat=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2)
     .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI));
@@ -44,10 +46,13 @@ export function createMultiplayer({scene,camera,controls,character,url}){
     const delay=Math.min(10000,500*2**Math.min(attempt++,5))+Math.random()*250;
     message('연결이 끊겼습니다 · 재접속 중…');retryTimer=setTimeout(()=>{retryTimer=null;connect();},delay);
   }
-  function connect(){
-    if(stopped||blocked||socket?.readyState===WebSocket.OPEN||socket?.readyState===WebSocket.CONNECTING)return;
+  async function connect(){
+    if(stopped||blocked||connecting||socket?.readyState===WebSocket.OPEN||socket?.readyState===WebSocket.CONNECTING)return;
+    connecting=true;
     ready=false;character.setEnabled(false);clear();message('공용 배에 접속 중…');
-    let ws;try{ws=new WebSocket(url);}catch{blocked=true;message('멀티플레이 서버 주소 설정 오류');return;}socket=ws;
+    try{await records?.prepare();}catch{}
+    connecting=false;if(stopped||blocked)return;
+    let ws;try{ws=new WebSocket(url,records?.protocols());}catch{blocked=true;message('멀티플레이 서버 주소 설정 오류');return;}socket=ws;
     ws.onmessage=event=>{
       if(socket!==ws)return;lastHeard=performance.now();if(event.data==='pong')return;
       let packet;try{packet=JSON.parse(event.data);}catch{return;}
@@ -56,6 +61,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       }
       if(packet.type==='welcome'){
         if(packet.protocol!==2){blocked=true;message('서버 버전이 다릅니다. 새로고침해 주세요.');ws.close(1002);return;}
+        records?.welcome(packet);
         capacity=packet.capacity||20;self=packet.you;character.player.userData.playerId=self;const state=packet.players.find(p=>p.id===self);if(!state){ws.close(1002);return;}
         clear();setLocal(state);localLabel=label(`${state.nickname} (나)`);for(const player of packet.players)add(player);
         ready=true;attempt=0;seq=0;lastSent=null;character.setEnabled(true);occupancy();return;
@@ -73,7 +79,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
     };
     ws.onclose=event=>{
       if(socket!==ws)return;socket=null;ready=false;character.setEnabled(false);clear();
-      if(event.code===4003){blocked=true;message('정원 초과 · 최대 5명까지 탑승할 수 있습니다.',true);}
+      if(event.code===4003){blocked=true;message(`정원 초과 · 최대 ${capacity}명까지 탑승할 수 있습니다.`,true);}
       else if(event.code===1008){blocked=true;message('연결 요청이 거부되었습니다. 다시 접속해 주세요.',true);}
       else reconnect();
     };
@@ -88,7 +94,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
     if(!['ws:','wss:'].includes(endpoint.protocol)||(location.protocol==='https:'&&endpoint.protocol!=='wss:')){
       message('멀티플레이에는 올바른 보안 WebSocket 주소가 필요합니다.');return {update(){}};
     }
-    connect();
+    records=createPlayerRecordsClient(url);connect();
     // Networking has no extra rendering loop. Idle transforms are not resent.
     sendTimer=setInterval(()=>{
       if(!ready||socket?.readyState!==WebSocket.OPEN||socket.bufferedAmount>4096)return;

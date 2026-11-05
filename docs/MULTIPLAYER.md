@@ -1,6 +1,6 @@
 # 배타고 (BAETAGO) 멀티플레이
 
-공용 방 하나, 최대 5명, 익명 접속입니다. 기존 Vite/Three.js 화면과 GitHub Pages를 유지하며 WebSocket 서버만 Cloudflare Workers + SQLite Durable Objects로 분리합니다. 계정·채팅·저장·방 생성 기능은 없습니다. HINA SURVIVAL 원본은 사용하거나 수정하지 않습니다.
+공용 방 하나, 최대 20명, 익명 접속입니다. 기존 Vite/Three.js 화면과 GitHub Pages를 유지하며 WebSocket 서버만 Cloudflare Workers + SQLite Durable Objects로 분리합니다. 계정·채팅·방 생성 기능은 없습니다. 플레이어 기록과 접속 통계는 [D1 플레이어 기록 v0.1](PLAYER_RECORDS.md)을 참고하세요. HINA SURVIVAL 원본은 사용하거나 수정하지 않습니다.
 
 ## 로컬 실행
 
@@ -34,14 +34,14 @@ python3 server/tests/browser_check.py
 
 1. Cloudflare 계정에 Workers 배포와 Durable Objects 마이그레이션 권한이 있는 API 토큰을 준비합니다. `CLOUDFLARE_API_TOKEN`과 `CLOUDFLARE_ACCOUNT_ID`를 안전한 환경변수로 설정합니다. GitHub 변수나 VITE_* 변수에 토큰을 넣지 마세요. 제한된 실행 환경에서는 `api.cloudflare.com` 접근도 필요합니다.
 2. `npx wrangler whoami`로 인증을 확인하고 `npm run server:deploy`를 실행합니다. `wrangler.jsonc`의 v1 마이그레이션은 `new_sqlite_classes: ["SeaRoom"]`을 사용합니다. 임시 계정이나 인증 우회 옵션은 사용하지 않습니다.
-3. 배포 출력의 실제 Worker 주소를 확인합니다. 예: `https://sea-multiplayer.<실제 계정 서브도메인>.workers.dev`. 이 예시 주소를 그대로 사용하지 마세요. `/health`가 `ok: true`, `protocol: 1`, `capacity: 5`를 반환해야 합니다.
+3. 배포 출력의 실제 Worker 주소를 확인합니다. 예: `https://sea-multiplayer.<실제 계정 서브도메인>.workers.dev`. 이 예시 주소를 그대로 사용하지 마세요. `/health`가 `ok: true`, `protocol: 2`, `capacity: 20`를 반환해야 합니다.
 4. GitHub `wnalstlr777/Sea` → Settings → Secrets and variables → Actions → Variables에 **SEA_MULTIPLAYER_URL**을 실제 `wss://...workers.dev/room`으로 등록합니다. `.github/workflows/deploy.yml`이 이를 공개 Vite 설정 `VITE_MULTIPLAYER_URL`로 주입합니다.
 5. GitHub Actions의 **Deploy GitHub Pages**를 수동 실행하거나 main을 업데이트해 다시 빌드합니다. 개발용 `.env.local`을 커밋하지 마세요.
-6. 실제 `https://wnalstlr777.github.io/Sea/` 두 창에서 상태가 `함께 항해 중 · 2/5명`인지 확인하고, 개발자 도구에서 실제 Worker로의 WebSocket 101 응답과 위치 패킷을 확인합니다. 마지막으로 실제 휴대폰에서도 같은 주소에 접속해 조작·표시를 확인합니다.
+6. 실제 `https://wnalstlr777.github.io/Sea/` 두 창에서 상태가 `함께 항해 중 · 2/20명`인지 확인하고, 개발자 도구에서 실제 Worker로의 WebSocket 101 응답과 위치 패킷을 확인합니다. 마지막으로 실제 휴대폰에서도 같은 주소에 접속해 조작·표시를 확인합니다.
 
 프로덕션 Worker의 허용 origin은 `https://wnalstlr777.github.io`입니다. 별도 도메인으로 Pages를 바꾸면 `ALLOWED_ORIGINS`도 변경·재배포해야 합니다. HTTPS Pages는 `wss://` 서버만 연결합니다.
 
-**현재 실제 Cloudflare 서버와 GitHub Pages 간 연결은 인증 및 서버 주소 설정 전까지 미검증입니다.** 로컬 검증 성공은 공개 배포 성공을 뜻하지 않습니다.
+D1 기록 기능의 배포·통계 API·검증 범위는 [플레이어 기록 v0.1](PLAYER_RECORDS.md)에 정리했습니다.
 
 ## 동작과 범위
 
