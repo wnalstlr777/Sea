@@ -166,7 +166,7 @@ let walkTime=0,sitBlend=0,fireworkPoseUntil=0;
 function raiseRightHand(){arms[1].rotation.set(Math.PI,0,0);elbows[1].rotation.x=0;}
 function fireworkPose(){fireworkPoseUntil=performance.now()+1500;raiseRightHand();}
 function rightHandWorldPosition(){hana.updateWorldMatrix(true,true);return arms[1].localToWorld(new THREE.Vector3(0,-.72,0));}
-function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=false,titanic=false,waterKickPulse=0){
+function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=false,titanic=false,waterKickPulse=0,waterArmCheerTime=0){
   // Release the tube grip when returning to deck poses.
   if(!inWater){const release=1-Math.exp(-Math.min(.1,dt)*18);for(const elbow of elbows)elbow.rotation.z+=(0-elbow.rotation.z)*release;}
   if(titanic){
@@ -205,7 +205,8 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
       // Upper arms extend sideways, with elbows out at the tube's outer rim.
       // Each water jump briefly throws both hands overhead, then re-grips the tube.
       // Reuse the existing kick pulse so arms, legs and tube glow stay synchronized.
-      const cheer=Math.max(0,Math.min(1,waterKickPulse));
+      // Hold the hands up for most of the one-second gesture, then re-grip.
+      const cheer=waterArmCheerTime<=0?0:Math.min(1,(1-waterArmCheerTime)/.16,waterArmCheerTime/.22);
       const armX=-.22;
       const armZ=side*(1.42+THREE.MathUtils.degToRad(20)+(2.85-(1.42+THREE.MathUtils.degToRad(20)))*cheer);
       const armBlend=1-Math.exp(-Math.min(.1,dt)*22);
