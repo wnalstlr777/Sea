@@ -204,7 +204,7 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
       const side=i===0?-1:1;
       // Upper arms extend sideways, with elbows out at the tube's outer rim.
       const armX=-.22;
-      const armZ=side*1.42;
+      const armZ=side*(1.42+THREE.MathUtils.degToRad(20));
       arms[i].rotation.x+=(armX-arms[i].rotation.x)*blend;
       arms[i].rotation.z+=(armZ-arms[i].rotation.z)*blend;
       elbows[i].rotation.x+=(-.18-elbows[i].rotation.x)*blend;
