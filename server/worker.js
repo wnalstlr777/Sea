@@ -1,6 +1,7 @@
 import {DurableObject} from 'cloudflare:workers';
 import {SHIP} from '../src/deck.js';
 import {PlayerRecords,countryCode,socketCredentials,credentialHash,STALE_MS,kstDate} from './records.js';
+import {adminPage,adminAuthorized} from './admin.js';
 
 const CAPACITY=20,PROTOCOL=2;
 const EMOTES=['❤️','👋','😂','👍','🎉','😢','😮','👏'];
@@ -21,6 +22,12 @@ export default {
   async fetch(request,env){
     const url=new URL(request.url);
     const origin=request.headers.get('Origin');
+    if((url.pathname==='/admin'||url.pathname==='/admin/')&&request.method==='GET')return adminPage();
+    if(url.pathname==='/admin/data'){
+      if(request.method!=='GET')return json({error:'Method not allowed'},405);
+      if(origin&&origin!==url.origin)return json({error:'Origin not allowed'},403);
+      return env.ROOM.get(env.ROOM.idFromName('public')).fetch(request);
+    }
     const allowed=(env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim());
     if(origin&&!allowed.includes(origin))return json({error:'Origin not allowed'},403);
     if(!['/room','/health','/identity','/stats','/rankings'].includes(url.pathname))return json({error:'Not found'},404);
@@ -45,6 +52,7 @@ export class SeaRoom extends DurableObject {
     // in-memory membership map keeps the object awake. No game state is saved.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping','pong'));
     this.records=new PlayerRecords(ctx,env,()=>this.members());
+    this.adminPassword=env.ADMIN_PASSWORD;
     this.limits=new Map();this.cache=new Map();this.rateSalt=crypto.randomUUID();
   }
   members(){return this.ctx.getWebSockets().filter(ws=>ws.readyState===1&&ws.deserializeAttachment()?.player);}
@@ -62,6 +70,22 @@ export class SeaRoom extends DurableObject {
     return value.count<=(kind==='connect'?60:30);
   }
   reportRecordsError(){console.warn('[Sea] Player records temporarily unavailable');}
+  async adminData(request,url){
+    const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
+    const respond=(body,status=200)=>Response.json(body,{status,headers});
+    if(!await this.allow(request,'admin'))return respond({error:'Rate limit'},429);
+    if(!this.adminPassword)return respond({error:'Admin authentication unavailable'},503);
+    if(!await adminAuthorized(request,this.adminPassword))return respond({error:'Unauthorized'},401);
+    const days=Number(url.searchParams.get('days')||7);
+    if(![7,30].includes(days))return respond({error:'Invalid date range'},400);
+    try{
+      const key='admin:'+days+':'+kstDate(Date.now()),cached=this.cache.get(key),now=Date.now();
+      let result=cached?.expires>now?cached.value:null;
+      if(!result){result=await this.records.adminDashboard(days,now);if(this.cache.size>12)this.cache.clear();this.cache.set(key,{value:result,expires:now+10000});}
+      const live=this.members().filter(ws=>{const a=ws.deserializeAttachment(),heartbeat=this.ctx.getWebSocketAutoResponseTimestamp(ws)?.getTime()||0;return now-Math.max(a.lastActivity||a.updatedAt,heartbeat)<=STALE_MS;});
+      return respond({...result,summary:{...result.summary,currentConnections:live.length,currentPlayers:new Set(live.map(ws=>{const a=ws.deserializeAttachment();return a.tracking?.playerId||a.player.id;})).size}});
+    }catch{this.reportRecordsError();return respond({error:'Player records temporarily unavailable'},503);}
+  }
   async analytics(request,url){
     const kind=url.pathname.slice(1);
     if(!await this.allow(request,kind))return json({error:'Rate limit'},429);
@@ -90,6 +114,7 @@ export class SeaRoom extends DurableObject {
   }
   async fetch(request){
     const url=new URL(request.url);
+    if(url.pathname==='/admin/data')return this.adminData(request,url);
     if(url.pathname==='/health')return json({ok:true,protocol:PROTOCOL,players:this.players().length,capacity:CAPACITY});
     if(url.pathname!=='/room')return this.analytics(request,url);
     if(!await this.allow(request,'connect'))return json({error:'Rate limit'},429);

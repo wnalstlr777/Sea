@@ -32,8 +32,8 @@ test('D1 player records and existing WebSocket synchronization',async t=>{
         }
       }
       export default {fetch(request,env){if(new URL(request.url).pathname==='/__test')return env.ROOM.get(env.ROOM.idFromName('public')).fetch(request);return app.fetch(request,env);}};`);
-    const modules=[{type:'ESModule',path:join(dir,'test-entry.js')},{type:'ESModule',path:join(dir,'worker.js')},...readdirSync(dir).filter(n=>n.endsWith('.sql')).map(n=>({type:'Text',path:join(dir,n)}))];
-    mf=new Miniflare(convertV4MiniflareOptions({modules,modulesRoot:dir,compatibilityDate:'2026-11-02',durableObjects:{ROOM:{className:'TestSeaRoom',useSQLite:true}},d1Databases:{DB:'test-sea-db'},bindings:{ALLOWED_ORIGINS:ORIGIN},cf:{country:'KR'}}));
+    const modules=[{type:'ESModule',path:join(dir,'test-entry.js')},{type:'ESModule',path:join(dir,'worker.js')},...readdirSync(dir).filter(n=>/\.(sql|html)$/.test(n)).map(n=>({type:'Text',path:join(dir,n)}))];
+    mf=new Miniflare(convertV4MiniflareOptions({modules,modulesRoot:dir,compatibilityDate:'2026-11-02',durableObjects:{ROOM:{className:'TestSeaRoom',useSQLite:true}},d1Databases:{DB:'test-sea-db'},bindings:{ALLOWED_ORIGINS:ORIGIN,ADMIN_PASSWORD:'test-admin-password'},cf:{country:'KR'}}));
     const db=await mf.getD1Database('DB');
     const post=(path,body)=>mf.dispatchFetch('https://sea'+path,{method:'POST',headers:{Origin:ORIGIN,'Content-Type':'application/json'},body:JSON.stringify(body)});
     const fixture=async(events,now)=>assert.equal((await post('/__test',{action:'flush',events,now})).status,200);
@@ -44,6 +44,22 @@ test('D1 player records and existing WebSocket synchronization',async t=>{
       assert.equal(r.status,101);const peer=new Peer(r.webSocket);peers.push(peer);return {peer,welcome:await peer.take('welcome')};
     };
     let own,first,second;
+    const adminHeaders={Authorization:'Basic '+Buffer.from('admin:test-admin-password').toString('base64')};
+    await t.test('admin shell has CSP; protected data requires existing secret and same-origin requests',async()=>{
+      const page=await mf.dispatchFetch('https://sea/admin');assert.equal(page.status,200);
+      const html=await page.text(),nonce=page.headers.get('Content-Security-Policy').match(/nonce-([^']+)/)[1];
+      assert.ok(html.includes(`nonce="${nonce}"`));assert.ok(!html.includes('test-admin-password'));
+      const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);
+      assert.equal(page.headers.get('Cache-Control'),'no-store');
+      assert.equal((await mf.dispatchFetch('https://sea/admin/data')).status,401);
+      assert.equal((await mf.dispatchFetch('https://sea/admin/data',{headers:{Authorization:'Bearer wrong'}})).status,401);
+      assert.equal((await mf.dispatchFetch('https://sea/admin/data',{headers:{...adminHeaders,Origin:'https://other.example'}})).status,403);
+      assert.equal((await mf.dispatchFetch('https://sea/admin/data?days=999',{headers:adminHeaders})).status,400);
+      const empty=await mf.dispatchFetch('https://sea/admin/data?days=7',{headers:adminHeaders});assert.equal(empty.status,200);
+      assert.equal(empty.headers.get('Cache-Control'),'no-store');
+      const data=await empty.json();assert.equal(data.summary.totalVisitors,0);assert.equal(data.summary.totalSailingSeconds,0);
+      assert.equal(data.history.length,7);assert.ok(data.history.every(r=>r.visitors===0&&r.visits===0));assert.deepEqual(data.sailing,[]);assert.deepEqual(data.visits,[]);
+    });
     await t.test('additive migration, server credential, persistent browser identity and no raw IP columns',async()=>{
       own=await identity({});assert.match(own.token,/^[a-f0-9]{64}$/);
       const same=await identity(own);assert.equal(same.playerId,own.playerId);
@@ -86,6 +102,18 @@ test('D1 player records and existing WebSocket synchronization',async t=>{
       // Retention drops detailed sessions only, not player totals or daily uniqueness.
       await fixture([],base+8*86400000);assert.equal((await db.prepare('SELECT SUM(total_visits) AS n FROM daily_stats').first()).n,before.n);
       assert.equal((await db.prepare('SELECT sailing_ms FROM players WHERE player_id=?').bind(playerId).first()).sailing_ms,150000);
+    });
+    await t.test('admin aggregates match real D1 values and fill 7/30 KST dates without changing visits',async()=>{
+      const expected=await db.prepare('SELECT COUNT(*) AS visitors,CAST(SUM(sailing_ms)/1000 AS INTEGER) AS seconds FROM players WHERE visit_count>0').first();
+      const before=await db.prepare('SELECT SUM(visit_count) AS visits FROM players').first();
+      for(const days of [7,30]){
+        const response=await mf.dispatchFetch('https://sea/admin/data?days='+days,{headers:adminHeaders});assert.equal(response.status,200);
+        const data=await response.json();assert.equal(data.summary.totalVisitors,expected.visitors);assert.equal(data.summary.totalSailingSeconds,expected.seconds);
+        assert.equal(data.history.length,days);assert.equal(new Set(data.history.map(r=>r.date)).size,days);
+        assert.equal(data.history.at(-1).date,data.summary.dateKst);assert.equal(data.history.at(-1).visits,data.summary.todayVisits);
+        assert.ok(data.sailing.length<=10&&data.visits.length<=10);assert.ok(data.history.some(r=>r.visitors===0));
+      }
+      assert.equal((await db.prepare('SELECT SUM(visit_count) AS visits FROM players').first()).visits,before.visits);
     });
     await t.test('outage journals pending time, protects game connections, and rate limits data APIs',async()=>{
       for(let i=0;i<32;i++)await mf.dispatchFetch('https://sea/rankings?kind=visits');

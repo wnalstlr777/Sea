@@ -29,7 +29,7 @@ test('SQLite Durable Object real-runtime room lifecycle and validation',async t=
   let mf;const peers=[];
   try{
     execFileSync('node_modules/.bin/wrangler',['deploy','--env=','--dry-run','--outdir',directory],{stdio:'pipe',env:{...process.env,WRANGLER_SEND_METRICS:'false',XDG_CONFIG_HOME:join(directory,'config')}});
-    mf=new Miniflare(convertV4MiniflareOptions({modules:[{type:'ESModule',path:join(directory,'worker.js')},...readdirSync(directory).filter(n=>n.endsWith('.sql')).map(n=>({type:'Text',path:join(directory,n)}))],modulesRoot:directory,compatibilityDate:'2026-11-02',durableObjects:{ROOM:{className:'SeaRoom',useSQLite:true}},bindings:{ALLOWED_ORIGINS:'https://wnalstlr777.github.io'}}));
+    mf=new Miniflare(convertV4MiniflareOptions({modules:[{type:'ESModule',path:join(directory,'worker.js')},...readdirSync(directory).filter(n=>/\.(sql|html)$/.test(n)).map(n=>({type:'Text',path:join(directory,n)}))],modulesRoot:directory,compatibilityDate:'2026-11-02',durableObjects:{ROOM:{className:'SeaRoom',useSQLite:true}},bindings:{ALLOWED_ORIGINS:'https://wnalstlr777.github.io'}}));
     const connect=async()=>{const response=await mf.dispatchFetch('http://sea/room',{headers:{Upgrade:'websocket',Origin:'https://wnalstlr777.github.io'}});assert.equal(response.status,101);const peer=new Peer(response.webSocket);peers.push(peer);return peer;};
     await t.test('restricts origins and requires websocket upgrade',async()=>{
       assert.equal((await mf.dispatchFetch('http://sea/room',{headers:{Upgrade:'websocket',Origin:'https://other.example'}})).status,403);

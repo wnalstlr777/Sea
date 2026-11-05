@@ -162,4 +162,22 @@ export class PlayerRecords {
       visit_count AS visits FROM players WHERE visit_count>0 ORDER BY ${order} DESC,first_seen_at ASC,player_id ASC LIMIT 10`).all();
     return {kind,players:results};
   }
+  async adminDashboard(days,now=Date.now()){
+    await this.ready();
+    const today=kstDate(now),start=kstDate(now-(days-1)*86400_000);
+    const [stats,sailing,visits,extra]=await Promise.all([
+      this.stats(now),this.rankings('sailing'),this.rankings('visits'),
+      this.db.batch([
+        this.db.prepare('SELECT COUNT(*) AS totalVisitors,CAST(COALESCE(SUM(sailing_ms),0)/1000 AS INTEGER) AS totalSailingSeconds FROM players WHERE visit_count>0'),
+        this.db.prepare('SELECT date_kst AS date,total_visits AS visits,unique_visitors AS visitors FROM daily_stats WHERE date_kst BETWEEN ? AND ? ORDER BY date_kst').bind(start,today)
+      ])
+    ]);
+    const byDate=new Map(extra[1].results.map(row=>[row.date,row]));
+    const history=Array.from({length:days},(_,i)=>{
+      const date=kstDate(now-(days-1-i)*86400_000);
+      return byDate.get(date)||{date,visits:0,visitors:0};
+    });
+    return {generatedAt:new Date(now).toISOString(),days,summary:{...stats,...extra[0].results[0]},history,
+      sailing:sailing.players,visits:visits.players};
+  }
 }

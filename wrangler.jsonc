@@ -4,7 +4,7 @@
   "main": "server/worker.js",
   "compatibility_date": "2026-11-02",
   "workers_dev": true,
-  "rules": [{"type": "Text", "globs": ["**/*.sql"], "fallthrough": true}],
+  "rules": [{"type": "Text", "globs": ["**/*.sql", "**/*.html"], "fallthrough": true}],
   "d1_databases": [{"binding": "DB", "database_name": "sea-game-db", "database_id": "e1db9498-2430-4240-9c36-0888ed76a7f9", "migrations_dir": "server/migrations"}],
   "durable_objects": {"bindings": [{"name": "ROOM", "class_name": "SeaRoom"}]},
   "migrations": [{"tag": "v1", "new_sqlite_classes": ["SeaRoom"]}],
