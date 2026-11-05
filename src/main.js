@@ -52,6 +52,7 @@ function overviewCameraPose(){
 function setView(overview){
   if(intro){intro=null;introFinished=true;}
   overviewActive=overview;
+  if(typeof aquaculture!=='undefined')aquaculture.setOverview(overview);
   document.body.classList.toggle('sea-overview',overview);
   const button=document.querySelector('#camera-toggle');
   button.setAttribute('aria-pressed',String(overview));
@@ -345,6 +346,6 @@ if(!overviewActive&&!character.isLying()&&!character.isTitanicPosing()&&Math.hyp
   }
   }
 }
-camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);aquaculture.update(dt);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
+camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);aquaculture.update(dt);aquaculture.setOverview(overviewActive);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
 // Read-only diagnostics for smoke checks and performance inspection.
 window.oceanCruise={renderer,scene,camera,controls,ship,player:character.player,lighting,params,uniforms:ocean.uniforms};
