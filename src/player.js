@@ -309,7 +309,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       followWaterHeight(shift);
       jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
       jumpPose+=(0-jumpPose)*(1-Math.exp(-step*16));
-      avatar.update(step,false,false,fallAirborne?1:0,overboard&&!fallAirborne,fallAirborne&&fallVelocity<-7);
+      avatar.update(step,false,false,fallAirborne?1:0,overboard,false);
       return;
     }
     if(!headSupport&&(jumpVelocity!==0||jumpHeight>0)){
