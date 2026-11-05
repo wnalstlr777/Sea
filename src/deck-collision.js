@@ -53,5 +53,29 @@ export function createDeckCollision(ship){
     }
     return null;
   }
-  return {floorAt,safeSpot,ready:()=>Boolean(ship.userData.colliders?.length)};
+  // Horizontal body sweep: floor-only raycasts cannot stop hull penetration.
+  const sideRay=new THREE.Raycaster(),direction=new THREE.Vector3(),sideOrigin=new THREE.Vector3();
+  function blockedMove(x,z,dx,dz,feetY){
+    const meshes=ship.userData.colliders, distance=Math.hypot(dx,dz);
+    if(!meshes?.length||distance<1e-6)return {x:x+dx,z:z+dz};
+    ship.updateMatrixWorld(true);
+    direction.set(dx/distance,0,dz/distance);
+    let allowed=distance;
+    for(const h of [.4,1.1,1.8]){
+      sideOrigin.set(x,feetY+h,z);
+      sideRay.set(sideOrigin,direction);sideRay.near=0;sideRay.far=distance+.28;
+      for(const hit of sideRay.intersectObjects(meshes,false)){
+        if(!hit.face)continue;
+        normalMatrix.getNormalMatrix(hit.object.matrixWorld);
+        surfaceNormal.copy(hit.face.normal).applyMatrix3(normalMatrix).normalize();
+        if(Math.abs(surfaceNormal.y)>.55)continue;
+        if(surfaceNormal.dot(direction)>0)surfaceNormal.negate();
+        if(surfaceNormal.dot(direction)>-.2)continue;
+        allowed=Math.min(allowed,Math.max(0,hit.distance-.28));
+        break;
+      }
+    }
+    return {x:x+direction.x*allowed,z:z+direction.z*allowed};
+  }
+  return {floorAt,safeSpot,blockedMove,ready:()=>Boolean(ship.userData.colliders?.length)};
 }
