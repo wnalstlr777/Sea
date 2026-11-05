@@ -16,6 +16,7 @@ test('persistent cooperative aquaculture: concurrency, clocks, rewards and rollb
    async fetch(request){if(new URL(request.url).pathname!=='/__aqua')return super.fetch(request);
     const b=await request.json();
     try{
+     if(b.kind==='cold'){this.aquaculture.schema=null;this.aquaculture.status='pending';return Response.json({ok:true});}
      if(b.kind==='snapshot')return Response.json(await this.aquaculture.run(()=>this.aquaculture.snapshotNow(b.pid,b.now)));
      const original=this.aquaculture.db;
      if(b.fail)this.aquaculture.db={prepare:original.prepare.bind(original),batch:queries=>original.batch([...queries,original.prepare("INSERT INTO aqua_profiles(player_id,fry,tube_color) VALUES('invalid',6,0)")])};
@@ -39,6 +40,7 @@ test('persistent cooperative aquaculture: concurrency, clocks, rewards and rollb
    assert.equal((await post('/admin/aqua',{action:'grant',playerId:ids[0],amount:5,requestId:crypto.randomUUID()})).status,401);
    const state=await snap(0);assert.equal(state.personal.fry,0);assert.equal(state.personal.tubeColor,tubeColorFor(ids[0]));
    assert.equal((await snap(0)).personal.tubeColor,state.personal.tubeColor);
+   await post('/__aqua',{kind:'cold'});assert.equal((await (await mf.dispatchFetch('https://sea/health')).json()).aquaculture,'ready');
    assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM players').first()).n,4);
    assert.equal(FISH.reduce((n,f)=>n+f.weight,0),10000);
   });

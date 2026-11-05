@@ -15,7 +15,12 @@ export class Aquaculture{
  async ready(){
   try{
    await this.records.ready();
-   if(!this.schema)this.schema=this.db.batch(migration.split('\n-- statement-breakpoint\n').map(s=>this.db.prepare(s))).catch(e=>{this.schema=null;throw e;});
+   if(!this.schema)this.schema=(async()=>{
+    if(!await this.ctx.storage.get('aqua-schema-v1')){
+     await this.db.batch(migration.split('\n-- statement-breakpoint\n').map(s=>this.db.prepare(s)));
+     await this.ctx.storage.put('aqua-schema-v1',true);
+    }
+   })().catch(e=>{this.schema=null;throw e;});
    await this.schema;this.status='ready';
   }catch(error){this.status='unavailable';throw error;}
  }

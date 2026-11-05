@@ -146,7 +146,7 @@ export class SeaRoom extends DurableObject {
     const url=new URL(request.url);
     if(url.pathname==='/admin/data')return this.adminData(request,url);
     if(url.pathname==='/admin/aqua')return this.adminFarm(request);
-    if(url.pathname==='/health'){if(this.aquaculture.status!=='ready')this.ctx.waitUntil(this.aquaculture.ready().catch(()=>{}));return json({ok:true,protocol:PROTOCOL,players:this.players().length,capacity:CAPACITY,aquaculture:this.aquaculture.status});}
+    if(url.pathname==='/health'){const prepared=await this.ctx.storage.get('aqua-schema-v1');if(!prepared)this.ctx.waitUntil(this.aquaculture.ready().catch(()=>{}));return json({ok:true,protocol:PROTOCOL,players:this.players().length,capacity:CAPACITY,aquaculture:prepared?'ready':this.aquaculture.status});}
     if(url.pathname!=='/room')return this.analytics(request,url);
     if(!await this.allow(request,'connect'))return json({error:'Rate limit'},429);
     const credentials=socketCredentials(request);let identity=null,resume=null;
