@@ -192,23 +192,24 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
   }
   const firing=performance.now()<fireworkPoseUntil;
   if(inWater){
-    // Treading water: alternating arms, kicking legs and a slight torso sway.
+    // Tube riding: spread both arms and rest the hands on opposite sides of the ring.
+    // Keep the pose steady while moving; netPose overrides the right arm during collection.
     walkTime+=dt;
-    const phase=walkTime*8.5;
+    const phase=walkTime*2;
     const blend=1-Math.exp(-Math.min(.1,dt)*12);
     sitBlend=0;hana.position.y=0;
     for(let i=0;i<2;i++){
-      const alternate=i===0?1:-1;
-      const armTarget=-.65+alternate*Math.sin(phase)*.75;
-      const legTarget=alternate*Math.sin(phase+1.2)*.65;
-      arms[i].rotation.x+=(armTarget-arms[i].rotation.x)*blend;
-      arms[i].rotation.z+=((i===0?-.85:.85)-arms[i].rotation.z)*blend;
-      elbows[i].rotation.x+=(-.9-elbows[i].rotation.x)*blend;
-      legs[i].rotation.x+=(legTarget-legs[i].rotation.x)*blend;
-      knees[i].rotation.x+=((.25+.3*Math.max(0,Math.sin(phase+i*Math.PI)))-knees[i].rotation.x)*blend;
+      const side=i===0?-1:1;
+      const armX=-.38;
+      const armZ=side*1.05;
+      arms[i].rotation.x+=(armX-arms[i].rotation.x)*blend;
+      arms[i].rotation.z+=(armZ-arms[i].rotation.z)*blend;
+      elbows[i].rotation.x+=(-.3-elbows[i].rotation.x)*blend;
+      legs[i].rotation.x+=(0-legs[i].rotation.x)*blend;
+      knees[i].rotation.x+=(.22-knees[i].rotation.x)*blend;
     }
     if(firing)raiseRightHand();
-    body.rotation.z=Math.sin(phase*.5)*.12;
+    body.rotation.z=Math.sin(phase)*.015;
     head.rotation.z=-body.rotation.z*.45;
     return;
   }
@@ -251,7 +252,7 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
   body.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.016:0;
   head.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.020:0;
 }
-function netPose(progress){const swing=Math.sin(Math.max(0,Math.min(1,progress))*Math.PI);arms[1].rotation.x=-.5-swing*.85;arms[1].rotation.z=.3;elbows[1].rotation.x=-.4-swing*.45;}
+function netPose(progress){const t=Math.max(0,Math.min(1,progress));const swing=Math.sin(t*Math.PI*2);arms[1].rotation.x=-.9-.55*swing;arms[1].rotation.z=.2;elbows[1].rotation.x=-.4-.3*Math.max(0,swing);}
 return {mesh:hana,update,fireworkPose,rightHandWorldPosition,netPose};
 }
 
