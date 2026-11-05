@@ -44,7 +44,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
   const WATER_SURFACE_Y=-1.35, RESPAWN_X=0, RESPAWN_Z=-27;
   let waterHeightAt=()=>0;
   let overboard=false, fallOffset=0, waterTime=0, returnFlight=null,launchFlight=null;
-  let waterJumpCooldown=0,waterKickPulse=0;
+  let waterJumpCooldown=0,waterKickPulse=0,waterArmCheerTime=0;
   player.userData.waterKickPulse=0;
   let landingGrace=0;
   let fallVelocity=0,fallDriftX=0,fallDriftZ=0,fallAirborne=false;
@@ -228,7 +228,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       // Repeated tube kicks work in midair after a short cooldown.
       fallAirborne=true;fallVelocity=16.5;waterJumpCooldown=.65;
       // One short, synchronized rebound for the legs and tube glow.
-      waterKickPulse=.38;player.userData.waterKickPulse=1;
+      waterKickPulse=.38;waterArmCheerTime=1;player.userData.waterKickPulse=1;
       playJumpSound();return;
     }
     // A player standing on another head can jump again to build taller towers.
@@ -271,6 +271,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
     const step=Math.min(dt,.05);
     waterJumpCooldown=Math.max(0,waterJumpCooldown-step);
     waterKickPulse=Math.max(0,waterKickPulse-step);
+    waterArmCheerTime=Math.max(0,waterArmCheerTime-step);
     player.userData.waterKickPulse=waterKickPulse>0?Math.sin((1-waterKickPulse/.38)*Math.PI):0;
     if(updateLaunch(step))return;
     if(updateReturnFlight(step))return;
@@ -314,7 +315,7 @@ export function createPlayer(scene,camera,controls,deckCollision){
       followWaterHeight(shift);
       jumpPivot.position.y=NETWORK_TO_VISUAL_Y+fallOffset;
       jumpPose+=(0-jumpPose)*(1-Math.exp(-step*16));
-      avatar.update(step,false,false,fallAirborne?1:0,overboard,false,false,player.userData.waterKickPulse);
+      avatar.update(step,false,false,fallAirborne?1:0,overboard,false,false,player.userData.waterKickPulse,waterArmCheerTime);
       return;
     }
     if(!headSupport&&(jumpVelocity!==0||jumpHeight>0)){
