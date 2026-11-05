@@ -38,7 +38,7 @@ export function createWhaleAudio(context,bus,{waterNoise,isAudible=()=>true}={})
     if(!isAudible()||!visible||!p||![p.x,p.y,p.z].every(Number.isFinite)||!camera)return false;
     listener(camera);
     if(listenerPosition.distanceToSquared(p)>500*500)return false;
-    if(!['Whale_Splash','Whale_Blow','Whale_Dive'].includes(name))return false;
+    if(!['Whale_Splash','Whale_Blow','Whale_Dive','Whale_Call'].includes(name))return false;
     if(voices.size>=4)stop(voices.values().next().value);
     const panner=context.createPanner(),gain=context.createGain();
     panner.panningModel='HRTF';panner.distanceModel='inverse';panner.refDistance=70;panner.maxDistance=500;panner.rolloffFactor=1.35;
@@ -61,7 +61,24 @@ export function createWhaleAudio(context,bus,{waterNoise,isAudible=()=>true}={})
       source.onended=()=>{if(--voice.remaining===0)cleanup(voice);};
       source.start(start,vary(0,Math.max(0,buffer.duration-duration*1.04-.05)));source.stop(start+duration+.03);
     }
-    if(name==='Whale_Splash'){
+    if(name==='Whale_Call'){
+      // Original synthesized high, plaintive whale-like calls; no sampled recordings.
+      // Multiple softly detuned glides make the voice organic rather than a UI beep.
+      for(let i=0;i<3;i++){
+        const osc=context.createOscillator(),harmonic=context.createBiquadFilter(),env=context.createGain();
+        const start=now+i*.23,duration=2.5+i*.30,base=(i===0?610:i===1?845:1230)*vary(.94,1.06);
+        osc.type='sine';osc.frequency.setValueAtTime(base,start);
+        osc.frequency.exponentialRampToValueAtTime(base*(i===1?.69:1.28),start+duration*.54);
+        osc.frequency.exponentialRampToValueAtTime(base*.77,start+duration);
+        harmonic.type='lowpass';harmonic.frequency.value=2400;
+        env.gain.setValueAtTime(.0001,start);env.gain.exponentialRampToValueAtTime(i===0?.27:.12,start+.28);
+        env.gain.exponentialRampToValueAtTime(.0001,start+duration);
+        osc.connect(harmonic);harmonic.connect(env);env.connect(gain);
+        voice.nodes.push(osc,harmonic,env);voice.sources.push(osc);voice.remaining++;
+        osc.onended=()=>{if(--voice.remaining===0)cleanup(voice);};
+        osc.start(start);osc.stop(start+duration+.02);
+      }
+    }else if(name==='Whale_Splash'){
       layer(waterNoise??air,'lowpass',190,80,.68,.95);
       layer(air,'bandpass',1100,420,.37,1.25,.02);
       layer(air,'highpass',3400,2100,.09,1.55,.06,.045);
