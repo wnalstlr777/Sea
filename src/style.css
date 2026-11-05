@@ -64,12 +64,12 @@
 #sit-toggle{position:absolute;right:24px;bottom:max(24px,env(safe-area-inset-bottom));width:64px;min-height:44px;border-radius:12px;background:#072d39e8;color:#fff;z-index:2;font-size:13px}
 @media(max-width:600px){
   .time-control{bottom:max(8px,env(safe-area-inset-bottom));transform:none}
-  #sit-toggle{right:16px;bottom:180px}
+  #sit-toggle{right:16px;bottom:232px}
 }
 
-/* Jump button above the sit control on desktop and mobile. */
-#jump-toggle{position:absolute;right:34px;bottom:max(78px,calc(env(safe-area-inset-bottom) + 54px));width:48px;min-height:38px;border-radius:12px;background:#072d39e8;color:white;font-size:12px;z-index:3;touch-action:manipulation}
-@media(max-width:600px){#jump-toggle{right:24px;bottom:232px;width:48px;min-height:38px}}
+/* Jump button below the sit control on desktop and mobile. */
+#jump-toggle{position:absolute;right:34px;bottom:max(24px,env(safe-area-inset-bottom));width:48px;min-height:38px;border-radius:12px;background:#072d39e8;color:white;font-size:12px;z-index:3;touch-action:manipulation}
+@media(max-width:600px){#jump-toggle{right:24px;bottom:180px;width:48px;min-height:38px}}
 
 
 /* Two-view camera control: camera / music / menu */
@@ -100,8 +100,8 @@ body.sea-overview #jump-toggle{display:none!important}
 @keyframes sea-loading-slide{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
 @media(prefers-reduced-motion:reduce){.sea-loading-progress{animation:none;width:100%}}
 
-/* Match sitting control to the jump button exactly, except vertical position. */
-#sit-toggle,#jump-toggle{
+/* Match all three action buttons exactly, except vertical position. */
+#sit-toggle,#jump-toggle,#fireworks-toggle{
   box-sizing:border-box;
   width:48px;
   min-width:48px;
@@ -237,9 +237,9 @@ body.sea-overview #jump-toggle{display:none!important}
 #music-toggle[aria-pressed=false]{color:#8ba2aa;border-color:#67818a66;background:#092833aa;box-shadow:none}
 #music-toggle[aria-pressed=false] .music-mute-slash{display:block;stroke:#e0edf0}
 
-/* Fireworks launch above the jump button. */
-#fireworks-toggle{position:absolute;right:34px;bottom:max(124px,calc(env(safe-area-inset-bottom) + 100px));width:68px;min-height:38px;border-radius:12px;background:#072d39e8;color:#fff;font-size:12px;z-index:3;touch-action:manipulation}
-@media(max-width:600px){#fireworks-toggle{right:24px;bottom:280px;width:68px;min-height:38px}}
+/* Fireworks launch above the sit button. */
+#fireworks-toggle{position:absolute;right:34px;bottom:max(124px,calc(env(safe-area-inset-bottom) + 100px));width:48px;min-height:38px;border-radius:12px;background:#072d39e8;color:#fff;font-size:12px;z-index:3;touch-action:manipulation}
+@media(max-width:600px){#fireworks-toggle{right:24px;bottom:280px;width:48px;min-height:38px}}
 
 /* Rain stays above the 3D scene but below menus and touch controls. */
 .sea-rain-overlay{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
