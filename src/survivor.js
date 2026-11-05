@@ -204,12 +204,12 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
       const side=i===0?-1:1;
       // Upper arms extend sideways, with elbows out at the tube's outer rim.
       const armX=-.22;
-      const armZ=side*1.22;
+      const armZ=side*1.42;
       arms[i].rotation.x+=(armX-arms[i].rotation.x)*blend;
       arms[i].rotation.z+=(armZ-arms[i].rotation.z)*blend;
       elbows[i].rotation.x+=(-.18-elbows[i].rotation.x)*blend;
       // Bend forearms down onto the ring, rather than holding both arms straight.
-      elbows[i].rotation.z+=(-side*1.05-elbows[i].rotation.z)*blend;
+      elbows[i].rotation.z+=(-side*.85-elbows[i].rotation.z)*blend;
       legs[i].rotation.x+=(0-legs[i].rotation.x)*blend;
       knees[i].rotation.x+=(.22-knees[i].rotation.x)*blend;
     }
