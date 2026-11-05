@@ -28,7 +28,7 @@ part(.77,.15,.48,skirt,0,1.06,0);part(.85,.39,.54,skirt,0,.85,0);
 for(let x of [-.31,-.12,.08,.28])part(.022,.33,.045,seam,x,.84,.281);
 for(let y of [.73,.90])part(.78,.015,.045,seam,0,y,.283);
 part(.49,.11,.37,skin,0,1.95,0);
-const head=new THREE.Group();hana.add(head);head.position.y=2.28;
+const head=new THREE.Group();head.name='sea-avatar-head';hana.add(head);head.position.y=2.28;
 function facepart(w,h,d,m,x,y,z){const p=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);p.position.set(x,y,z);p.castShadow=true;head.add(p);return p}
 facepart(.67,.65,.59,skin,0,0,0);
 // Back hair: opaque cap and overlapping locks prevent the bare scalp from showing behind.
