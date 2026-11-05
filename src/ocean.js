@@ -190,7 +190,7 @@ export function createOcean(){
         float bubbles=smoothstep(.36,.72,fine.b*.72+tex.b*.28);
         float lace=smoothstep(.58,.86,fine.a);
         float propulsion=clamp(speed/8.,0.,1.)*wake;
-        float foam=clamp(core*sternMask*(.08+bubbles*.55+lace*.2)*propulsion,0.,.7);
+        float foam=clamp(core*sternMask*(.08+bubbles*.55+lace*.2)*propulsion*1.15,0.,.78);
         vec3 foamColor=mix(vec3(.10,.16,.23),vec3(.86,.92,.92),daylight);
         foamColor=mix(foamColor,skyHorizon,.18);
         color=mix(color,foamColor,foam);
