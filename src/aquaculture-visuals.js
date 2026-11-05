@@ -22,7 +22,7 @@ const wood=new THREE.MeshStandardMaterial({color:'#b9a98e',roughness:1}),rim=new
 export function createNet(){const group=new THREE.Group();group.name='fry-catching-net';group.add(new THREE.Mesh(handleGeometry,wood),new THREE.Mesh(rimGeometry,rim),new THREE.Mesh(netGeometry,netMat));return group;}
 export function createAquaWorld(scene,heightAt){
  const root=new THREE.Group();root.name='shared-aquaculture';scene.add(root);
- const ringGeo=new THREE.TorusGeometry(2.5,.18,8,48).rotateX(Math.PI/2),meshGeo=new THREE.CylinderGeometry(2.36,2.2,3.2,24,4,true).translate(0,-1.6,0);
+ const ringGeo=new THREE.TorusGeometry(5,.18,8,64).rotateX(Math.PI/2),meshGeo=new THREE.CylinderGeometry(4.86,4.7,3.2,48,4,true).translate(0,-1.6,0);
  const pens=PENS.map((pen,i)=>{const group=new THREE.Group();group.name='fish-pen-'+pen.id;group.position.set(pen.x,0,pen.z);group.add(new THREE.Mesh(ringGeo,new THREE.MeshStandardMaterial({color:i?'#acbba5':'#c8bea8',roughness:.9,emissive:'#79e6cb',emissiveIntensity:0})),new THREE.Mesh(meshGeo,new THREE.MeshBasicMaterial({color:'#a8c2b7',wireframe:true,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false,depthTest:true})));// Local translucent net overlay keeps the submerged grid visible without changing the opaque ocean shader.
  root.add(group);return {pen,group,pulse:-10000};});
  const body=new THREE.SphereGeometry(.09,6,4).scale(1.8,.65,.7),tail=new THREE.ConeGeometry(.07,.13,3).rotateZ(Math.PI/2).translate(-.19,0,0);
