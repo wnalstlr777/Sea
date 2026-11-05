@@ -166,7 +166,7 @@ let walkTime=0,sitBlend=0,fireworkPoseUntil=0;
 function raiseRightHand(){arms[1].rotation.set(Math.PI,0,0);elbows[1].rotation.x=0;}
 function fireworkPose(){fireworkPoseUntil=performance.now()+1500;raiseRightHand();}
 function rightHandWorldPosition(){hana.updateWorldMatrix(true,true);return arms[1].localToWorld(new THREE.Vector3(0,-.72,0));}
-function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=false,titanic=false){
+function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=false,titanic=false,waterKickPulse=0){
   // Release the tube grip when returning to deck poses.
   if(!inWater){const release=1-Math.exp(-Math.min(.1,dt)*18);for(const elbow of elbows)elbow.rotation.z+=(0-elbow.rotation.z)*release;}
   if(titanic){
@@ -213,7 +213,9 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
       // While jumping with the tube, only the feet paddle alternately.
       const kicking=(jumpPhase??0)>.5;
       const kick=kicking?Math.sin(walkTime*15+i*Math.PI)*.42:0;
-      legs[i].rotation.x+=(kick-legs[i].rotation.x)*blend;
+      // A single exaggerated opposite-leg recoil on each water re-jump.
+      const recoil=(i===0?1:-1)*waterKickPulse*1.05;
+      legs[i].rotation.x+=(kick+recoil-legs[i].rotation.x)*blend;
       knees[i].rotation.x+=((.22+(kicking?.22*Math.max(0,-Math.sin(walkTime*15+i*Math.PI)):0))-knees[i].rotation.x)*blend;
     }
     if(firing)raiseRightHand();
