@@ -210,8 +210,11 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
       elbows[i].rotation.x+=(-.18-elbows[i].rotation.x)*blend;
       // Bend forearms down onto the ring, rather than holding both arms straight.
       elbows[i].rotation.z+=(-side*.85-elbows[i].rotation.z)*blend;
-      legs[i].rotation.x+=(0-legs[i].rotation.x)*blend;
-      knees[i].rotation.x+=(.22-knees[i].rotation.x)*blend;
+      // While jumping with the tube, only the feet paddle alternately.
+      const kicking=(jumpPhase??0)>.5;
+      const kick=kicking?Math.sin(walkTime*15+i*Math.PI)*.42:0;
+      legs[i].rotation.x+=(kick-legs[i].rotation.x)*blend;
+      knees[i].rotation.x+=((.22+(kicking?.22*Math.max(0,-Math.sin(walkTime*15+i*Math.PI)):0))-knees[i].rotation.x)*blend;
     }
     if(firing)raiseRightHand();
     body.rotation.z=Math.sin(phase)*.015;
