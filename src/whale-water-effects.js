@@ -7,7 +7,7 @@ export function createWhaleWaterEffects(parent,{heightAt,compact=false,daylight=
   const geometry=new THREE.BufferGeometry();
   for(const [name,array,size] of [['position',positions,3],['aSize',sizes,1],['aAlpha',alphas,1]])geometry.setAttribute(name,new THREE.BufferAttribute(array,size).setUsage(THREE.DynamicDrawUsage));
   const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{viewport:{value:720},light:{value:1}},
-    vertexShader:`attribute float aSize,aAlpha;uniform float viewport;varying float alpha;void main(){vec4 p=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*p;gl_PointSize=clamp(aSize*viewport*projectionMatrix[1][1]/max(-p.z,1.),1.,54.);alpha=aAlpha;}`,
+    vertexShader:`attribute float aSize,aAlpha;uniform float viewport;varying float alpha;void main(){vec4 p=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*p;gl_PointSize=clamp(aSize*viewport*projectionMatrix[1][1]/max(-p.z,1.),2.,80.);alpha=aAlpha;}`,
     fragmentShader:`uniform float light;varying float alpha;
       void main(){float r=length(gl_PointCoord-.5)*2.;float soft=1.-smoothstep(.12,1.,r);
         vec3 c=mix(vec3(.12,.18,.25),vec3(.72,.83,.87),light);gl_FragColor=vec4(c,alpha*soft);
@@ -31,7 +31,7 @@ export function createWhaleWaterEffects(parent,{heightAt,compact=false,daylight=
     const i=cursor++%capacity,k=i*3;initial[k]=p.x;initial[k+1]=p.y;initial[k+2]=p.z;
     velocity[k]=v.x;velocity[k+1]=v.y;velocity[k+2]=v.z;
     birth[i]=time;kind[i]=type;life[i]=type===2?random(1.2,2.4):random(.7,1.6);
-    sizes[i]=type===2?random(1.0,2.7):random(.25,.85);alphas[i]=0;
+    sizes[i]=type===2?random(2.3,4.4):random(.65,1.35);alphas[i]=0;
   }
   function ripple(p,strength=1,heading=0,body=false){
     const r=rings[ringCursor++%ringCount];r.x=p.x;r.z=p.z;r.born=time;r.life=4.8;
@@ -39,7 +39,7 @@ export function createWhaleWaterEffects(parent,{heightAt,compact=false,daylight=
   }
   const v=new THREE.Vector3();
   function splash(p,strength=1){
-    const count=Math.round((compact?28:70)*strength);
+    const count=Math.round((compact?42:105)*strength);
     for(let i=0;i<count;i++){
       const angle=random(0,Math.PI*2),speed=random(2,10)*strength;
       v.set(Math.cos(angle)*speed,random(4,13)*strength,Math.sin(angle)*speed*random(.6,1.2));
@@ -51,13 +51,13 @@ export function createWhaleWaterEffects(parent,{heightAt,compact=false,daylight=
   function update(dt,visible,blowhole,normal){
     time+=dt;
     const breathAge=time-breathStart;
-    if(breathAge>=0&&breathAge<.65&&blowhole){
+    if(breathAge>=0&&breathAge<1.05&&blowhole){
       // Follow the animated/skinned blowhole during emission. Released drops stay in world space.
-      breathLeft+=dt*(compact?100:250)*(1-breathAge/.8);
+      breathLeft+=dt*(compact?175:380)*Math.max(.15,1-breathAge/1.15);
       if(visible){
         emitPosition.copy(blowhole);emitDirection.copy(normal??up).normalize();
         while(breathLeft>=1){
-          breathLeft--;const speed=random(18,32)*(1-breathAge*.45);
+          breathLeft--;const speed=random(24,39)*(1-breathAge*.30);
           v.copy(emitDirection).multiplyScalar(speed);v.x+=random(-4,4);v.z+=random(-4,4);
           particle(emitPosition,v,Math.random()<.8?2:1);
         }
@@ -72,7 +72,7 @@ export function createWhaleWaterEffects(parent,{heightAt,compact=false,daylight=
         positions[k]=initial[k]+velocity[k]*t+(mist?a*a*.9:0);
         positions[k+1]=initial[k+1]+velocity[k+1]*t-(mist?2.4:4.9)*a*a;
         positions[k+2]=initial[k+2]+velocity[k+2]*t;
-        const fade=1-a/life[i];alphas[i]=(mist?.23:.57)*Math.min(1,a*18)*fade*fade;
+        const fade=1-a/life[i];alphas[i]=(mist?.48:.76)*Math.min(1,a*18)*fade*fade;
         if(positions[k+1]<heightAt(positions[k],positions[k+2]))alphas[i]=0;
       }
       points.visible=alive>0;geometry.attributes.position.needsUpdate=true;geometry.attributes.aAlpha.needsUpdate=true;geometry.attributes.aSize.needsUpdate=true;
@@ -82,15 +82,15 @@ export function createWhaleWaterEffects(parent,{heightAt,compact=false,daylight=
       const age=time-r.born;r.mesh.visible=visible&&age<r.life;
       if(!r.mesh.visible)continue;
       const radius=r.initial+r.speed*age,fade=1-age/r.life;
-      r.mesh.material.opacity=.55*Math.pow(fade,1.4);
+      r.mesh.material.opacity=.82*Math.pow(fade,1.15);
       r.mesh.material.color.setRGB(.18+.48*daylight(),.28+.50*daylight(),.35+.47*daylight());
       for(let i=0;i<=segments;i++){
         const angle=i/segments*Math.PI*2,irregular=1+.06*Math.sin(angle*3+r.heading),c=Math.cos(r.heading),s=Math.sin(r.heading);
         for(let side=0;side<2;side++){
-          const d=(radius+side*(.65+age*.16))*irregular,dx=Math.cos(angle)*d,dz=Math.sin(angle)*d*r.elongation;
+          const d=(radius+side*(1.65+age*.28))*irregular,dx=Math.cos(angle)*d,dz=Math.sin(angle)*d*r.elongation;
           const x=r.x+c*dx+s*dz,z=r.z-s*dx+c*dz;
           // Follow the existing wave sampler, with enough clearance for interpolated ocean triangles.
-          const k=(i*2+side)*3;r.vertices[k]=x;r.vertices[k+1]=heightAt(x,z)+.50;r.vertices[k+2]=z;
+          const k=(i*2+side)*3;r.vertices[k]=x;r.vertices[k+1]=heightAt(x,z)+.72;r.vertices[k+2]=z;
         }
       }
       r.mesh.geometry.attributes.position.needsUpdate=true;
