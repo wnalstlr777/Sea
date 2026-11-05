@@ -191,8 +191,10 @@ export function createPlayer(scene,camera,controls,deckCollision){
     movement.copy(forward).multiplyScalar(z).addScaledVector(right,x);
     if(movement.lengthSq()>1)movement.normalize();
     movement.multiplyScalar(5.25*step);
-    player.position.add(movement);
-    if(enabled){camera.position.x+=movement.x;controls.target.x+=movement.x;camera.position.z+=movement.z;controls.target.z+=movement.z;}
+    const resolved=deckCollision.blockedMove(player.position.x,player.position.z,movement.x,movement.z,f.height);
+    const actualDx=resolved.x-player.position.x,actualDz=resolved.z-player.position.z;
+    player.position.x=resolved.x;player.position.z=resolved.z;
+    if(enabled){camera.position.x+=actualDx;controls.target.x+=actualDx;camera.position.z+=actualDz;controls.target.z+=actualDz;}
     if(movement.lengthSq()>1e-8)player.rotation.y=Math.atan2(-movement.x,-movement.z);
     lastMoveX=step>0?movement.x/step:0;lastMoveZ=step>0?movement.z/step:0;
     if(f.velocity<0){
