@@ -188,6 +188,13 @@ export class SeaRoom extends DurableObject {
       this.ctx.waitUntil(this.farmPacket(ws,packet));return;
     }
     if(packet.type==='emote'){if(EMOTES.includes(packet.icon))this.broadcast({type:'emote',id:data.player.id,icon:packet.icon},ws);return;}
+    if(packet.type==='fishShow'&&typeof packet.fishId==='string'){
+      if(['oarfish','coelacanth','sunfish','mandarin','lionfish','blue-tang','yellow-tang','clownfish','sardine','anchovy'].includes(packet.fishId)&&now-(data.lastFishShowAt||0)>=1000){
+        data.lastFishShowAt=now;ws.serializeAttachment(data);
+        this.broadcast({type:'fishShow',id:data.player.id,fishId:packet.fishId},ws);
+      }
+      return;
+    }
     if(packet.type==='firework'){
       if(Number.isInteger(packet.color)&&packet.color>=0&&packet.color<5){
         // One event per second per player; no particle data crosses the network.
