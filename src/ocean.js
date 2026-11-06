@@ -212,7 +212,13 @@ export function createOcean(){
       }`});
   const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;
   let reflectStars=true;
+  let lastReflectionAt=-Infinity;
   mesh.onBeforeRender=(renderer,scene,camera)=>{
+    // Reflection is more expensive than sampling its cached texture.
+    // Refresh at most 30 times per second, while retaining the previous capture.
+    const now=performance.now();
+    if(now-lastReflectionAt<1000/30)return;
+    lastReflectionAt=now;
     mesh.visible=false;
     const stars=scene.getObjectByName('night-stars');
     const starWasVisible=stars?.visible;
@@ -226,6 +232,7 @@ export function createOcean(){
   function setReflectionResolution(size){
     if(!reflectionSizes.includes(size))return;
     mirror=getMirror(size);
+    lastReflectionAt=-Infinity;
     uniforms.mirrorSampler.value=mirror.material.uniforms.mirrorSampler.value;
     uniforms.textureMatrix.value=mirror.material.uniforms.textureMatrix.value;
   }
