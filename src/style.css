@@ -308,3 +308,16 @@ body.sea-overview #jump-toggle{display:none!important}
 @media(hover:hover) and (pointer:fine){.aqua-fish:hover .aqua-fish-info{display:block}}
 .aqua-fish.show-info .aqua-fish-info,.aqua-fish:focus-visible .aqua-fish-info{display:block}
 @media(max-width:600px){.aqua-panel{max-height:calc(100svh - 185px)}.aqua-book{grid-template-columns:repeat(2,minmax(0,1fr))}.aqua-fish-info{width:180px}}
+
+/* Stronger visual distinction between undiscovered and collected fish. */
+.aqua-fish:not(.owned){filter:brightness(.68) saturate(.65)}
+.aqua-fish:not(.owned) .aqua-fish-sprite{filter:grayscale(1) brightness(.38)}
+.aqua-fish.owned{filter:none;box-shadow:inset 0 0 26px #ffffff16,0 0 12px #8ee6cc22;border-width:1px}
+.aqua-fish.owned.aqua-rarity-일반{background:#78919aaa;border-color:#c3d9e2}
+.aqua-fish.owned.aqua-rarity-고급{background:#419b72b8;border-color:#9ef1bf}
+.aqua-fish.owned.aqua-rarity-희귀{background:#448bcaaf;border-color:#a7d8ff}
+.aqua-fish.owned.aqua-rarity-영웅{background:#9264bdb8;border-color:#dcb7ff}
+.aqua-fish.owned.aqua-rarity-전설{background:#bd9445bf;border-color:#ffe39c}
+.aqua-fish.owned .aqua-fish-sprite{filter:none}
+.aqua-fish.owned strong{color:#fff}
+.aqua-fish.owned small{color:#e2f8ef}
