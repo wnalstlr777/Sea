@@ -37,10 +37,10 @@ export function createAquaWorld(scene,heightAt){
   color:'#343b40',transparent:true,opacity:.72,depthWrite:false,
   side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1
  }),50);
- fish.name='fry-schools-instanced';fish.frustumCulled=false;
+ fish.name='fry-schools-instanced';fish.frustumCulled=false;fish.castShadow=false;fish.receiveShadow=false;
  fish.renderOrder=3;root.add(fish);
  const schoolMotion=Array.from({length:48},(_,i)=>({
-  phase:(i*2.39996)%(Math.PI*2),drift:i*.73,
+  phase:(i*2.39996)%(Math.PI*2),drift:i*.73,spread:.85+(i*17%11)*.16,
   fear:0
  }));
  const dummy=new THREE.Object3D(),splashes=[];
@@ -50,17 +50,23 @@ export function createAquaWorld(scene,heightAt){
  return {root,pens,
   feed(penId,now){const p=pens.find(p=>p.pen.id===penId);if(p)p.pulse=now;},
   splash(x,z,now){const s=splashes.reduce((a,b)=>a.at<b.at?a:b);s.at=now;s.mesh.position.set(x,heightAt(x,z)+.15,z);},
-  update(now,state,tubeColor=0,playerPosition=null){
+  update(now,state,tubeColor=0,playerPosition=null,hour=12){
    const seconds=now*.001;root.visible=true;
+   // Night-only gentle glow; MeshBasicMaterial has no physical emissive channel.
+   // A subtle color/opacity pulse gives the silhouette a luminous appearance without lights.
+   const night=hour>=19.5||hour<5.5;
+   const pulse=.5+.5*Math.sin(seconds*1.7);
+   fish.material.color.set(night?'#718f92':'#343b40');
+   fish.material.opacity=night?.58+.12*pulse:.72;
    for(let i=0;i<48;i++){
     const school=SCHOOLS[Math.floor(i/12)],n=i%12;
     const motion=schoolMotion[i],center=schoolPosition(school,now);
     const availability=state?.schools.find(s=>s.id===school.id);
     // Independent, smooth elliptical swimming rather than rigid synchronized orbiting.
     const t=seconds*(.25+(i%5)*.026)+motion.phase;
-    const radius=.20+Math.sqrt((n+1)/12)*.72;
-    let x=center.x+Math.cos(t)*radius+Math.sin(seconds*.31+motion.drift)*.09;
-    let z=center.z+Math.sin(t*.83)*radius*.72+Math.cos(seconds*.28+motion.drift)*.09;
+    const radius=(.55+Math.sqrt((n+1)/12)*1.15)*motion.spread;
+    let x=center.x+Math.cos(t)*radius+Math.sin(seconds*.31+motion.drift)*.20;
+    let z=center.z+Math.sin(t*.83)*radius*.72+Math.cos(seconds*.28+motion.drift)*.20;
     const dx=x-(playerPosition?.x??1e8),dz=z-(playerPosition?.z??1e8);
     const distance=Math.hypot(dx,dz);
     // Keep collision/collection anchored to the original school center.
