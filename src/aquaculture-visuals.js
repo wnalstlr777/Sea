@@ -29,24 +29,23 @@ export function createAquaWorld(scene,heightAt){
  const silhouette=document.createElement('canvas');
  silhouette.width=256;silhouette.height=128;
  const ctx=silhouette.getContext('2d');
- function fishPath(){
-  ctx.beginPath();
-  ctx.moveTo(230,64);
-  ctx.bezierCurveTo(193,39,147,34,106,45);
-  ctx.bezierCurveTo(88,52,67,58,35,64);
-  // Taper to a single pointed tail, without a separate tail fin.
-  ctx.bezierCurveTo(67,70,88,77,106,83);
-  ctx.bezierCurveTo(225,70,230,64,230,64);
-  ctx.closePath();
+ function fishPath(target){
+  // Rounded, plump head at +X; a steadily narrowing, finless tail at -X.
+  target.beginPath();
+  target.moveTo(235,64);
+  target.bezierCurveTo(231,40,208,25,178,24);
+  target.bezierCurveTo(137,23,108,43,80,54);
+  target.bezierCurveTo(61,60,43,63,24,64);
+  target.bezierCurveTo(43,65,61,68,80,74);
+  target.bezierCurveTo(108,85,137,105,178,104);
+  target.bezierCurveTo(208,103,231,88,235,64);
+  target.closePath();
  }
- // A soft outer edge evokes a fish seen through a shallow layer of water.
- ctx.save();ctx.filter='blur(6px)';ctx.fillStyle='rgba(23,47,57,.45)';
- fishPath();ctx.fill();ctx.restore();
- ctx.fillStyle='rgba(28,53,64,.85)';fishPath();ctx.fill();
+ ctx.fillStyle='#1c3540';fishPath(ctx);ctx.fill();
  const fishTexture=new THREE.CanvasTexture(silhouette);
  fishTexture.colorSpace=THREE.SRGBColorSpace;
- fishTexture.magFilter=THREE.LinearFilter;
- fishTexture.minFilter=THREE.LinearMipmapLinearFilter;
+ fishTexture.magFilter=THREE.NearestFilter;
+ fishTexture.minFilter=THREE.LinearMipmapNearestFilter;
  const fishGeometry=new THREE.PlaneGeometry(.85,.43).rotateX(-Math.PI/2);
  const fishMaterial=new THREE.MeshBasicMaterial({
   color:'#ffffff',map:fishTexture,transparent:true,opacity:.85,
@@ -56,22 +55,11 @@ export function createAquaWorld(scene,heightAt){
  const fish=new THREE.InstancedMesh(fishGeometry,fishMaterial,50);
  fish.name='fry-schools-instanced';fish.frustumCulled=false;
  fish.castShadow=false;fish.receiveShadow=false;fish.renderOrder=3;root.add(fish);
- // Additive halo is rendered only at night. Merely tinting a dark transparent
- // silhouette cannot create visible glow against the night ocean.
- const haloCanvas=document.createElement('canvas');
- haloCanvas.width=256;haloCanvas.height=128;
- const haloCtx=haloCanvas.getContext('2d');
- haloCtx.filter='blur(15px)';haloCtx.fillStyle='rgba(105,245,229,.95)';
- haloCtx.beginPath();haloCtx.moveTo(230,64);
- haloCtx.bezierCurveTo(190,39,145,34,106,45);
- haloCtx.bezierCurveTo(88,52,67,58,35,64);
- haloCtx.bezierCurveTo(67,70,88,77,106,83);
- haloCtx.bezierCurveTo(147,94,211,79,230,64);haloCtx.closePath();haloCtx.fill();
- const haloTexture=new THREE.CanvasTexture(haloCanvas);
- haloTexture.colorSpace=THREE.SRGBColorSpace;
+ // Reuse the same crisp silhouette for night glow: no blurred halo.
  const halo=new THREE.InstancedMesh(fishGeometry,new THREE.MeshBasicMaterial({
-  map:haloTexture,color:'#79ffe8',transparent:true,opacity:.9,
-  blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide
+  map:fishTexture,color:'#7bffe7',transparent:true,opacity:.8,
+  alphaTest:.1,blending:THREE.AdditiveBlending,depthWrite:false,
+  side:THREE.DoubleSide
  }),50);
  halo.name='fry-night-glow';halo.frustumCulled=false;
  halo.castShadow=false;halo.receiveShadow=false;halo.renderOrder=4;
@@ -96,7 +84,7 @@ export function createAquaWorld(scene,heightAt){
    fish.material.color.set(night?'#a4fbe9':'#ffffff');
    fish.material.opacity=night?.95:.85;
    halo.visible=night;
-   halo.material.opacity=.72+.25*pulse;
+   halo.material.opacity=.55+.35*pulse;
    for(let i=0;i<48;i++){
     const school=SCHOOLS[Math.floor(i/12)],n=i%12;
     const motion=schoolMotion[i],center=schoolPosition(school,now);
