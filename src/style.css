@@ -285,7 +285,7 @@ body.sea-overview #jump-toggle{display:none!important}
 
 /* 5x2 approved fish atlas; each cell is 256x256 transparent pixels. */
 .aqua-fish-sprite{display:block;position:relative;width:100%;max-width:150px;aspect-ratio:1;margin:auto;background-repeat:no-repeat}
-.aqua-fish-sprite.atlas-ready{background-image:url('./assets/fish-atlas.png');background-size:500% 200%;background-position:calc(var(--fish-column)*25%) calc(var(--fish-row)*100%)}
+.aqua-fish-sprite.atlas-ready{background-image:url('../assets/fish-atlas.png');background-size:500% 200%;background-position:calc(var(--fish-column)*25%) calc(var(--fish-row)*100%)}
 .aqua-fish-sprite.atlas-ready .aqua-fish-fallback{display:none}
 .aqua-fish-sprite.unowned{filter:grayscale(1) brightness(.34)}
 .aqua-fish-fallback{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
