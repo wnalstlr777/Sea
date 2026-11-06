@@ -241,11 +241,11 @@ function setCloudCover(value){params.cloudCover=value;lighting.uniforms.cloudCov
 cloudInput.addEventListener('input',event=>{setSkyAuto(false);setCloudCover(Number(event.target.value));});
 const qualityInput=document.querySelector('#graphics-quality');
 const qualityPresets={
-  high:{reflection:1024,pixelRatio:2,cloudSamples:24,cloudDetail:0},
-  medium:{reflection:256,pixelRatio:1.5,cloudSamples:20,cloudDetail:0},
+  high:{reflection:512,pixelRatio:1.5,cloudSamples:24,cloudDetail:0},
+  medium:{reflection:256,pixelRatio:1.25,cloudSamples:20,cloudDetail:0},
   low:{reflection:128,pixelRatio:1,cloudSamples:12,cloudDetail:0}
 };
-const defaultQuality=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||navigator.maxTouchPoints>0||matchMedia('(pointer:coarse)').matches?'medium':'high';
+const defaultQuality=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||navigator.maxTouchPoints>0||matchMedia('(pointer:coarse)').matches?'low':'medium';
 function setGraphicsQuality(level){
   const preset=qualityPresets[level]||qualityPresets.medium;
   qualityInput.value=level;
@@ -312,7 +312,7 @@ function updateLoadingCover(){
     loadingCover.addEventListener('transitionend',()=>loadingCover.remove(),{once:true});
   }
 }
-renderer.setAnimationLoop(now=>{const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;updateSkyCycle(wallDt);rain.update(dt,Math.max(rainToggle.checked?1:0,THREE.MathUtils.smoothstep(params.cloudCover,.72,.95)));naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt,overviewActive);marineLife.update(wallDt);jellyfish.update(dt,params.hour,overviewActive);horn.update(wallDt);character.update(dt);
+renderer.setAnimationLoop(now=>{if(document.hidden){previous=now;return;}if(now-previous<1000/60-1)return;const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;updateSkyCycle(wallDt);rain.update(dt,Math.max(rainToggle.checked?1:0,THREE.MathUtils.smoothstep(params.cloudCover,.72,.95)));naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt,overviewActive);marineLife.update(wallDt);jellyfish.update(dt,params.hour,overviewActive);horn.update(wallDt);character.update(dt);
 for(const pad of launchPads){
   pad.root.visible=!overviewActive;
   if(deckCollision.ready()){
