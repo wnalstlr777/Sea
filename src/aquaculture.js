@@ -13,8 +13,8 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  const toast=element('div','aqua-toast');toast.setAttribute('role','status');toast.hidden=true;app.append(toast);
  const panel=element('section','aqua-panel');panel.dataset.aquaUi='';panel.hidden=true;panel.setAttribute('aria-label','공동 양식과 물고기 도감');
  const head=element('div','aqua-panel-head'),title=element('h2','','물고기 도감'),close=element('button','','닫기 ×');close.type='button';head.append(title,close);panel.append(head);
- const summary=element('p','aqua-summary','서버에 연결하는 중입니다.'),harvest=element('button','aqua-harvest'),penList=element('div','aqua-pen-list'),guide=element('p','aqua-guide','바다에서는 튜브가 자동 장착됩니다. 치어 채집 → 가두리 참여·방류 → 먹이 주기 → 12시간 후 수확! 배로 돌아갈 땐 점프 버튼을 누르세요.');
- const bookHeading=element('h3','','나의 물고기 도감'),book=element('div','aqua-book');panel.append(summary,harvest,penList,guide,bookHeading,book);app.append(panel);
+ const summary=element('p','aqua-summary',''),harvest=element('button','aqua-harvest'),penList=element('div','aqua-pen-list');
+ const book=element('div','aqua-book');panel.append(book);app.append(panel);
  const reward=element('section','aqua-reward');reward.hidden=true;reward.dataset.aquaUi='';reward.setAttribute('role','dialog');reward.setAttribute('aria-label','가두리 수확 결과');
  const rewardTitle=element('h3','','🐟 물고기를 획득했어요!'),rewardList=element('div','aqua-reward-list'),rewardClose=element('button','','물고기 챙기기 ✓');rewardClose.type='button';rewardClose.onclick=()=>{reward.hidden=true;};reward.append(rewardTitle,rewardList,rewardClose);app.append(reward);
  // Pen status is displayed by the existing proximity interaction button, not a floating label.
@@ -113,16 +113,6 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  }
  function render(){
   if(!state?.personal)return;const mine=state.personal;
-  summary.textContent=`치어 ${mine.fry}/5마리 · ${mine.penId?`가두리 ${mine.penId} 참여 중`:'참여 중인 가두리 없음'}`;
-  // Rewards are collected only through the nearby pen interaction, not the menu.
-  penList.replaceChildren(...state.pens.map(p=>{
-   const card=element('article','aqua-pen-card'),h=element('h3','',`가두리 ${p.id} · ${p.members.length}/3명`),names=element('p','',p.members.map(m=>m.nickname+(m.mine?' (나)':'')).join(', ')||'첫 항해자를 기다리는 중'),status=element('p','',p.cycle?`먹이 ${p.cycle.feeds.length}/3 · 남은 ${clock(p.cycle.completesAt-now())}`:'치어 1마리를 방류하면 시작합니다.');
-   if(mine.penId===p.id&&mine.pending>0)status.textContent=`🐟 수확할 물고기 ${mine.pending}마리! 가두리 근처에서 챙기세요.`;
-   if(p.cycle)status.append(element('small','',`완료 ${new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(p.cycle.completesAt))} KST`));
-   status.dataset.penClock=p.id;const a=penAction(p),button=element('button','',a?.text||'연결 확인 중');button.dataset.penAction=p.id;button.type='button';button.disabled=busy||!a?.action||a.disabled||!nearPen(p);button.onclick=()=>actPen(p);card.append(h,names,status,button);
-   if(mine.penId===p.id){const leave=element('button','aqua-leave','참여 자리 비우기');leave.onclick=async()=>{if(confirm('참여 자리를 비울까요? 기존 먹이 기여와 미수확 보상은 유지됩니다.'))await request('leave');};card.append(leave);}
-   return card;
-  }));
   book.replaceChildren(...FISH.map(f=>{const item=mine.inventory.find(i=>i.fishId===f.id),card=element('div','aqua-fish'+(item?' owned':''));card.append(fishIcon(f,!!item),element('strong','',item?f.name:'???'),element('span','',`${f.rarity} · ${f.weight/100}%`),element('small','',item?`${item.quantity}마리 보유`:'미발견'));return card;}));
  }
  function water(){const s=character.getNetworkState();return s.inWater&&!s.returning&&!s.jump;}
