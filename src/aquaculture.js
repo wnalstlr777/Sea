@@ -61,6 +61,20 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  }
  harvest.hidden=true;
  function fishIcon(fish,owned){
+  const slot=FISH.findIndex(f=>f.id===fish.id);
+  const frame=element('span','aqua-fish-sprite'+(owned?'':' unowned'));
+  frame.setAttribute('role','img');
+  frame.setAttribute('aria-label',fish.name);
+  frame.style.setProperty('--fish-column',String(slot%5));
+  frame.style.setProperty('--fish-row',String(Math.floor(slot/5)));
+  // The approved atlas is used when uploaded; retain existing SVG art as a
+  // fallback until the binary asset is present on GitHub Pages.
+  const fallback=element('span','aqua-fish-fallback');
+  fallback.innerHTML=fishIconFallback(fish,owned).outerHTML;
+  frame.append(fallback);
+  return frame;
+ }
+ function fishIconFallback(fish,owned){
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svg.setAttribute('viewBox','0 0 120 76');svg.setAttribute('aria-hidden','true');
   const NS=svg.namespaceURI;
