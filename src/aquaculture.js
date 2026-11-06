@@ -125,7 +125,15 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  }
  function render(){
   if(!state?.personal)return;const mine=state.personal;
-  book.replaceChildren(...FISH.map(f=>{const item=mine.inventory.find(i=>i.fishId===f.id),card=element('div','aqua-fish aqua-rarity-'+f.rarity+(item?' owned':''));card.append(fishIcon(f,!!item),element('strong','',f.name),element('small','',item?`${item.quantity}마리 보유`:'미발견'));return card;}));
+  book.replaceChildren(...FISH.map(f=>{const item=mine.inventory.find(i=>i.fishId===f.id),card=element('div','aqua-fish aqua-rarity-'+f.rarity+(item?' owned':''));card.append(fishIcon(f,!!item),element('strong','',f.name),element('small','',item?`${item.quantity}마리 보유`:'미발견'));
+   const info=element('div','aqua-fish-info',FISH_DESCRIPTIONS[f.id]);info.setAttribute('role','tooltip');card.append(info);
+   card.tabIndex=0;card.setAttribute('aria-label',f.name+'. '+FISH_DESCRIPTIONS[f.id]);
+   let hold;
+   const hide=()=>{clearTimeout(hold);card.classList.remove('show-info');};
+   card.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){clearTimeout(hold);hold=setTimeout(()=>card.classList.add('show-info'),500);}});
+   card.addEventListener('pointerup',hide);card.addEventListener('pointercancel',hide);card.addEventListener('pointerleave',hide);
+   card.addEventListener('contextmenu',e=>{if(e.pointerType==='touch')e.preventDefault();});
+   return card;}));
  }
  function water(){const s=character.getNetworkState();return s.inWater&&!s.returning&&!s.jump;}
  function nearPen(p){return water()&&Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z)<=5.4;}
