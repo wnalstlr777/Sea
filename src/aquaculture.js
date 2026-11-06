@@ -17,7 +17,8 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  const reward=element('section','aqua-reward');reward.hidden=true;reward.dataset.aquaUi='';reward.setAttribute('role','dialog');reward.setAttribute('aria-label','가두리 수확 결과');
  const rewardTitle=element('h3','','🐟 물고기를 획득했어요!'),rewardList=element('div','aqua-reward-list'),rewardClose=element('button','','물고기 챙기기 ✓');rewardClose.type='button';rewardClose.onclick=()=>{reward.hidden=true;};reward.append(rewardTitle,rewardList,rewardClose);app.append(reward);
  // Pen status is displayed by the existing proximity interaction button, not a floating label.
-  const schoolLabels=SCHOOLS.map(p=>{const el=element('div','aqua-school-label','🐟 치어');app.append(el);return {school:p,el};});
+  // No floating fry labels: school interactions are already available via the nearby net button.
+  const schoolLabels=[];
  const projection=new THREE.Vector3(),labelRaycaster=new THREE.Raycaster(),labelRayDirection=new THREE.Vector3(),labelRayOrigin=new THREE.Vector3(),netActions=new Map();let overviewHidden=false,state=null,serverAt=0,receivedAt=performance.now(),busy=false,harvestNoticeShown=false,collecting=null,observePending=false,lastTick=-1,donePending=false,toastUntil=0,context=null,lastRefresh=0;
  const now=()=>serverAt?serverAt+(performance.now()-receivedAt):Date.now();
  function notify(text){toast.textContent=text;toast.hidden=false;toastUntil=performance.now()+5000;}
@@ -158,7 +159,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   if(available&&performance.now()-lastRefresh>15000){lastRefresh=performance.now();multiplayer.aquaSnapshot();}
   tube.visible=s.inWater&&!s.returning;setTubeColor(tube,character.player.userData.tubeColor||0);tube.material.emissiveIntensity=.2+Math.max(0,character.player.userData.waterKickPulse||0)*.55;character.player.updateWorldMatrix(true,true);const tubeFeet=character.player.children[0].getWorldPosition(new THREE.Vector3()).y;tube.position.set(character.player.position.x,tubeFeet+1.5,character.player.position.z);tube.rotation.z=Math.sin(time*.0017)*.025;
   world.update(time,state,tube.userData.color,onWater?character.player.position:null,hour);
-   for(const {school,el} of schoolLabels){const p=schoolPosition(school,time),a=state?.schools.find(s=>s.id===school.id),distance=Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z);project(el,p.x,ocean.heightAt(p.x,p.z)+.35,p.z,available&&onWater&&!!a&&panel.hidden&&a.availableAt<=time&&distance<=2.4,true);}
+  // Intentionally no world-space fry emoji; it could appear attached to swimmers.
   context=null;
   if(available&&mine&&onWater&&!busy){
    const school=SCHOOLS.find(school=>{const p=schoolPosition(school,time);return Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z)<=2;});
