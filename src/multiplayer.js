@@ -136,8 +136,9 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       const targetHeight=THREE.MathUtils.lerp(heightA,heightB,alpha);
       remote.jumpHeight+=(targetHeight-remote.jumpHeight)*Math.min(1,dt*24);
       remote.motionPivot.position.y=NETWORK_TO_VISUAL_Y+(state.lying?0:remote.jumpHeight);
-      remote.tube.visible=!!state.inWater&&!state.returning&&!state.jump;
-      remote.tube.position.y=remote.motionPivot.position.y+1.5;
+      // Match the local tube rule: remain visible during water kicks/jumps.
+      remote.tube.visible=!!state.inWater&&!state.returning;
+      remote.tube.position.y=remote.motionPivot.position.y+remote.avatar.mesh.position.y+1.5;
       remote.tube.rotation.z=Math.sin(performance.now()*.0017+remote.root.position.x)*.025;
       // Invisible one-way head collider, updated from the interpolated avatar height.
       // Swimming, lying and returning players cannot act as head platforms.
