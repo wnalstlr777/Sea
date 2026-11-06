@@ -78,6 +78,15 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   const margin=8;
   el.hidden=!visible||projection.z<0||projection.z>1||screenX-halfWidth<margin||screenX+halfWidth>innerWidth-margin||screenY-height<margin||screenY>innerHeight-margin;
   if(el.hidden)return;
+  // Fry labels must not cover the player's head, even when the school is behind them.
+  if(el.classList.contains('aqua-school-label')){
+   character.player.updateWorldMatrix(true,false);
+   const head=character.player.getWorldPosition(new THREE.Vector3());head.y+=2.3;head.project(camera);
+   if(head.z>0&&head.z<1){
+    const hx=(head.x*.5+.5)*innerWidth,hy=(-head.y*.5+.5)*innerHeight;
+    if(Math.abs(screenX-hx)<Math.max(42,halfWidth+24)&&Math.abs(screenY-hy)<Math.max(75,height+40)){el.hidden=true;return;}
+   }
+  }
   el.style.left=`${screenX}px`;
   el.style.top=`${screenY}px`;
  }
@@ -99,7 +108,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   if(available&&performance.now()-lastRefresh>15000){lastRefresh=performance.now();multiplayer.aquaSnapshot();}
   tube.visible=s.inWater&&!s.returning;setTubeColor(tube,character.player.userData.tubeColor||0);tube.material.emissiveIntensity=.2+Math.max(0,character.player.userData.waterKickPulse||0)*.55;character.player.updateWorldMatrix(true,true);const tubeFeet=character.player.children[0].getWorldPosition(new THREE.Vector3()).y;tube.position.set(character.player.position.x,tubeFeet+1.5,character.player.position.z);tube.rotation.z=Math.sin(time*.0017)*.025;
   world.update(time,state,tube.userData.color);
-   for(const {school,el} of schoolLabels){const p=schoolPosition(school,time),a=state?.schools.find(s=>s.id===school.id),distance=Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z);project(el,p.x,ocean.heightAt(p.x,p.z)+.7,p.z,available&&onWater&&!!a&&panel.hidden&&a.availableAt<=time&&distance<=3.5,true);}
+   for(const {school,el} of schoolLabels){const p=schoolPosition(school,time),a=state?.schools.find(s=>s.id===school.id),distance=Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z);project(el,p.x,ocean.heightAt(p.x,p.z)+.35,p.z,available&&onWater&&!!a&&panel.hidden&&a.availableAt<=time&&distance<=2.4,true);}
   context=null;
   if(available&&mine&&onWater&&!busy){
    const school=SCHOOLS.find(school=>{const p=schoolPosition(school,time);return Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z)<=2;});
