@@ -124,6 +124,30 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   if(!owned){add('rect',{x:0,y:0,width:120,height:76,fill:'#18343d',opacity:'.8'});svg.style.filter='grayscale(1)';}
   return svg;
  }
+ const showcased=new Map();
+ function showFish(fishId,playerId){
+  const fish=FISH.find(f=>f.id===fishId);if(!fish||!playerId)return;
+  showcased.get(playerId)?.el.remove();
+  const el=element('div','aqua-showcase');
+  el.append(fishIcon(fish,true),element('strong','',fish.name+' 자랑 중!'));
+  el.style.cssText='position:fixed;z-index:70;pointer-events:none;display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%);filter:drop-shadow(0 3px 7px #0009)';
+  const icon=el.firstChild;icon.style.cssText='display:block;width:120px;height:95px;background-size:500% 200%;background-repeat:no-repeat';
+  app.append(el);showcased.set(playerId,{el,start:performance.now()});
+ }
+ multiplayer.onFishShow((fishId,remote)=>showFish(fishId,remote.root.userData.playerId));
+ function updateShowcase(){
+  const time=performance.now(),selfId=character.player.userData.playerId;
+  function position(id,root){
+   const item=showcased.get(id);if(!item)return;
+   const forward=new THREE.Vector3(0,0,-1).applyQuaternion(root.quaternion);
+   const p=root.position.clone().addScaledVector(forward,1);p.y+=2.5+Math.sin(time*.003)*.08;
+   p.project(camera);item.el.hidden=p.z<=0||p.z>=1||Math.abs(p.x)>1||Math.abs(p.y)>1||overviewHidden;
+   item.el.style.left=((p.x+1)*50)+'%';item.el.style.top=((1-p.y)*50)+'%';
+  }
+  position(selfId,character.player);
+  multiplayer.forEachRemote(remote=>position(remote.root.userData.playerId,remote.root));
+  for(const [id,item] of showcased){const age=time-item.start;item.el.style.opacity=String(Math.min(1,age/250,(5000-age)/400));if(age>=5000){item.el.remove();showcased.delete(id);}}
+ }
  function render(){
   if(!state?.personal)return;const mine=state.personal;
   book.replaceChildren(...FISH.map(f=>{const item=mine.inventory.find(i=>i.fishId===f.id),card=element('div','aqua-fish aqua-rarity-'+f.rarity+(item?' owned':''));card.append(fishIcon(f,!!item),element('strong','',f.name),element('small','',item?`${item.quantity}마리 보유`:'미발견'));
