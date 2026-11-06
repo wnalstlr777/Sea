@@ -24,21 +24,39 @@ export function createAquaWorld(scene,heightAt){
  const ringGeo=new THREE.TorusGeometry(10/3,.18,8,64).rotateX(Math.PI/2),meshGeo=new THREE.CylinderGeometry(3.24,3.13,3.2,48,4,true).translate(0,-1.6,0);
  const pens=PENS.map((pen,i)=>{const group=new THREE.Group();group.name='fish-pen-'+pen.id;group.position.set(pen.x,0,pen.z);group.add(new THREE.Mesh(ringGeo,new THREE.MeshStandardMaterial({color:i?'#acbba5':'#c8bea8',roughness:.9,emissive:'#79e6cb',emissiveIntensity:0})),new THREE.Mesh(meshGeo,new THREE.MeshBasicMaterial({color:'#a8c2b7',wireframe:true,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false,depthTest:true})));// Local translucent net overlay keeps the submerged grid visible without changing the opaque ocean shader.
  root.add(group);return {pen,group,pulse:-10000};});
- // A flat, dark fish silhouette replaces the former 3D sphere/cone geometry.
- // The shape is drawn in the XZ plane so it remains legible on the opaque sea.
- const outline=new THREE.Shape();
- outline.moveTo(.30,0);
- outline.bezierCurveTo(.13,-.09,-.095,-.075,-.19,-.025);
- outline.lineTo(-.35,-.10);outline.lineTo(-.35,.10);outline.lineTo(-.19,.025);
- outline.bezierCurveTo(-.095,.075,.13,.09,.30,0);
- const fishGeometry=new THREE.ShapeGeometry(outline,8);
- fishGeometry.rotateX(-Math.PI/2);
- const fish=new THREE.InstancedMesh(fishGeometry,new THREE.MeshBasicMaterial({
-  color:'#343b40',transparent:true,opacity:.94,depthWrite:false,
-  side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1
- }),50);
- fish.name='fry-schools-instanced';fish.frustumCulled=false;fish.castShadow=false;fish.receiveShadow=false;
- fish.renderOrder=3;root.add(fish);
+ // Soft underwater silhouettes: a single reusable alpha texture on flat instances.
+ // No shadows, reflections or extra lights. The water remains opaque.
+ const silhouette=document.createElement('canvas');
+ silhouette.width=256;silhouette.height=128;
+ const ctx=silhouette.getContext('2d');
+ function fishPath(){
+  ctx.beginPath();
+  ctx.moveTo(230,64);
+  ctx.bezierCurveTo(193,39,147,34,106,45);
+  ctx.bezierCurveTo(91,49,76,57,69,59);
+  ctx.lineTo(27,34);ctx.lineTo(35,64);ctx.lineTo(27,94);
+  ctx.lineTo(69,69);
+  ctx.bezierCurveTo(89,82,147,94,190,84);
+  ctx.bezierCurveTo(211,79,225,70,230,64);
+  ctx.closePath();
+ }
+ // A soft outer edge evokes a fish seen through a shallow layer of water.
+ ctx.save();ctx.filter='blur(6px)';ctx.fillStyle='rgba(23,47,57,.45)';
+ fishPath();ctx.fill();ctx.restore();
+ ctx.fillStyle='rgba(28,53,64,.85)';fishPath();ctx.fill();
+ const fishTexture=new THREE.CanvasTexture(silhouette);
+ fishTexture.colorSpace=THREE.SRGBColorSpace;
+ fishTexture.magFilter=THREE.LinearFilter;
+ fishTexture.minFilter=THREE.LinearMipmapLinearFilter;
+ const fishGeometry=new THREE.PlaneGeometry(.85,.43).rotateX(-Math.PI/2);
+ const fishMaterial=new THREE.MeshBasicMaterial({
+  color:'#ffffff',map:fishTexture,transparent:true,opacity:.85,
+  alphaTest:.015,depthWrite:false,side:THREE.DoubleSide,
+  polygonOffset:true,polygonOffsetFactor:-1
+ });
+ const fish=new THREE.InstancedMesh(fishGeometry,fishMaterial,50);
+ fish.name='fry-schools-instanced';fish.frustumCulled=false;
+ fish.castShadow=false;fish.receiveShadow=false;fish.renderOrder=3;root.add(fish);
  const schoolMotion=Array.from({length:48},(_,i)=>({
   phase:(i*2.39996)%(Math.PI*2),drift:i*.73,spread:.85+(i*17%11)*.16,
   fear:0
@@ -56,8 +74,8 @@ export function createAquaWorld(scene,heightAt){
    // A subtle color/opacity pulse gives the silhouette a luminous appearance without lights.
    const night=hour>=19.5||hour<5.5;
    const pulse=.5+.5*Math.sin(seconds*1.7);
-   fish.material.color.set(night?'#718f92':'#343b40');
-   fish.material.opacity=night?.72+.10*pulse:.94;
+   fish.material.color.set(night?'#b7e4e0':'#ffffff');
+   fish.material.opacity=night?.68+.12*pulse:.85;
    for(let i=0;i<48;i++){
     const school=SCHOOLS[Math.floor(i/12)],n=i%12;
     const motion=schoolMotion[i],center=schoolPosition(school,now);
@@ -78,7 +96,7 @@ export function createAquaWorld(scene,heightAt){
     z+=Math.sin(away)*motion.fear*(.35+(n%4)*.13);
     const vx=-Math.sin(t)*radius*(.25+(i%5)*.026)+Math.cos(away)*motion.fear*.2;
     const vz=Math.cos(t*.83)*radius*.72*.83*(.25+(i%5)*.026)+Math.sin(away)*motion.fear*.2;
-    dummy.position.set(x,heightAt(x,z)+.115,z);
+    dummy.position.set(x,heightAt(x,z)+.075,z);
     dummy.rotation.set(0,-Math.atan2(vz,vx),0);
     dummy.scale.setScalar(availability&&availability.availableAt<=now?.8+(i%4)*.075:0);
     dummy.updateMatrix();fish.setMatrixAt(i,dummy.matrix);
