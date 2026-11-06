@@ -37,7 +37,8 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  function notify(text){toast.textContent=text;toast.hidden=false;toastUntil=performance.now()+5000;}
  function setPanel(open){panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));if(open){const menu=document.querySelector('details[open]');if(menu)menu.open=false;multiplayer.aquaSnapshot();}else toggle.focus();}
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)multiplayer.aquaSnapshot();});
- toggle.onclick=()=>setPanel(panel.hidden);addEventListener('keydown',e=>{if(e.code==='Escape'&&!panel.hidden)setPanel(false);});
+ toggle.onclick=()=>setPanel(panel.hidden);
+ document.addEventListener('pointerdown',e=>{if(!panel.hidden&&!panel.contains(e.target)&&!toggle.contains(e.target))setPanel(false);});addEventListener('keydown',e=>{if(e.code==='Escape'&&!panel.hidden)setPanel(false);});
  async function request(action,data={}){
   busy=true;interact.disabled=true;
   try{const result=await multiplayer.aquaRequest(action,data);return result;}
