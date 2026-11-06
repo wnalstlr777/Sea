@@ -27,14 +27,14 @@ export function createAquaWorld(scene,heightAt){
  // A flat, dark fish silhouette replaces the former 3D sphere/cone geometry.
  // The shape is drawn in the XZ plane so it remains legible on the opaque sea.
  const outline=new THREE.Shape();
- outline.moveTo(.23,0);
- outline.bezierCurveTo(.10,-.115,-.105,-.11,-.17,-.035);
- outline.lineTo(-.30,-.115);outline.lineTo(-.30,.115);outline.lineTo(-.17,.035);
- outline.bezierCurveTo(-.105,.11,.10,.115,.23,0);
+ outline.moveTo(.30,0);
+ outline.bezierCurveTo(.13,-.09,-.095,-.075,-.19,-.025);
+ outline.lineTo(-.35,-.10);outline.lineTo(-.35,.10);outline.lineTo(-.19,.025);
+ outline.bezierCurveTo(-.095,.075,.13,.09,.30,0);
  const fishGeometry=new THREE.ShapeGeometry(outline,8);
  fishGeometry.rotateX(-Math.PI/2);
  const fish=new THREE.InstancedMesh(fishGeometry,new THREE.MeshBasicMaterial({
-  color:'#343b40',transparent:true,opacity:.72,depthWrite:false,
+  color:'#343b40',transparent:true,opacity:.94,depthWrite:false,
   side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1
  }),50);
  fish.name='fry-schools-instanced';fish.frustumCulled=false;fish.castShadow=false;fish.receiveShadow=false;
@@ -57,7 +57,7 @@ export function createAquaWorld(scene,heightAt){
    const night=hour>=19.5||hour<5.5;
    const pulse=.5+.5*Math.sin(seconds*1.7);
    fish.material.color.set(night?'#718f92':'#343b40');
-   fish.material.opacity=night?.58+.12*pulse:.72;
+   fish.material.opacity=night?.72+.10*pulse:.94;
    for(let i=0;i<48;i++){
     const school=SCHOOLS[Math.floor(i/12)],n=i%12;
     const motion=schoolMotion[i],center=schoolPosition(school,now);
