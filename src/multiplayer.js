@@ -11,6 +11,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
   panel.append(status,retry);document.querySelector('#app').append(panel);
   const names=document.createElement('div');names.className='player-names';document.querySelector('#app').append(names);
   const projected=new THREE.Vector3(),remotes=new Map();
+  let fishShowHandler=null;
   let fireworkHandler=null;
   let aquaHandler=null;const aquaPending=new Map();
   let records=null,connecting=false;
@@ -78,6 +79,7 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       if(packet.type==='join'){add(packet.player);occupancy();}
       if(packet.type==='state')receive(packet.player);
       if(packet.type==='emote'&&EMOTES.includes(packet.icon)){const remote=remotes.get(packet.id);if(remote){remote.emoteLabel.textContent=packet.icon;remote.emoteUntil=performance.now()+3000;}}
+      if(packet.type==='fishShow'&&typeof packet.fishId==='string'){const remote=remotes.get(packet.id);if(remote)fishShowHandler?.(packet.fishId,remote);}
       if(packet.type==='firework'&&Number.isInteger(packet.color)&&packet.color>=0&&packet.color<5){
         const remote=remotes.get(packet.id);
         if(remote)fireworkHandler?.(packet.color,remote);
@@ -174,6 +176,8 @@ export function createMultiplayer({scene,camera,controls,character,url}){
       });
     },
     forEachRemote(callback){for(const remote of remotes.values())callback(remote);},
+    onFishShow(handler){fishShowHandler=handler;},
+    sendFishShow(fishId){if(ready&&socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:'fishShow',fishId}));},
     onFirework(handler){fireworkHandler=handler;},
     sendFirework(color){if(ready&&socket?.readyState===WebSocket.OPEN&&Number.isInteger(color)&&color>=0&&color<5)socket.send(JSON.stringify({type:'firework',color}));},
     sendEmote(icon){if(ready&&socket?.readyState===WebSocket.OPEN&&EMOTES.includes(icon))socket.send(JSON.stringify({type:'emote',icon}));},dispose(){stopped=true;clearTimeout(retryTimer);clearInterval(sendTimer);clearInterval(heartbeat);socket?.close(1000);clear();panel.remove();names.remove();}};
