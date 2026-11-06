@@ -72,6 +72,9 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   const fallback=element('span','aqua-fish-fallback');
   fallback.innerHTML=fishIconFallback(fish,owned).outerHTML;
   frame.append(fallback);
+  const probe=new Image();
+  probe.onload=()=>frame.classList.add('atlas-ready');
+  probe.src='./assets/fish-atlas.png';
   return frame;
  }
  function fishIconFallback(fish,owned){
