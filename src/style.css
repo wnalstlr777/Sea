@@ -321,3 +321,13 @@ body.sea-overview #jump-toggle{display:none!important}
 .aqua-fish.owned .aqua-fish-sprite{filter:none}
 .aqua-fish.owned strong{color:#fff}
 .aqua-fish.owned small{color:#e2f8ef}
+
+/* Collected fish: brighten the entire card surface, not just the illustration. */
+.aqua-fish.owned.aqua-rarity-일반{background:linear-gradient(155deg,#b0c8d5,#6f929f);border-color:#d8edf3}
+.aqua-fish.owned.aqua-rarity-고급{background:linear-gradient(155deg,#a1e6bb,#4fae83);border-color:#c8ffdc}
+.aqua-fish.owned.aqua-rarity-희귀{background:linear-gradient(155deg,#a5d9ff,#579dd4);border-color:#d3eeff}
+.aqua-fish.owned.aqua-rarity-영웅{background:linear-gradient(155deg,#d9b9f5,#9772c9);border-color:#eedaff}
+.aqua-fish.owned.aqua-rarity-전설{background:linear-gradient(155deg,#ffe6a0,#cfa353);border-color:#fff2c6}
+.aqua-fish.owned{box-shadow:inset 0 1px 0 #ffffff66,0 3px 14px #00000024}
+.aqua-fish.owned strong{color:#173b43;text-shadow:0 1px 0 #ffffff66;font-weight:700}
+.aqua-fish.owned small{color:#244950}
