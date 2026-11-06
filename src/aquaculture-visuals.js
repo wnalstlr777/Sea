@@ -33,23 +33,24 @@ export function createAquaWorld(scene,heightAt){
   // Rounded, plump head at +X; a steadily narrowing, finless tail at -X.
   target.beginPath();
   target.moveTo(235,64);
-  target.bezierCurveTo(231,40,208,25,178,24);
-  target.bezierCurveTo(137,23,108,43,80,54);
+  target.bezierCurveTo(231,46,208,36,178,35);
+  target.bezierCurveTo(137,34,108,47,80,57);
   target.bezierCurveTo(61,60,43,63,24,64);
   target.bezierCurveTo(43,65,61,68,80,74);
-  target.bezierCurveTo(108,85,137,105,178,104);
-  target.bezierCurveTo(208,103,231,88,235,64);
+  target.bezierCurveTo(108,81,137,94,178,93);
+  target.bezierCurveTo(208,92,231,82,235,64);
   target.closePath();
  }
  ctx.fillStyle='#1c3540';fishPath(ctx);ctx.fill();
  const fishTexture=new THREE.CanvasTexture(silhouette);
  fishTexture.colorSpace=THREE.SRGBColorSpace;
  fishTexture.magFilter=THREE.NearestFilter;
- fishTexture.minFilter=THREE.LinearMipmapNearestFilter;
+ fishTexture.generateMipmaps=false;
+ fishTexture.minFilter=THREE.NearestFilter;
  const fishGeometry=new THREE.PlaneGeometry(.85,.43).rotateX(-Math.PI/2);
  const fishMaterial=new THREE.MeshBasicMaterial({
   color:'#ffffff',map:fishTexture,transparent:true,opacity:.85,
-  alphaTest:.015,depthWrite:false,side:THREE.DoubleSide,
+  alphaTest:.42,depthWrite:false,side:THREE.DoubleSide,
   polygonOffset:true,polygonOffsetFactor:-1
  });
  const fish=new THREE.InstancedMesh(fishGeometry,fishMaterial,50);
@@ -58,7 +59,7 @@ export function createAquaWorld(scene,heightAt){
  // Reuse the same crisp silhouette for night glow: no blurred halo.
  const halo=new THREE.InstancedMesh(fishGeometry,new THREE.MeshBasicMaterial({
   map:fishTexture,color:'#7bffe7',transparent:true,opacity:.8,
-  alphaTest:.1,blending:THREE.AdditiveBlending,depthWrite:false,
+  alphaTest:.42,blending:THREE.AdditiveBlending,depthWrite:false,
   side:THREE.DoubleSide
  }),50);
  halo.name='fry-night-glow';halo.frustumCulled=false;
@@ -66,13 +67,21 @@ export function createAquaWorld(scene,heightAt){
  halo.visible=false;root.add(halo);
  const schoolMotion=Array.from({length:48},(_,i)=>({
   phase:(i*2.39996)%(Math.PI*2),drift:i*.73,spread:.85+(i*17%11)*.16,
-  fear:0
+  fear:0,catchAt:-Infinity,catchDirection:0
  }));
  const dummy=new THREE.Object3D(),splashes=[];
  const splashGeometry=new THREE.TorusGeometry(.25,.014,4,20).rotateX(Math.PI/2);
  for(let i=0;i<4;i++){const mesh=new THREE.Mesh(splashGeometry,new THREE.MeshBasicMaterial({color:'#e7f5ed',transparent:true,opacity:0,depthWrite:false}));mesh.visible=false;root.add(mesh);splashes.push({mesh,at:-10000});}
  const pelletsPos=new Float32Array(24*3),pelletsGeo=new THREE.BufferGeometry();pelletsGeo.setAttribute('position',new THREE.BufferAttribute(pelletsPos,3));const pellets=new THREE.Points(pelletsGeo,new THREE.PointsMaterial({color:'#cbb98b',size:.09,transparent:true,opacity:.9}));pellets.frustumCulled=false;root.add(pellets);
  return {root,pens,
+  startCatch(schoolId,now){
+   const schoolIndex=SCHOOLS.findIndex(s=>s.id===schoolId);
+   if(schoolIndex<0)return;
+   for(let n=0;n<12;n++){
+    const motion=schoolMotion[schoolIndex*12+n];
+    motion.catchAt=now;motion.catchDirection=motion.phase+n*.37;
+   }
+  },
   feed(penId,now){const p=pens.find(p=>p.pen.id===penId);if(p)p.pulse=now;},
   splash(x,z,now){const s=splashes.reduce((a,b)=>a.at<b.at?a:b);s.at=now;s.mesh.position.set(x,heightAt(x,z)+.15,z);},
   update(now,state,tubeColor=0,playerPosition=null,hour=12){
@@ -98,13 +107,21 @@ export function createAquaWorld(scene,heightAt){
     const distance=Math.hypot(dx,dz);
     // Keep collision/collection anchored to the original school center.
     // A nearby swimmer makes individual silhouettes scatter and regroup smoothly.
-    const targetFear=distance<2.3?Math.min(1,(2.3-distance)/1.6):0;
-    motion.fear+=(targetFear-motion.fear)*.085;
-    const away=Math.atan2(dz,dx);
-    x+=Math.cos(away)*motion.fear*(.35+(n%4)*.13);
-    z+=Math.sin(away)*motion.fear*(.35+(n%4)*.13);
-    const vx=-Math.sin(t)*radius*(.25+(i%5)*.026)+Math.cos(away)*motion.fear*.2;
-    const vz=Math.cos(t*.83)*radius*.72*.83*(.25+(i%5)*.026)+Math.sin(away)*motion.fear*.2;
+    const targetFear=distance<3.3?Math.min(1,(3.3-distance)/1.9):0;
+    motion.fear+=(targetFear-motion.fear)*.15;
+    const away=distance>.001?Math.atan2(dz,dx):motion.phase;
+    // Net interaction: a quick outward dart, then gradual slowing so the
+    // existing two-second server-authoritative catch still succeeds.
+    const catchAge=(now-motion.catchAt)*.001;
+    const catchBurst=catchAge>=0&&catchAge<2.2
+      ?(1-Math.exp(-catchAge*9))*Math.exp(-catchAge*1.4)*1.55:0;
+    const flee=motion.fear*(.65+(n%4)*.22);
+    x+=Math.cos(away)*flee+Math.cos(motion.catchDirection)*catchBurst;
+    z+=Math.sin(away)*flee+Math.sin(motion.catchDirection)*catchBurst;
+    const vx=-Math.sin(t)*radius*(.25+(i%5)*.026)
+      +Math.cos(away)*motion.fear*.6+Math.cos(motion.catchDirection)*catchBurst;
+    const vz=Math.cos(t*.83)*radius*.72*.83*(.25+(i%5)*.026)
+      +Math.sin(away)*motion.fear*.6+Math.sin(motion.catchDirection)*catchBurst;
     dummy.position.set(x,heightAt(x,z)+.075,z);
     dummy.rotation.set(0,-Math.atan2(vz,vx),0);
     dummy.scale.setScalar(availability&&availability.availableAt<=now?.8+(i%4)*.075:0);
