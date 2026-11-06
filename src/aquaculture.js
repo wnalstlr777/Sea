@@ -40,6 +40,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  async function collect(school){
   if(collecting||busy)return;const result=await request('collectStart',{schoolId:school.id});if(!result)return;
   collecting={school,challengeId:result.challengeId,start:performance.now(),duration:Math.max(COLLECT_MS,result.endsAt-now())};
+  world.startCatch(school.id,now());
  }
  interact.onclick=()=>{if(!context||busy||collecting)return;if(context.school)collect(context.school);else if(context.pen)actPen(context.pen);};
  harvest.onclick=async()=>{if(busy)return;const result=await request('harvest');if(result){const names=result.fish.map(id=>FISH.find(f=>f.id===id)?.name||'물고기');notify(`수확 완료! ${names.join(', ')}`);}};
