@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {PENS,SCHOOLS,TUBE_COLORS,schoolPosition} from './aquaculture-data.js';
 // Reuse one rounded geometry; each player receives a muted, single-color material.
 const tubeGeometry=new THREE.TorusGeometry(.82,.27,12,32).rotateX(Math.PI/2);
@@ -25,8 +24,25 @@ export function createAquaWorld(scene,heightAt){
  const ringGeo=new THREE.TorusGeometry(10/3,.18,8,64).rotateX(Math.PI/2),meshGeo=new THREE.CylinderGeometry(3.24,3.13,3.2,48,4,true).translate(0,-1.6,0);
  const pens=PENS.map((pen,i)=>{const group=new THREE.Group();group.name='fish-pen-'+pen.id;group.position.set(pen.x,0,pen.z);group.add(new THREE.Mesh(ringGeo,new THREE.MeshStandardMaterial({color:i?'#acbba5':'#c8bea8',roughness:.9,emissive:'#79e6cb',emissiveIntensity:0})),new THREE.Mesh(meshGeo,new THREE.MeshBasicMaterial({color:'#a8c2b7',wireframe:true,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false,depthTest:true})));// Local translucent net overlay keeps the submerged grid visible without changing the opaque ocean shader.
  root.add(group);return {pen,group,pulse:-10000};});
- const body=new THREE.SphereGeometry(.09,6,4).scale(1.8,.65,.7),tail=new THREE.ConeGeometry(.07,.13,3).rotateZ(Math.PI/2).translate(-.19,0,0);
- const fish=new THREE.InstancedMesh(mergeGeometries([body,tail]),new THREE.MeshStandardMaterial({color:'#94cbc4',roughness:.7}),50);body.dispose();tail.dispose();fish.name='fry-schools-instanced';fish.frustumCulled=false;root.add(fish);
+ // A flat, dark fish silhouette replaces the former 3D sphere/cone geometry.
+ // The shape is drawn in the XZ plane so it remains legible on the opaque sea.
+ const outline=new THREE.Shape();
+ outline.moveTo(.23,0);
+ outline.bezierCurveTo(.10,-.115,-.105,-.11,-.17,-.035);
+ outline.lineTo(-.30,-.115);outline.lineTo(-.30,.115);outline.lineTo(-.17,.035);
+ outline.bezierCurveTo(-.105,.11,.10,.115,.23,0);
+ const fishGeometry=new THREE.ShapeGeometry(outline,8);
+ fishGeometry.rotateX(-Math.PI/2);
+ const fish=new THREE.InstancedMesh(fishGeometry,new THREE.MeshBasicMaterial({
+  color:'#343b40',transparent:true,opacity:.72,depthWrite:false,
+  side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1
+ }),50);
+ fish.name='fry-schools-instanced';fish.frustumCulled=false;
+ fish.renderOrder=3;root.add(fish);
+ const schoolMotion=Array.from({length:48},(_,i)=>({
+  phase:(i*2.39996)%(Math.PI*2),drift:i*.73,
+  fear:0
+ }));
  const dummy=new THREE.Object3D(),splashes=[];
  const splashGeometry=new THREE.TorusGeometry(.25,.014,4,20).rotateX(Math.PI/2);
  for(let i=0;i<4;i++){const mesh=new THREE.Mesh(splashGeometry,new THREE.MeshBasicMaterial({color:'#e7f5ed',transparent:true,opacity:0,depthWrite:false}));mesh.visible=false;root.add(mesh);splashes.push({mesh,at:-10000});}
@@ -34,13 +50,32 @@ export function createAquaWorld(scene,heightAt){
  return {root,pens,
   feed(penId,now){const p=pens.find(p=>p.pen.id===penId);if(p)p.pulse=now;},
   splash(x,z,now){const s=splashes.reduce((a,b)=>a.at<b.at?a:b);s.at=now;s.mesh.position.set(x,heightAt(x,z)+.15,z);},
-  update(now,state,tubeColor=0){
+  update(now,state,tubeColor=0,playerPosition=null){
    const seconds=now*.001;root.visible=true;
    for(let i=0;i<48;i++){
-    const school=SCHOOLS[Math.floor(i/12)],n=i%12,center=schoolPosition(school,now),availability=state?.schools.find(s=>s.id===school.id);
-    const angle=n*2.39996+seconds*.25,radius=.25+Math.sqrt(n/12)*.75;
-    const x=center.x+Math.cos(angle)*radius,z=center.z+Math.sin(angle)*radius;
-    dummy.position.set(x,heightAt(x,z)+.1+Math.sin(seconds*3+n)*.035,z);dummy.rotation.set(0,-angle-Math.PI/2,0);dummy.scale.setScalar(availability&&availability.availableAt<=now?1:0);dummy.updateMatrix();fish.setMatrixAt(i,dummy.matrix);
+    const school=SCHOOLS[Math.floor(i/12)],n=i%12;
+    const motion=schoolMotion[i],center=schoolPosition(school,now);
+    const availability=state?.schools.find(s=>s.id===school.id);
+    // Independent, smooth elliptical swimming rather than rigid synchronized orbiting.
+    const t=seconds*(.25+(i%5)*.026)+motion.phase;
+    const radius=.20+Math.sqrt((n+1)/12)*.72;
+    let x=center.x+Math.cos(t)*radius+Math.sin(seconds*.31+motion.drift)*.09;
+    let z=center.z+Math.sin(t*.83)*radius*.72+Math.cos(seconds*.28+motion.drift)*.09;
+    const dx=x-(playerPosition?.x??1e8),dz=z-(playerPosition?.z??1e8);
+    const distance=Math.hypot(dx,dz);
+    // Keep collision/collection anchored to the original school center.
+    // A nearby swimmer makes individual silhouettes scatter and regroup smoothly.
+    const targetFear=distance<2.3?Math.min(1,(2.3-distance)/1.6):0;
+    motion.fear+=(targetFear-motion.fear)*.085;
+    const away=Math.atan2(dz,dx);
+    x+=Math.cos(away)*motion.fear*(.35+(n%4)*.13);
+    z+=Math.sin(away)*motion.fear*(.35+(n%4)*.13);
+    const vx=-Math.sin(t)*radius*(.25+(i%5)*.026)+Math.cos(away)*motion.fear*.2;
+    const vz=Math.cos(t*.83)*radius*.72*.83*(.25+(i%5)*.026)+Math.sin(away)*motion.fear*.2;
+    dummy.position.set(x,heightAt(x,z)+.115,z);
+    dummy.rotation.set(0,-Math.atan2(vz,vx),0);
+    dummy.scale.setScalar(availability&&availability.availableAt<=now?.8+(i%4)*.075:0);
+    dummy.updateMatrix();fish.setMatrixAt(i,dummy.matrix);
    }
    for(let i=0;i<pens.length;i++){
     const p=pens[i],status=state?.pens.find(c=>c.id===p.pen.id),c=status?.cycle,water=heightAt(p.pen.x,p.pen.z),age=now-p.pulse;
