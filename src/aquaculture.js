@@ -113,7 +113,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  }
  function render(){
   if(!state?.personal)return;const mine=state.personal;
-  book.replaceChildren(...FISH.map(f=>{const item=mine.inventory.find(i=>i.fishId===f.id),card=element('div','aqua-fish'+(item?' owned':''));card.append(fishIcon(f,!!item),element('strong','',item?f.name:'???'),element('span','',`${f.rarity} · ${f.weight/100}%`),element('small','',item?`${item.quantity}마리 보유`:'미발견'));return card;}));
+  book.replaceChildren(...FISH.map(f=>{const item=mine.inventory.find(i=>i.fishId===f.id),card=element('div','aqua-fish aqua-rarity-'+f.rarity+(item?' owned':''));card.append(fishIcon(f,!!item),element('strong','',f.name),element('small','',item?`${item.quantity}마리 보유`:'미발견'));return card;}));
  }
  function water(){const s=character.getNetworkState();return s.inWater&&!s.returning&&!s.jump;}
  function nearPen(p){return water()&&Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z)<=5.4;}
