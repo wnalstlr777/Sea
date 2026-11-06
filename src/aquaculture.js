@@ -66,7 +66,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
    const distance=labelRayDirection.length();labelRayDirection.normalize();labelRaycaster.set(labelRayOrigin,labelRayDirection);labelRaycaster.far=Math.max(0,distance-.25);
    const hits=labelRaycaster.intersectObjects(scene.children,true);
    // Ignore the ocean surface and aquaculture effects; solid ship/environment assets block labels.
-   if(hits.some(hit=>{let obj=hit.object;while(obj){if(obj===world.root||obj===tube||obj.name==='ocean'||obj.name==='water')return false;obj=obj.parent;}return hit.object.isMesh&&!hit.object.material?.transparent;}))visible=false;
+   if(hits.some(hit=>{let obj=hit.object;while(obj){if(obj===world.root||obj===tube||obj.name==='ocean'||obj.name==='water'||obj.material?.name==='OceanSurface')return false;obj=obj.parent;}return hit.object.isMesh&&!hit.object.material?.transparent;}))visible=false;
   }
   projection.set(x,y,z).project(camera);
   const screenX=(projection.x*.5+.5)*innerWidth;
