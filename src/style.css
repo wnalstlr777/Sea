@@ -282,3 +282,12 @@ body.sea-overview #jump-toggle{display:none!important}
 
 /* Fish encyclopedia and catch reward share the same individual illustrations. */
 .aqua-fish svg{display:block;width:100%;height:72px;object-fit:contain;margin:0 auto 5px}.aqua-fish{overflow:hidden;text-align:center}.aqua-reward-fish svg{width:110px;height:70px;flex:none}.aqua-reward-fish{min-height:85px}.aqua-reward-fish strong{font-size:14px}
+
+/* 5x2 approved fish atlas; each cell is 256x256 transparent pixels. */
+.aqua-fish-sprite{display:block;position:relative;width:100%;max-width:150px;aspect-ratio:1;margin:auto;background-repeat:no-repeat}
+.aqua-fish-sprite.atlas-ready{background-image:url('./assets/fish-atlas.png');background-size:500% 200%;background-position:calc(var(--fish-column)*25%) calc(var(--fish-row)*100%)}
+.aqua-fish-sprite.atlas-ready .aqua-fish-fallback{display:none}
+.aqua-fish-sprite.unowned{filter:grayscale(1) brightness(.34)}
+.aqua-fish-fallback{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.aqua-fish-fallback svg{width:100%;height:100%;max-height:none}
+.aqua-reward-fish .aqua-fish-sprite{width:100px;flex:0 0 100px}
