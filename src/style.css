@@ -275,3 +275,7 @@ body.sea-overview #jump-toggle{display:none!important}
 
 /* Fry labels belong to the world overlay, never above interactive HUD/panels. */
 .aqua-school-label{z-index:0!important;}
+
+/* In-world harvest reward: shown only after interacting with the pen. */
+.aqua-reward{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:46;width:min(380px,calc(100vw - 32px));max-height:75svh;overflow:auto;padding:20px;border-radius:18px;background:#123b45f5;border:1px solid #92d9c2;color:#eafff6;box-shadow:0 15px 50px #001d27a8;text-align:center}
+.aqua-reward h3{font-size:18px;margin:0 0 12px}.aqua-reward-list{display:grid;gap:7px;margin-bottom:15px}.aqua-reward-fish{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:10px;background:#ffffff12;text-align:left}.aqua-reward-fish svg{width:55px;height:30px;flex:none}.aqua-reward-fish small{margin-left:auto;color:#b9dcd1}.aqua-reward button{padding:10px 22px;border-radius:12px;background:#4e9c83;color:white;border:1px solid #b6e5d3}
