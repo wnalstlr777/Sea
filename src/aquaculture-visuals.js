@@ -33,11 +33,10 @@ export function createAquaWorld(scene,heightAt){
   ctx.beginPath();
   ctx.moveTo(230,64);
   ctx.bezierCurveTo(193,39,147,34,106,45);
-  ctx.bezierCurveTo(91,49,76,57,69,59);
-  ctx.lineTo(27,34);ctx.lineTo(35,64);ctx.lineTo(27,94);
-  ctx.lineTo(69,69);
-  ctx.bezierCurveTo(89,82,147,94,190,84);
-  ctx.bezierCurveTo(211,79,225,70,230,64);
+  ctx.bezierCurveTo(88,52,67,58,35,64);
+  // Taper to a single pointed tail, without a separate tail fin.
+  ctx.bezierCurveTo(67,70,88,77,106,83);
+  ctx.bezierCurveTo(225,70,230,64,230,64);
   ctx.closePath();
  }
  // A soft outer edge evokes a fish seen through a shallow layer of water.
@@ -57,6 +56,26 @@ export function createAquaWorld(scene,heightAt){
  const fish=new THREE.InstancedMesh(fishGeometry,fishMaterial,50);
  fish.name='fry-schools-instanced';fish.frustumCulled=false;
  fish.castShadow=false;fish.receiveShadow=false;fish.renderOrder=3;root.add(fish);
+ // Additive halo is rendered only at night. Merely tinting a dark transparent
+ // silhouette cannot create visible glow against the night ocean.
+ const haloCanvas=document.createElement('canvas');
+ haloCanvas.width=256;haloCanvas.height=128;
+ const haloCtx=haloCanvas.getContext('2d');
+ haloCtx.filter='blur(15px)';haloCtx.fillStyle='rgba(105,245,229,.95)';
+ haloCtx.beginPath();haloCtx.moveTo(230,64);
+ haloCtx.bezierCurveTo(190,39,145,34,106,45);
+ haloCtx.bezierCurveTo(88,52,67,58,35,64);
+ haloCtx.bezierCurveTo(67,70,88,77,106,83);
+ haloCtx.bezierCurveTo(147,94,211,79,230,64);haloCtx.closePath();haloCtx.fill();
+ const haloTexture=new THREE.CanvasTexture(haloCanvas);
+ haloTexture.colorSpace=THREE.SRGBColorSpace;
+ const halo=new THREE.InstancedMesh(fishGeometry,new THREE.MeshBasicMaterial({
+  map:haloTexture,color:'#79ffe8',transparent:true,opacity:.9,
+  blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide
+ }),50);
+ halo.name='fry-night-glow';halo.frustumCulled=false;
+ halo.castShadow=false;halo.receiveShadow=false;halo.renderOrder=4;
+ halo.visible=false;root.add(halo);
  const schoolMotion=Array.from({length:48},(_,i)=>({
   phase:(i*2.39996)%(Math.PI*2),drift:i*.73,spread:.85+(i*17%11)*.16,
   fear:0
@@ -74,8 +93,10 @@ export function createAquaWorld(scene,heightAt){
    // A subtle color/opacity pulse gives the silhouette a luminous appearance without lights.
    const night=hour>=19.5||hour<5.5;
    const pulse=.5+.5*Math.sin(seconds*1.7);
-   fish.material.color.set(night?'#b7e4e0':'#ffffff');
-   fish.material.opacity=night?.68+.12*pulse:.85;
+   fish.material.color.set(night?'#a4fbe9':'#ffffff');
+   fish.material.opacity=night?.95:.85;
+   halo.visible=night;
+   halo.material.opacity=.72+.25*pulse;
    for(let i=0;i<48;i++){
     const school=SCHOOLS[Math.floor(i/12)],n=i%12;
     const motion=schoolMotion[i],center=schoolPosition(school,now);
@@ -99,7 +120,7 @@ export function createAquaWorld(scene,heightAt){
     dummy.position.set(x,heightAt(x,z)+.075,z);
     dummy.rotation.set(0,-Math.atan2(vz,vx),0);
     dummy.scale.setScalar(availability&&availability.availableAt<=now?.8+(i%4)*.075:0);
-    dummy.updateMatrix();fish.setMatrixAt(i,dummy.matrix);
+    dummy.updateMatrix();fish.setMatrixAt(i,dummy.matrix);halo.setMatrixAt(i,dummy.matrix);
    }
    for(let i=0;i<pens.length;i++){
     const p=pens[i],status=state?.pens.find(c=>c.id===p.pen.id),c=status?.cycle,water=heightAt(p.pen.x,p.pen.z),age=now-p.pulse;
@@ -110,10 +131,10 @@ export function createAquaWorld(scene,heightAt){
      ringMaterial.emissiveIntensity=status?.members.length>=3?glow:0;
     p.group.position.y=water+.14;p.group.rotation.x=Math.sin(seconds*.7+i)*.018;p.group.rotation.z=Math.cos(seconds*.6+i)*.018;
     const angle=seconds*.65+i,x=p.pen.x+Math.sin(angle)*1.1,z=p.pen.z+Math.cos(angle)*1.1,hop=age>=0&&age<1300?Math.sin(age/1300*Math.PI)*.6:0;
-    dummy.position.set(x,heightAt(x,z)+.15+hop,z);dummy.rotation.set(0,-angle,hop*.3);dummy.scale.setScalar(c?1+Math.min(1,(now-c.startedAt)/(c.completesAt-c.startedAt))*.8:0);dummy.updateMatrix();fish.setMatrixAt(48+i,dummy.matrix);
+    dummy.position.set(x,heightAt(x,z)+.15+hop,z);dummy.rotation.set(0,-angle,hop*.3);dummy.scale.setScalar(c?1+Math.min(1,(now-c.startedAt)/(c.completesAt-c.startedAt))*.8:0);dummy.updateMatrix();fish.setMatrixAt(48+i,dummy.matrix);halo.setMatrixAt(48+i,dummy.matrix);
     for(let j=0;j<12;j++){const k=(i*12+j)*3,fall=age/1300;pelletsPos[k]=p.pen.x+Math.sin(j*2.4)*(.4+j*.06);pelletsPos[k+2]=p.pen.z+Math.cos(j*2.4)*(.4+j*.06);pelletsPos[k+1]=fall>=0&&fall<1?water+.1+(1-fall)*1.1:-10000;}
    }
-   pelletsGeo.attributes.position.needsUpdate=true;fish.instanceMatrix.needsUpdate=true;
+   pelletsGeo.attributes.position.needsUpdate=true;fish.instanceMatrix.needsUpdate=true;halo.instanceMatrix.needsUpdate=true;
    for(const s of splashes){const a=(now-s.at)/850;s.mesh.visible=a>=0&&a<1;if(s.mesh.visible){s.mesh.scale.setScalar(1+a*3);s.mesh.material.opacity=(1-a)*.65;}}
   }
  };
