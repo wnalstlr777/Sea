@@ -7,12 +7,12 @@ const element=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.clas
 const clock=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return [Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(n=>String(n).padStart(2,'0')).join(':');};
 export function createAquaculture({scene,camera,character,multiplayer,ocean,isAvailable}){
  const world=createAquaWorld(scene,ocean.heightAt),tube=createTube(0);scene.add(tube);character.setWaterHeightSampler(ocean.heightAt);
- const app=document.querySelector('#app'),toggle=element('button','aqua-toggle','🛟 양식 · 도감');toggle.id='aquaculture-toggle';toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.dataset.aquaUi='';app.append(toggle);
+ const app=document.querySelector('#app'),toggle=element('button','aqua-toggle','🐟 물고기 도감');toggle.id='aquaculture-toggle';toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.dataset.aquaUi='';app.append(toggle);
  const tutorial=element('div','aqua-tutorial');tutorial.setAttribute('role','status');app.append(tutorial);
  const interact=element('button','aqua-interact');interact.dataset.aquaUi='';interact.type='button';interact.hidden=true;app.append(interact);
  const toast=element('div','aqua-toast');toast.setAttribute('role','status');toast.hidden=true;app.append(toast);
  const panel=element('section','aqua-panel');panel.dataset.aquaUi='';panel.hidden=true;panel.setAttribute('aria-label','공동 양식과 물고기 도감');
- const head=element('div','aqua-panel-head'),title=element('h2','','공동 가두리 양식'),close=element('button','','닫기 ×');close.type='button';head.append(title,close);panel.append(head);
+ const head=element('div','aqua-panel-head'),title=element('h2','','물고기 도감'),close=element('button','','닫기 ×');close.type='button';head.append(title,close);panel.append(head);
  const summary=element('p','aqua-summary','서버에 연결하는 중입니다.'),harvest=element('button','aqua-harvest'),penList=element('div','aqua-pen-list'),guide=element('p','aqua-guide','바다에서는 튜브가 자동 장착됩니다. 치어 채집 → 가두리 참여·방류 → 먹이 주기 → 12시간 후 수확! 배로 돌아갈 땐 점프 버튼을 누르세요.');
  const bookHeading=element('h3','','나의 물고기 도감'),book=element('div','aqua-book');panel.append(summary,harvest,penList,guide,bookHeading,book);app.append(panel);
  const reward=element('section','aqua-reward');reward.hidden=true;reward.dataset.aquaUi='';reward.setAttribute('role','dialog');reward.setAttribute('aria-label','가두리 수확 결과');
