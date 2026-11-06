@@ -24,7 +24,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  const interact=element('button','aqua-interact');interact.dataset.aquaUi='';interact.type='button';interact.hidden=true;app.append(interact);
  const toast=element('div','aqua-toast');toast.setAttribute('role','status');toast.hidden=true;app.append(toast);
  const panel=element('section','aqua-panel');panel.dataset.aquaUi='';panel.hidden=true;panel.setAttribute('aria-label','공동 양식과 물고기 도감');
- const head=element('div','aqua-panel-head'),title=element('h2','','물고기 도감'),close=element('button','','닫기 ×');close.type='button';head.append(title,close);panel.append(head);
+ const head=element('div','aqua-panel-head'),title=element('h2','','물고기 도감'),head.append(title);panel.append(head);
  const summary=element('p','aqua-summary',''),harvest=element('button','aqua-harvest'),penList=element('div','aqua-pen-list');
  const book=element('div','aqua-book');panel.append(book);app.append(panel);
  const reward=element('section','aqua-reward');reward.hidden=true;reward.dataset.aquaUi='';reward.setAttribute('role','dialog');reward.setAttribute('aria-label','가두리 수확 결과');
@@ -37,7 +37,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  function notify(text){toast.textContent=text;toast.hidden=false;toastUntil=performance.now()+5000;}
  function setPanel(open){panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));if(open){const menu=document.querySelector('details[open]');if(menu)menu.open=false;multiplayer.aquaSnapshot();}else toggle.focus();}
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)multiplayer.aquaSnapshot();});
- toggle.onclick=()=>setPanel(panel.hidden);close.onclick=()=>setPanel(false);addEventListener('keydown',e=>{if(e.code==='Escape'&&!panel.hidden)setPanel(false);});
+ toggle.onclick=()=>setPanel(panel.hidden);addEventListener('keydown',e=>{if(e.code==='Escape'&&!panel.hidden)setPanel(false);});
  async function request(action,data={}){
   busy=true;interact.disabled=true;
   try{const result=await multiplayer.aquaRequest(action,data);return result;}
