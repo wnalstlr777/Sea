@@ -153,6 +153,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   book.replaceChildren(...FISH.map(f=>{const item=mine.inventory.find(i=>i.fishId===f.id),card=element('div','aqua-fish aqua-rarity-'+f.rarity+(item?' owned':''));card.append(fishIcon(f,!!item),element('strong','',f.name),element('small','',item?`${item.quantity}마리 보유`:'미발견'));
    const info=element('div','aqua-fish-info',FISH_DESCRIPTIONS[f.id]);info.setAttribute('role','tooltip');card.append(info);
    card.tabIndex=0;card.setAttribute('aria-label',f.name+'. '+FISH_DESCRIPTIONS[f.id]);
+   if(item){card.style.cursor='pointer';card.title='클릭해서 5초간 물고기 자랑하기';card.addEventListener('click',()=>{showFish(f.id,character.player.userData.playerId);multiplayer.sendFishShow(f.id);setPanel(false);});card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();}});}
    let hold;
    const hide=()=>{clearTimeout(hold);card.classList.remove('show-info');};
    card.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){clearTimeout(hold);hold=setTimeout(()=>card.classList.add('show-info'),500);}});
@@ -204,6 +205,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   }
  });
  function update(dt,hour=12){
+  updateShowcase();
   const available=isAvailable()&&!overviewHidden,time=now(),mine=state?.personal,s=character.getNetworkState(),onWater=water();
   if(mine?.pending>0&&!harvestNoticeShown){notify('🐟 물고기가 자랐어요! 참여한 가두리로 가서 챙기세요.');harvestNoticeShown=true;}
   if(!mine?.pending)harvestNoticeShown=false;
