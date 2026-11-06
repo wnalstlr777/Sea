@@ -220,11 +220,16 @@ export function createOcean(){
     if(now-lastReflectionAt<1000/30)return;
     lastReflectionAt=now;
     mesh.visible=false;
+    // Fry are a surface overlay, not objects reflected by the ocean mirror.
+    const fry=scene.getObjectByName('fry-schools-instanced');
+    const fryWasVisible=fry?.visible;
+    if(fry)fry.visible=false;
     const stars=scene.getObjectByName('night-stars');
     const starWasVisible=stars?.visible;
     if(stars&&!reflectStars)stars.visible=false;
     try{mirror.onBeforeRender(renderer,scene,camera);}
     finally{
+      if(fry&&fryWasVisible!==undefined)fry.visible=fryWasVisible;
       if(stars&&starWasVisible!==undefined)stars.visible=starWasVisible;
       mesh.visible=true;
     }
