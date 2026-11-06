@@ -4,6 +4,18 @@ import {PENS,SCHOOLS,FISH,COLLECT_MS,schoolPosition} from './aquaculture-data.js
 import {createTube,setTubeColor,createNet,createAquaWorld} from './aquaculture-visuals.js';
 const TUTORIAL=['🛟 튜브를 타고 바다로 내려가 치어를 잡아보세요!','🐟 바다에 있는 치어 군집을 찾아보세요!','🥅 뜰채를 사용해 치어를 잡아보세요!','⭕ 잡은 치어를 가두리에 풀어주세요!','🍚 치어에게 먹이를 주세요!','🐟 먹이를 줄수록 수확량이 늘어나요. 같은 사람은 3시간마다 먹이를 줄 수 있고, 12시간 후 물고기를 수확할 수 있어요!'];
 const element=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
+const FISH_DESCRIPTIONS={
+ oarfish:'깊은 바다에 사는 길고 은빛인 물고기예요. 붉은 지느러미가 물결처럼 이어져요.',
+ coelacanth:'아주 오래된 계통의 심해어예요. 독특한 지느러미로 천천히 헤엄쳐요.',
+ sunfish:'납작하고 커다란 몸이 특징이에요. 바다 표면 가까이에서 쉬기도 해요.',
+ mandarin:'산호초 근처에 사는 작고 화려한 물고기예요. 알록달록한 무늬가 매력적이에요.',
+ lionfish:'화려한 줄무늬와 긴 지느러미가 특징이에요. 지느러미 가시에는 독이 있어요.',
+ 'blue-tang':'푸른 몸과 노란 꼬리가 눈에 띄어요. 산호초 주변에서 살아요.',
+ 'yellow-tang':'밝은 노란색 몸을 가진 산호초 물고기예요. 주로 해조류를 먹어요.',
+ clownfish:'말미잘 촉수 사이에서 보호받으며 살아요. 주황색 몸에 흰 줄무늬가 있어요.',
+ sardine:'은빛 몸으로 반짝이며 커다란 무리를 이루어요. 바다 생태계의 중요한 먹이예요.',
+ anchovy:'작고 날씬한 몸으로 무리 지어 헤엄쳐요. 플랑크톤을 먹고 자라요.'
+};
 const clock=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return [Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(n=>String(n).padStart(2,'0')).join(':');};
 export function createAquaculture({scene,camera,character,multiplayer,ocean,isAvailable}){
  const world=createAquaWorld(scene,ocean.heightAt),tube=createTube(0);scene.add(tube);character.setWaterHeightSampler(ocean.heightAt);
