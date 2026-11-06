@@ -131,7 +131,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   const el=element('div','aqua-showcase');
   el.append(fishIcon(fish,true),element('strong','',fish.name+' 자랑 중!'));
   el.style.cssText='position:fixed;z-index:70;pointer-events:none;display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%);filter:drop-shadow(0 3px 7px #0009)';
-  const icon=el.firstChild;icon.style.cssText='display:block;width:120px;height:95px;background-size:500% 200%;background-repeat:no-repeat';
+  const icon=el.firstChild;icon.style.cssText='display:block;width:120px;height:95px;background-size:500% 200%;background-repeat:no-repeat;background-position:'+((FISH.findIndex(f=>f.id===fishId)%5)*25)+'% '+(Math.floor(FISH.findIndex(f=>f.id===fishId)/5)*100)+'%';
   app.append(el);showcased.set(playerId,{el,start:performance.now()});
  }
  multiplayer.onFishShow((fishId,remote)=>showFish(fishId,remote.root.userData.playerId));
