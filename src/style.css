@@ -272,3 +272,6 @@ body.sea-overview #jump-toggle{display:none!important}
 
 /* Anchor the pen information above the pen, never over the player's avatar. */
 .aqua-interact.aqua-pen-interact{position:fixed;bottom:auto;transform:translate(-50%,-100%);width:max-content;max-width:min(300px,calc(100vw - 28px));white-space:pre-line;text-align:center;line-height:1.5;z-index:7}
+
+/* Fry labels belong to the world overlay, never above interactive HUD/panels. */
+.aqua-school-label{z-index:0!important;}
