@@ -15,7 +15,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  const summary=element('p','aqua-summary','서버에 연결하는 중입니다.'),harvest=element('button','aqua-harvest'),penList=element('div','aqua-pen-list'),guide=element('p','aqua-guide','바다에서는 튜브가 자동 장착됩니다. 치어 채집 → 가두리 참여·방류 → 먹이 주기 → 12시간 후 수확! 배로 돌아갈 땐 점프 버튼을 누르세요.');
  const bookHeading=element('h3','','나의 물고기 도감'),book=element('div','aqua-book');panel.append(summary,harvest,penList,guide,bookHeading,book);app.append(panel);
  const reward=element('section','aqua-reward');reward.hidden=true;reward.dataset.aquaUi='';reward.setAttribute('role','dialog');reward.setAttribute('aria-label','가두리 수확 결과');
- const rewardTitle=element('h3','','🐟 물고기 수확 완료!'),rewardList=element('div','aqua-reward-list'),rewardClose=element('button','','물고기 챙기기 ✓');rewardClose.type='button';rewardClose.onclick=()=>{reward.hidden=true;};reward.append(rewardTitle,rewardList,rewardClose);app.append(reward);
+ const rewardTitle=element('h3','','🐟 물고기를 획득했어요!'),rewardList=element('div','aqua-reward-list'),rewardClose=element('button','','물고기 챙기기 ✓');rewardClose.type='button';rewardClose.onclick=()=>{reward.hidden=true;};reward.append(rewardTitle,rewardList,rewardClose);app.append(reward);
  // Pen status is displayed by the existing proximity interaction button, not a floating label.
   const schoolLabels=SCHOOLS.map(p=>{const el=element('div','aqua-school-label','🐟 치어');app.append(el);return {school:p,el};});
  const projection=new THREE.Vector3(),labelRaycaster=new THREE.Raycaster(),labelRayDirection=new THREE.Vector3(),labelRayOrigin=new THREE.Vector3(),netActions=new Map();let overviewHidden=false,state=null,serverAt=0,receivedAt=performance.now(),busy=false,harvestNoticeShown=false,collecting=null,observePending=false,lastTick=-1,donePending=false,toastUntil=0,context=null,lastRefresh=0;
@@ -59,7 +59,38 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   reward.hidden=false;
  }
  harvest.hidden=true;
- function fishIcon(fish,owned){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 60 32');svg.setAttribute('aria-hidden','true');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d','M8 16C16 2 35 3 44 12L56 5V27L44 20C35 29 16 30 8 16Z');path.setAttribute('fill',owned?fish.color:'#567078');svg.append(path);if(owned){const eye=document.createElementNS(svg.namespaceURI,'circle');eye.setAttribute('cx','19');eye.setAttribute('cy','13');eye.setAttribute('r','1.8');eye.setAttribute('fill','#25414a');svg.append(eye);}return svg;}
+ function fishIcon(fish,owned){
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 120 76');svg.setAttribute('aria-hidden','true');
+  const NS=svg.namespaceURI;
+  const add=(tag,attrs,parent=svg)=>{const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);parent.append(e);return e;};
+  const defs=add('defs',{}),grad=add('linearGradient',{id:'fish-'+fish.id,x1:'0',y1:'0',x2:'0',y2:'1'});
+  add('stop',{offset:'0%','stop-color':'#ffffff','stop-opacity':'.8'},grad);
+  add('stop',{offset:'48%','stop-color':fish.color},grad);
+  add('stop',{offset:'100%','stop-color':'#183d56'},grad);
+  const g=add('g',{transform:'translate(0 3)'});
+  const id=fish.id,slim=id==='oarfish'||id==='sardine'||id==='anchovy';
+  const round=id==='sunfish',spiky=id==='lionfish',small=id==='mandarin';
+  const body=round?'M17 37 Q21 6 59 9 Q94 8 91 36 Q91 64 58 65 Q22 64 17 37Z':
+   slim?'M10 37 Q31 25 77 29 Q92 32 94 37 Q91 44 77 46 Q31 49 10 37Z':
+   'M14 37 Q27 14 62 18 Q88 20 92 37 Q88 55 62 57 Q27 60 14 37Z';
+  const tail=round?'M90 36 L107 27 L108 48Z':slim?'M90 37 L114 25 L109 37 L114 49Z':'M88 37 L113 20 L107 37 L113 54Z';
+  add('path',{d:tail,fill:fish.color,stroke:'#224b63','stroke-width':'1.5'},g);
+  if(spiky||id==='mandarin'||id==='coelacanth')add('path',{d:'M31 23 L39 6 L47 19 L55 5 L65 18 L75 10 L79 24Z',fill:fish.color,stroke:'#345a69','stroke-width':'1'},g);
+  else add('path',{d:round?'M43 15 L62 0 L70 15Z':'M40 22 Q57 6 74 22Z',fill:fish.color,opacity:'.9'},g);
+  add('path',{d:body,fill:'url(#fish-'+fish.id+')',stroke:'#285066','stroke-width':'1.7'},g);
+  if(id==='clownfish')for(const x of [39,65])add('path',{d:'M'+x+' 20 Q'+(x+12)+' 37 '+x+' 55',fill:'none',stroke:'#f8f4e7','stroke-width':'9'},g);
+  if(id==='blue-tang')add('path',{d:'M30 30 Q55 14 82 33 Q60 48 34 43',fill:'none',stroke:'#153b87','stroke-width':'8'},g);
+  if(id==='mandarin')for(let i=0;i<6;i++)add('circle',{cx:35+i*9,cy:30+(i%2)*12,r:3.6,fill:'#f6a447'},g);
+  if(id==='coelacanth')for(let i=0;i<8;i++)add('circle',{cx:34+(i%4)*12,cy:29+Math.floor(i/4)*13,r:2.6,fill:'#c4d8e0',opacity:'.8'},g);
+  if(id==='oarfish')add('path',{d:'M34 27 Q54 -5 76 13 Q90 -1 101 17',fill:'none',stroke:'#df6683','stroke-width':'5'},g);
+  if(id==='lionfish')for(let i=0;i<5;i++)add('path',{d:'M'+(37+i*11)+' 24 L'+(30+i*14)+' 2 M'+(37+i*11)+' 52 L'+(30+i*14)+' 70',stroke:'#e5a285','stroke-width':'3'},g);
+  add('path',{d:'M52 40 Q67 48 77 40',fill:'none',stroke:'#224b63','stroke-width':'2',opacity:'.65'},g);
+  add('circle',{cx:29,cy:33,r:4.1,fill:'#f7ffff',stroke:'#204154','stroke-width':'1'},g);
+  add('circle',{cx:30,cy:33,r:2.2,fill:'#162f43'},g);
+  if(!owned){add('rect',{x:0,y:0,width:120,height:76,fill:'#18343d',opacity:'.8'});svg.style.filter='grayscale(1)';}
+  return svg;
+ }
  function render(){
   if(!state?.personal)return;const mine=state.personal;
   summary.textContent=`치어 ${mine.fry}/5마리 · ${mine.penId?`가두리 ${mine.penId} 참여 중`:'참여 중인 가두리 없음'}`;
