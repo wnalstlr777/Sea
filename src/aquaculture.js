@@ -107,7 +107,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   if(mine?.tutorial===5&&!tutorial.hidden&&!donePending){donePending=true;setTimeout(()=>{if(tutorial.hidden){donePending=false;return;}multiplayer.aquaRequest('tutorialDone').catch(()=>{}).finally(()=>donePending=false);},12000);}
   if(available&&performance.now()-lastRefresh>15000){lastRefresh=performance.now();multiplayer.aquaSnapshot();}
   tube.visible=s.inWater&&!s.returning;setTubeColor(tube,character.player.userData.tubeColor||0);tube.material.emissiveIntensity=.2+Math.max(0,character.player.userData.waterKickPulse||0)*.55;character.player.updateWorldMatrix(true,true);const tubeFeet=character.player.children[0].getWorldPosition(new THREE.Vector3()).y;tube.position.set(character.player.position.x,tubeFeet+1.5,character.player.position.z);tube.rotation.z=Math.sin(time*.0017)*.025;
-  world.update(time,state,tube.userData.color);
+  world.update(time,state,tube.userData.color,onWater?character.player.position:null);
    for(const {school,el} of schoolLabels){const p=schoolPosition(school,time),a=state?.schools.find(s=>s.id===school.id),distance=Math.hypot(character.player.position.x-p.x,character.player.position.z-p.z);project(el,p.x,ocean.heightAt(p.x,p.z)+.35,p.z,available&&onWater&&!!a&&panel.hidden&&a.availableAt<=time&&distance<=2.4,true);}
   context=null;
   if(available&&mine&&onWater&&!busy){
