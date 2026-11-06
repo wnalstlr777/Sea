@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import fishAtlasUrl from '../assets/sea_fish_atlas.png';
 import {PENS,SCHOOLS,FISH,COLLECT_MS,schoolPosition} from './aquaculture-data.js';
 import {createTube,setTubeColor,createNet,createAquaWorld} from './aquaculture-visuals.js';
 const TUTORIAL=['🛟 튜브를 타고 바다로 내려가 치어를 잡아보세요!','🐟 바다에 있는 치어 군집을 찾아보세요!','🥅 뜰채를 사용해 치어를 잡아보세요!','⭕ 잡은 치어를 가두리에 풀어주세요!','🍚 치어에게 먹이를 주세요!','🐟 먹이를 줄수록 수확량이 늘어나요. 같은 사람은 3시간마다 먹이를 줄 수 있고, 12시간 후 물고기를 수확할 수 있어요!'];
@@ -73,8 +74,9 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   fallback.innerHTML=fishIconFallback(fish,owned).outerHTML;
   frame.append(fallback);
   const probe=new Image();
-  probe.onload=()=>frame.classList.add('atlas-ready');
-  probe.src='./assets/sea_fish_atlas.png';
+  probe.onload=()=>{frame.style.backgroundImage=`url("${fishAtlasUrl}")`;frame.classList.add('atlas-ready');};
+  probe.onerror=()=>{frame.classList.remove('atlas-ready');};
+  probe.src=fishAtlasUrl;
   return frame;
  }
  function fishIconFallback(fish,owned){
