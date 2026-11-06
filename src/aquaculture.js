@@ -14,9 +14,11 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  const head=element('div','aqua-panel-head'),title=element('h2','','공동 가두리 양식'),close=element('button','','닫기 ×');close.type='button';head.append(title,close);panel.append(head);
  const summary=element('p','aqua-summary','서버에 연결하는 중입니다.'),harvest=element('button','aqua-harvest'),penList=element('div','aqua-pen-list'),guide=element('p','aqua-guide','바다에서는 튜브가 자동 장착됩니다. 치어 채집 → 가두리 참여·방류 → 먹이 주기 → 12시간 후 수확! 배로 돌아갈 땐 점프 버튼을 누르세요.');
  const bookHeading=element('h3','','나의 물고기 도감'),book=element('div','aqua-book');panel.append(summary,harvest,penList,guide,bookHeading,book);app.append(panel);
+ const reward=element('section','aqua-reward');reward.hidden=true;reward.dataset.aquaUi='';reward.setAttribute('role','dialog');reward.setAttribute('aria-label','가두리 수확 결과');
+ const rewardTitle=element('h3','','🐟 물고기 수확 완료!'),rewardList=element('div','aqua-reward-list'),rewardClose=element('button','','물고기 챙기기 ✓');rewardClose.type='button';rewardClose.onclick=()=>{reward.hidden=true;};reward.append(rewardTitle,rewardList,rewardClose);app.append(reward);
  // Pen status is displayed by the existing proximity interaction button, not a floating label.
   const schoolLabels=SCHOOLS.map(p=>{const el=element('div','aqua-school-label','🐟 치어');app.append(el);return {school:p,el};});
- const projection=new THREE.Vector3(),labelRaycaster=new THREE.Raycaster(),labelRayDirection=new THREE.Vector3(),labelRayOrigin=new THREE.Vector3(),netActions=new Map();let overviewHidden=false,state=null,serverAt=0,receivedAt=performance.now(),busy=false,collecting=null,observePending=false,lastTick=-1,donePending=false,toastUntil=0,context=null,lastRefresh=0;
+ const projection=new THREE.Vector3(),labelRaycaster=new THREE.Raycaster(),labelRayDirection=new THREE.Vector3(),labelRayOrigin=new THREE.Vector3(),netActions=new Map();let overviewHidden=false,state=null,serverAt=0,receivedAt=performance.now(),busy=false,harvestNoticeShown=false,collecting=null,observePending=false,lastTick=-1,donePending=false,toastUntil=0,context=null,lastRefresh=0;
  const now=()=>serverAt?serverAt+(performance.now()-receivedAt):Date.now();
  function notify(text){toast.textContent=text;toast.hidden=false;toastUntil=performance.now()+5000;}
  function setPanel(open){panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));if(open){const menu=document.querySelector('details[open]');if(menu)menu.open=false;multiplayer.aquaSnapshot();}else toggle.focus();}
@@ -31,26 +33,40 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
   const mine=state?.personal;if(!mine)return null;
   if(!mine.penId)return {action:'join',text:`가두리 ${p.id} 참여 (${p.members.length}/3)`,disabled:p.members.length>=3};
   if(mine.penId!==p.id)return {text:'다른 가두리에 참여 중',disabled:true};
+  if(mine.pending>0)return {action:'harvest',text:`🐟 물고기 ${mine.pending}마리 수확하기`,disabled:false};
   if(!p.cycle)return {action:'release',text:'🐟 치어 1마리 방류',disabled:mine.fry<1};
   if(p.cycle.feeds.length>=3)return {text:'먹이 3/3 · 성장 중',disabled:true};
   if(mine.nextFeedAt>now())return {text:`다음 먹이 ${clock(mine.nextFeedAt-now())}`,disabled:true};
   return {action:'feed',text:`🍚 먹이 주기 (${p.cycle.feeds.length}/3)`,disabled:false};
  }
- async function actPen(p){const action=penAction(p);if(!action?.action||action.disabled)return;const result=await request(action.action,{penId:p.id});if(result)notify(action.action==='join'?`가두리 ${p.id}에 참여했습니다.`:action.action==='release'?'치어를 방류했습니다. 12시간 양식이 시작됩니다.':'먹이를 주었습니다. 기여한 만큼 보상이 보존됩니다.');}
+ async function actPen(p){const action=penAction(p);if(!action?.action||action.disabled)return;
+  if(action.action==='harvest'){await harvestAtPen(p);return;}
+  const result=await request(action.action,{penId:p.id});if(result)notify(action.action==='join'?`가두리 ${p.id}에 참여했습니다.`:action.action==='release'?'치어를 방류했습니다. 12시간 양식이 시작됩니다.':'먹이를 주었습니다. 기여한 만큼 보상이 보존됩니다.');}
  async function collect(school){
   if(collecting||busy)return;const result=await request('collectStart',{schoolId:school.id});if(!result)return;
   collecting={school,challengeId:result.challengeId,start:performance.now(),duration:Math.max(COLLECT_MS,result.endsAt-now())};
   world.startCatch(school.id,now());
  }
  interact.onclick=()=>{if(!context||busy||collecting)return;if(context.school)collect(context.school);else if(context.pen)actPen(context.pen);};
- harvest.onclick=async()=>{if(busy)return;const result=await request('harvest');if(result){const names=result.fish.map(id=>FISH.find(f=>f.id===id)?.name||'물고기');notify(`수확 완료! ${names.join(', ')}`);}};
+ async function harvestAtPen(p){
+  if(busy||!nearPen(p)||state?.personal?.penId!==p.id||!state.personal.pending)return;
+  const result=await request('harvest',{penId:p.id});if(!result)return;
+  rewardList.replaceChildren(...(result.fish||[]).map(id=>{
+   const fish=FISH.find(f=>f.id===id),item=element('div','aqua-reward-fish');
+   if(fish)item.append(fishIcon(fish,true));
+   item.append(element('strong','',fish?.name||'물고기'),element('small','',fish?.rarity||''));return item;
+  }));
+  reward.hidden=false;
+ }
+ harvest.hidden=true;
  function fishIcon(fish,owned){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 60 32');svg.setAttribute('aria-hidden','true');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d','M8 16C16 2 35 3 44 12L56 5V27L44 20C35 29 16 30 8 16Z');path.setAttribute('fill',owned?fish.color:'#567078');svg.append(path);if(owned){const eye=document.createElementNS(svg.namespaceURI,'circle');eye.setAttribute('cx','19');eye.setAttribute('cy','13');eye.setAttribute('r','1.8');eye.setAttribute('fill','#25414a');svg.append(eye);}return svg;}
  function render(){
   if(!state?.personal)return;const mine=state.personal;
   summary.textContent=`치어 ${mine.fry}/5마리 · ${mine.penId?`가두리 ${mine.penId} 참여 중`:'참여 중인 가두리 없음'}`;
-  harvest.textContent=mine.pending?`🎁 보관된 물고기 ${mine.pending}마리 수확하기`:'아직 수확할 물고기가 없습니다';harvest.disabled=!mine.pending||busy;
+  // Rewards are collected only through the nearby pen interaction, not the menu.
   penList.replaceChildren(...state.pens.map(p=>{
    const card=element('article','aqua-pen-card'),h=element('h3','',`가두리 ${p.id} · ${p.members.length}/3명`),names=element('p','',p.members.map(m=>m.nickname+(m.mine?' (나)':'')).join(', ')||'첫 항해자를 기다리는 중'),status=element('p','',p.cycle?`먹이 ${p.cycle.feeds.length}/3 · 남은 ${clock(p.cycle.completesAt-now())}`:'치어 1마리를 방류하면 시작합니다.');
+   if(mine.penId===p.id&&mine.pending>0)status.textContent=`🐟 수확할 물고기 ${mine.pending}마리! 가두리 근처에서 챙기세요.`;
    if(p.cycle)status.append(element('small','',`완료 ${new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(p.cycle.completesAt))} KST`));
    status.dataset.penClock=p.id;const a=penAction(p),button=element('button','',a?.text||'연결 확인 중');button.dataset.penAction=p.id;button.type='button';button.disabled=busy||!a?.action||a.disabled||!nearPen(p);button.onclick=()=>actPen(p);card.append(h,names,status,button);
    if(mine.penId===p.id){const leave=element('button','aqua-leave','참여 자리 비우기');leave.onclick=async()=>{if(confirm('참여 자리를 비울까요? 기존 먹이 기여와 미수확 보상은 유지됩니다.'))await request('leave');};card.append(leave);}
@@ -103,6 +119,8 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  });
  function update(dt,hour=12){
   const available=isAvailable()&&!overviewHidden,time=now(),mine=state?.personal,s=character.getNetworkState(),onWater=water();
+  if(mine?.pending>0&&!harvestNoticeShown){notify('🐟 물고기가 자랐어요! 참여한 가두리로 가서 챙기세요.');harvestNoticeShown=true;}
+  if(!mine?.pending)harvestNoticeShown=false;
   const menuOpen=!!document.querySelector('details[open]');if(menuOpen&&!panel.hidden)setPanel(false);toggle.hidden=!available||menuOpen;panel.hidden=panel.hidden||!available;tutorial.hidden=!available||!panel.hidden||!mine||mine.tutorial>=6;
   if(!tutorial.hidden)tutorial.textContent=TUTORIAL[mine.tutorial]||'';
   if(mine?.tutorial===5&&!tutorial.hidden&&!donePending){donePending=true;setTimeout(()=>{if(tutorial.hidden){donePending=false;return;}multiplayer.aquaRequest('tutorialDone').catch(()=>{}).finally(()=>donePending=false);},12000);}
