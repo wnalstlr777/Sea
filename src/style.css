@@ -291,3 +291,20 @@ body.sea-overview #jump-toggle{display:none!important}
 .aqua-fish-fallback{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
 .aqua-fish-fallback svg{width:100%;height:100%;max-height:none}
 .aqua-reward-fish .aqua-fish-sprite{width:100px;flex:0 0 100px}
+
+/* Compact encyclopedia: rarity conveyed through color, not text. */
+.aqua-panel{width:min(440px,calc(100vw - 32px));max-height:min(72svh,650px);padding:14px}
+.aqua-panel-head{margin-bottom:12px}
+.aqua-book{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.aqua-fish{position:relative;overflow:visible;padding:8px 5px;gap:3px;min-height:0;border:1px solid #ffffff24;background:#36515a;cursor:help}
+.aqua-fish.aqua-rarity-일반{background:#51636b66;border-color:#91a3a855}
+.aqua-fish.aqua-rarity-고급{background:#35755a66;border-color:#72c69a66}
+.aqua-fish.aqua-rarity-희귀{background:#32628b66;border-color:#77b7ee66}
+.aqua-fish.aqua-rarity-영웅{background:#73518e66;border-color:#bd95ed66}
+.aqua-fish.aqua-rarity-전설{background:#9b783666;border-color:#efc97788}
+.aqua-fish strong{font-size:12px;color:#eff8f5}
+.aqua-fish small{font-size:10px;color:#c2d8d5}
+.aqua-fish-info{display:none;position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:210px;max-width:calc(100vw - 50px);padding:10px 12px;border-radius:10px;border:1px solid #b6d8cc77;background:#0e3039f5;color:#effbf5;font-size:12px;line-height:1.55;text-align:left;z-index:60;pointer-events:none;box-shadow:0 8px 24px #001a22aa}
+@media(hover:hover) and (pointer:fine){.aqua-fish:hover .aqua-fish-info{display:block}}
+.aqua-fish.show-info .aqua-fish-info,.aqua-fish:focus-visible .aqua-fish-info{display:block}
+@media(max-width:600px){.aqua-panel{max-height:calc(100svh - 185px)}.aqua-book{grid-template-columns:repeat(2,minmax(0,1fr))}.aqua-fish-info{width:180px}}
