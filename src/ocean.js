@@ -155,10 +155,8 @@ export function createOcean(){
         float valid=step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.)*step(0.,mirrorCoord.w);
         // In character view, soften the mirror image near the player without
         // changing the established opaque overview or distant sea appearance.
-        float localRadius=length(world.xz-transparencyCenter);
-        float nearMirror=mix(.22,.8,smoothstep(10.,15.,localRadius));
-        float mirrorWeight=mix(nearMirror,.8,overviewOpaque);
-        vec3 reflection=mix(sky,sceneReflection,valid*mirrorWeight);
+        // Character view uses only the procedural sky tint, not the mirror texture.
+        vec3 reflection=mix(sky,sceneReflection,valid*.8*overviewOpaque);
         vec3 body=mix(deep,near,clamp(.38+world.y*.16+tex.b*.22,0.,1.));
         body=mix(body,mid,smoothstep(100.,1200.,dist)*.32);
         body=mix(body,horizon,smoothstep(900.,7000.,dist)*.22*horizonStrength);
@@ -232,6 +230,8 @@ export function createOcean(){
   let reflectStars=true;
   let lastReflectionAt=-Infinity;
   mesh.onBeforeRender=(renderer,scene,camera)=>{
+    // Skip the reflection camera entirely in character view.
+    if(!opaqueOverview)return;
     // Reflection is more expensive than sampling its cached texture.
     // Refresh at most 30 times per second, while retaining the previous capture.
     const now=performance.now();
