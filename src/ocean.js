@@ -58,7 +58,7 @@ export function createOcean(){
   }
   let mirror=getMirror(256);
   const uniforms={
-    time:{value:0},travel:{value:0},curvature:{value:1},height:{value:.825},waveSize:{value:1},normalStrength:{value:0},speed:{value:16},wake:{value:.65},
+    time:{value:0},travel:{value:0},transparencyCenter:{value:new THREE.Vector2()},overviewOpaque:{value:0},curvature:{value:1},height:{value:.825},waveSize:{value:1},normalStrength:{value:0},speed:{value:16},wake:{value:.65},
     horizon:{value:new THREE.Color('#52798b')},mid:{value:new THREE.Color('#17455c')},
     near:{value:new THREE.Color('#105064')},deep:{value:new THREE.Color('#062839')},
     surfaceMap:{value:surfaceMap},mirrorSampler:{value:mirror.material.uniforms.mirrorSampler.value},
@@ -110,7 +110,8 @@ export function createOcean(){
         gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
       }`,
     fragmentShader:`
-      uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,moonTint,normalStrength,curvature,waveSize,horizonStrength;
+      uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,moonTint,normalStrength,curvature,waveSize,horizonStrength,overviewOpaque;
+      uniform vec2 transparencyCenter;
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
       uniform sampler2D surfaceMap,mirrorSampler;
       varying vec3 world;
@@ -206,7 +207,9 @@ export function createOcean(){
         float sunAngle=acos(clamp(dot(-v,sunDirection),-1.,1.));
         horizonSky+=sunColor*exp(-sunAngle*12.)*.45*sunVisible*smoothstep(-.04,.02,-v.y);
         color=mix(color,horizonSky,max(haze*horizonStrength,horizonHaze));
-        gl_FragColor=vec4(color,.85);
+        float radius=length(world.xz-transparencyCenter);
+        float waterAlpha=mix(.85,1.,smoothstep(10.,15.,radius));
+        gl_FragColor=vec4(color,mix(waterAlpha,1.,overviewOpaque));
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`});
