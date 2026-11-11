@@ -150,10 +150,10 @@ export function createOcean(){
         float fresnel=.035+.965*pow(1.-nv,5.);
         vec3 sky=mix(zenith,skyHorizon,(1.-smoothstep(.015,.65,max(r.y,0.)))*horizonStrength);
         vec2 uv=mirrorCoord.xy/mirrorCoord.w;
-        uv+=n.xz*.004/(1.+dist*.008);
+        uv+=(n.xz*.012+ripple*.006)/(1.+dist*.008);
         vec3 sceneReflection=texture2D(mirrorSampler,clamp(uv,vec2(.002),vec2(.998))).rgb;
         float valid=step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.)*step(0.,mirrorCoord.w);
-        vec3 reflection=mix(sky,sceneReflection,valid*.8);
+        vec3 reflection=mix(sky,sceneReflection,valid*.42);
         vec3 body=mix(deep,near,clamp(.38+world.y*.16+tex.b*.22,0.,1.));
         body=mix(body,mid,smoothstep(100.,1200.,dist)*.32);
         body=mix(body,horizon,smoothstep(900.,7000.,dist)*.22*horizonStrength);
@@ -214,6 +214,16 @@ export function createOcean(){
         #include <colorspace_fragment>
       }`});
   const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;
+  // Overview must use the opaque render queue and write depth, not merely alpha=1.
+  let opaqueOverview=false;
+  function setOverviewOpaque(enabled){
+    uniforms.overviewOpaque.value=enabled?1:0;
+    if(opaqueOverview===enabled)return;
+    opaqueOverview=enabled;
+    material.transparent=!enabled;
+    material.depthWrite=enabled;
+    material.needsUpdate=true;
+  }
   let reflectStars=true;
   let lastReflectionAt=-Infinity;
   mesh.onBeforeRender=(renderer,scene,camera)=>{
@@ -243,5 +253,5 @@ export function createOcean(){
     uniforms.mirrorSampler.value=mirror.material.uniforms.mirrorSampler.value;
     uniforms.textureMatrix.value=mirror.material.uniforms.textureMatrix.value;
   }
-  return {mesh,uniforms,heightAt:(x,z)=>oceanHeightAt(uniforms,x,z,rings,sectors),setReflectionResolution,setStarReflectionEnabled:enabled=>{reflectStars=enabled;}};
+  return {mesh,uniforms,setOverviewOpaque,heightAt:(x,z)=>oceanHeightAt(uniforms,x,z,rings,sectors),setReflectionResolution,setStarReflectionEnabled:enabled=>{reflectStars=enabled;}};
 }
