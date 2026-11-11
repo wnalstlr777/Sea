@@ -233,11 +233,11 @@ export function createOcean(){
     if(now-lastReflectionAt<1000/30)return;
     lastReflectionAt=now;
     mesh.visible=false;
-    // Mirror pass: render only the imported ship. Sun and moon highlights
-    // are already computed analytically in the ocean shader above.
+    // Mirror pass: keep the ship and sky dome (including sun/moon),
+    // but exclude characters and other world objects.
     const hidden=[];
     for(const object of scene.children){
-      if(object===mesh||object.name==='imported-ship'||object.isLight)continue;
+      if(object===mesh||object.name==='imported-ship'||object.name==='ocean-reflection-sky'||object.isLight)continue;
       if(object.visible){hidden.push(object);object.visible=false;}
     }
     try{mirror.onBeforeRender(renderer,scene,camera);}
