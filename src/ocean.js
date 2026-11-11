@@ -153,10 +153,17 @@ export function createOcean(){
         uv+=n.xz*.004/(1.+dist*.008);
         vec3 sceneReflection=texture2D(mirrorSampler,clamp(uv,vec2(.002),vec2(.998))).rgb;
         float valid=step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.)*step(0.,mirrorCoord.w);
-        // In character view, soften the mirror image near the player without
-        // changing the established opaque overview or distant sea appearance.
-        // Character view uses only the procedural sky tint, not the mirror texture.
-        vec3 reflection=mix(sky,sceneReflection,valid*.8*overviewOpaque);
+        // Keep overview sharp; blur the mirror texture only in character view.
+        // Five taps, no extra post-processing render pass.
+        if(overviewOpaque<.5){
+          vec2 blurStep=vec2(2.0/256.0);
+          sceneReflection=(sceneReflection*4.
+            +texture2D(mirrorSampler,clamp(uv+vec2(blurStep.x,0.),vec2(.002),vec2(.998))).rgb
+            +texture2D(mirrorSampler,clamp(uv-vec2(blurStep.x,0.),vec2(.002),vec2(.998))).rgb
+            +texture2D(mirrorSampler,clamp(uv+vec2(0.,blurStep.y),vec2(.002),vec2(.998))).rgb
+            +texture2D(mirrorSampler,clamp(uv-vec2(0.,blurStep.y),vec2(.002),vec2(.998))).rgb)/8.;
+        }
+        vec3 reflection=mix(sky,sceneReflection,valid*.8);
         vec3 body=mix(deep,near,clamp(.38+world.y*.16+tex.b*.22,0.,1.));
         body=mix(body,mid,smoothstep(100.,1200.,dist)*.32);
         body=mix(body,horizon,smoothstep(900.,7000.,dist)*.22*horizonStrength);
@@ -230,8 +237,7 @@ export function createOcean(){
   let reflectStars=true;
   let lastReflectionAt=-Infinity;
   mesh.onBeforeRender=(renderer,scene,camera)=>{
-    // Skip the reflection camera entirely in character view.
-    if(!opaqueOverview)return;
+    // Both views need the mirror capture; character view samples it blurred.
     // Reflection is more expensive than sampling its cached texture.
     // Refresh at most 30 times per second, while retaining the previous capture.
     const now=performance.now();
