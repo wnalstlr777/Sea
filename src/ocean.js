@@ -153,7 +153,12 @@ export function createOcean(){
         uv+=n.xz*.004/(1.+dist*.008);
         vec3 sceneReflection=texture2D(mirrorSampler,clamp(uv,vec2(.002),vec2(.998))).rgb;
         float valid=step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.)*step(0.,mirrorCoord.w);
-        vec3 reflection=mix(sky,sceneReflection,valid*.8);
+        // In character view, soften the mirror image near the player without
+        // changing the established opaque overview or distant sea appearance.
+        float localRadius=length(world.xz-transparencyCenter);
+        float nearMirror=mix(.22,.8,smoothstep(10.,15.,localRadius));
+        float mirrorWeight=mix(nearMirror,.8,overviewOpaque);
+        vec3 reflection=mix(sky,sceneReflection,valid*mirrorWeight);
         vec3 body=mix(deep,near,clamp(.38+world.y*.16+tex.b*.22,0.,1.));
         body=mix(body,mid,smoothstep(100.,1200.,dist)*.32);
         body=mix(body,horizon,smoothstep(900.,7000.,dist)*.22*horizonStrength);
