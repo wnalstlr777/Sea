@@ -220,21 +220,16 @@ export function createOcean(){
     if(now-lastReflectionAt<1000/30)return;
     lastReflectionAt=now;
     mesh.visible=false;
-    // Fry are a surface overlay, not objects reflected by the ocean mirror.
-    const fry=scene.getObjectByName('fry-schools-instanced');
-    const fryWasVisible=fry?.visible;
-    const fryGlow=scene.getObjectByName('fry-night-glow');
-    const fryGlowWasVisible=fryGlow?.visible;
-    if(fry)fry.visible=false;
-    if(fryGlow)fryGlow.visible=false;
-    const stars=scene.getObjectByName('night-stars');
-    const starWasVisible=stars?.visible;
-    if(stars&&!reflectStars)stars.visible=false;
+    // Mirror pass: render only the imported ship. Sun and moon highlights
+    // are already computed analytically in the ocean shader above.
+    const hidden=[];
+    for(const object of scene.children){
+      if(object===mesh||object.name==='imported-ship'||object.isLight)continue;
+      if(object.visible){hidden.push(object);object.visible=false;}
+    }
     try{mirror.onBeforeRender(renderer,scene,camera);}
     finally{
-      if(fry&&fryWasVisible!==undefined)fry.visible=fryWasVisible;
-      if(fryGlow&&fryGlowWasVisible!==undefined)fryGlow.visible=fryGlowWasVisible;
-      if(stars&&starWasVisible!==undefined)stars.visible=starWasVisible;
+      for(const object of hidden)object.visible=true;
       mesh.visible=true;
     }
   };
