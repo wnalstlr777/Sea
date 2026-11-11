@@ -55,7 +55,7 @@ export function createLighting(scene,ocean,camera){
         gl_FragColor=vec4(c,1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
-      }`}));scene.add(sky);
+      }`}));sky.name='ocean-reflection-sky';scene.add(sky);
   const ambient=new THREE.HemisphereLight('#ebfcff','#397786',1);scene.add(ambient);
   const sunlight=new THREE.DirectionalLight('#fff3d6',2);scene.add(sunlight);
   const moonlight=new THREE.DirectionalLight('#82acff',1.5);scene.add(moonlight);
