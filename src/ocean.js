@@ -91,7 +91,7 @@ export function createOcean(){
       n=normalize(cross(dz,dx));
     }
   `;
-  const material=new THREE.ShaderMaterial({name:'OceanSurface',uniforms,side:THREE.DoubleSide,
+  const material=new THREE.ShaderMaterial({name:'OceanSurface',uniforms,side:THREE.DoubleSide,transparent:true,depthWrite:false,
     vertexShader:`
       uniform float time,travel,curvature,height,waveSize;
       uniform mat4 textureMatrix;
@@ -206,7 +206,7 @@ export function createOcean(){
         float sunAngle=acos(clamp(dot(-v,sunDirection),-1.,1.));
         horizonSky+=sunColor*exp(-sunAngle*12.)*.45*sunVisible*smoothstep(-.04,.02,-v.y);
         color=mix(color,horizonSky,max(haze*horizonStrength,horizonHaze));
-        gl_FragColor=vec4(color,1.);
+        gl_FragColor=vec4(color,.85);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`});
