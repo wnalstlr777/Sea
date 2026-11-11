@@ -150,10 +150,10 @@ export function createOcean(){
         float fresnel=.035+.965*pow(1.-nv,5.);
         vec3 sky=mix(zenith,skyHorizon,(1.-smoothstep(.015,.65,max(r.y,0.)))*horizonStrength);
         vec2 uv=mirrorCoord.xy/mirrorCoord.w;
-        uv+=(n.xz*.012+ripple*.006)/(1.+dist*.008);
+        uv+=n.xz*.004/(1.+dist*.008);
         vec3 sceneReflection=texture2D(mirrorSampler,clamp(uv,vec2(.002),vec2(.998))).rgb;
         float valid=step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.)*step(0.,mirrorCoord.w);
-        vec3 reflection=mix(sky,sceneReflection,valid*.62);
+        vec3 reflection=mix(sky,sceneReflection,valid*.8);
         vec3 body=mix(deep,near,clamp(.38+world.y*.16+tex.b*.22,0.,1.));
         body=mix(body,mid,smoothstep(100.,1200.,dist)*.32);
         body=mix(body,horizon,smoothstep(900.,7000.,dist)*.22*horizonStrength);
@@ -165,7 +165,7 @@ export function createOcean(){
         // Forward scattering illuminates thin wave crests against the light.
         float scatter=pow(max(dot(v,-normalize(sunDirection)),0.),3.)*max(world.y,0.);
         body+=near*scatter*sunVisible*.35;
-        vec3 color=mix(body,reflection,clamp(fresnel+.08,0.,1.));
+        vec3 color=mix(body,reflection,clamp(fresnel+.14,0.,1.));
         float variance=dot(dFdx(n),dFdx(n))+dot(dFdy(n),dFdy(n));
         float roughness=clamp(.19+sqrt(variance)*.35,.19,.42);
         color+=sunColor*highlight(n,v,normalize(sunDirection),roughness)*sunVisible*2.6;
@@ -198,15 +198,15 @@ export function createOcean(){
         // Keep foreground and mid-distance texture; blend before the curved tangent.
         float haze=1.-exp(-pow(dist/3800.,1.45));
         // Soft atmospheric scattering at the far horizon, especially at night.
-        float farAir=smoothstep(2200.,9000.,dist)*(.035+.055*(1.-daylight));
+        float farAir=smoothstep(800.,7000.,dist)*(.08+.12*(1.-daylight));
         vec3 airColor=mix(skyHorizon,vec3(.11,.19,.33),1.-smoothstep(.05,.6,daylight));
         color=mix(color,airColor,farAir);
         // Fade into the same sky colour at grazing angles before the curved edge.
-        float horizonHaze=(1.-smoothstep(.005,.035,nv))*smoothstep(1200.,3500.,dist);
+        float horizonHaze=(1.-smoothstep(.005,.075,nv))*smoothstep(120.,600.,dist);
         vec3 horizonSky=mix(zenith,skyHorizon,horizonStrength);
         float sunAngle=acos(clamp(dot(-v,sunDirection),-1.,1.));
         horizonSky+=sunColor*exp(-sunAngle*12.)*.45*sunVisible*smoothstep(-.04,.02,-v.y);
-        color=mix(color,horizonSky,max(haze*horizonStrength*.45,horizonHaze));
+        color=mix(color,horizonSky,max(haze*horizonStrength,horizonHaze));
         float radius=length(world.xz-transparencyCenter);
         float waterAlpha=mix(.85,1.,smoothstep(10.,15.,radius));
         gl_FragColor=vec4(color,mix(waterAlpha,1.,overviewOpaque));
