@@ -52,6 +52,7 @@ function overviewCameraPose(){
 function setView(overview){
   if(intro){intro=null;introFinished=true;}
   overviewActive=overview;
+  lighting.setOverviewCelestials(overview);
   if(typeof aquaculture!=='undefined')aquaculture.setOverview(overview);
   document.body.classList.toggle('sea-overview',overview);
   const button=document.querySelector('#camera-toggle');
