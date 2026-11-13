@@ -48,15 +48,25 @@ export function createAtmosphere(scene,lighting){
         if(finish<=start)discard;
         float stepSize=(finish-start)/cloudSamples;vec3 sum=vec3(0.);float alpha=0.;
         vec3 lightDir=normalize(vec3(sunDirection.x,max(sunDirection.y,.25),sunDirection.z));
+        // Warm clouds toward sunset; keep shaded portions cooler for contrast.
+        float lowSun=1.-smoothstep(.12,.48,max(sunDirection.y,0.));
+        float sunset=lowSun*sunVisible*smoothstep(.15,.55,daylight);
         vec3 ambient=mix(vec3(.045,.065,.12),vec3(.44,.56,.70),daylight);
+        ambient=mix(ambient,vec3(.37,.23,.34),sunset*.65);
         vec3 directBase=mix(vec3(.12,.18,.29),sunColor,daylight)*(.2+sunVisible*.85);
+        directBase=mix(directBase,vec3(1.05,.24,.19),sunset*.85);
+        // Backlit silhouette: strongest when looking near the sun through cloud edges.
+        float backlight=pow(max(dot(d,normalize(sunDirection)),0.),5.)*sunset;
         for(int i=0;i<24;i++){
           if(float(i)>=cloudSamples)break;
           vec3 p=d*(start+(float(i)+.5)*stepSize);
           float den=density(p);float a=1.-exp(-den*stepSize*.006);
           if(a<.002)continue;
           float shade=exp(-density(p+lightDir*150.)*1.8-density(p+lightDir*330.)*.9);
-          sum+=(1.-alpha)*a*(ambient+directBase*shade);alpha+=(1.-alpha)*a;
+          // Density gradient approximates a thin rim without extra cloud samples.
+          float rim=(1.-smoothstep(.12,.55,den))*backlight;
+          vec3 rimColor=vec3(1.2,.43,.24)*rim*.65;
+          sum+=(1.-alpha)*a*(ambient+directBase*shade+rimColor);alpha+=(1.-alpha)*a;
           if(alpha>.98)break;
         }
         float haze=smoothstep(.035,.22,d.y);
