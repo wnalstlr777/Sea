@@ -191,10 +191,22 @@ export function createOcean(){
         // Centered beneath the imported ship (SHIP_CENTER_Z = -24).
         vec2 hullLocal=world.xz-vec2(0.,-24.);
         float hullEllipse=length(hullLocal/vec2(10.,26.));
-        float hullShadow=1.-smoothstep(.65,1.2,hullEllipse);
-        // Stronger in overview where the formerly mirrored hull looked too bright.
-        float shadowStrength=mix(.19,.38,overviewOpaque);
-        color*=1.-hullShadow*shadowStrength;
+        float contactShadow=1.-smoothstep(.55,1.12,hullEllipse);
+        // Project a broad soft shadow opposite the active light direction.
+        // Keep the offset bounded at low sun/moon angles.
+        float moonBlend=1.-smoothstep(.08,.28,sunVisible);
+        vec3 lightDir=normalize(mix(sunDirection,moonDirection,moonBlend));
+        float elevation=max(abs(lightDir.y),.22);
+        vec2 shadowOffset=-lightDir.xz/elevation*3.5;
+        vec2 castLocal=hullLocal-shadowOffset;
+        float castEllipse=length(castLocal/vec2(10.5,27.));
+        float castShadow=(1.-smoothstep(.65,1.35,castEllipse));
+        float castStrength=mix(.23,.32,sunVisible);
+        castStrength*=mix(.35,1.,max(sunVisible,moonVisible));
+        // A fixed contact shade anchors the hull, while the cast shade follows light.
+        float shade=contactShadow*.13+castShadow*castStrength;
+        shade*=mix(.65,1.,overviewOpaque);
+        color*=1.-clamp(shade,0.,.55);
         float radius=length(world.xz-transparencyCenter);
         float waterAlpha=mix(.85,1.,smoothstep(10.,15.,radius));
         gl_FragColor=vec4(color,mix(waterAlpha,1.,overviewOpaque));
