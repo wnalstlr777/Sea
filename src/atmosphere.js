@@ -47,6 +47,9 @@ export function createAtmosphere(scene,lighting){
         float start=650./d.y,finish=min(1200./d.y,16000.);
         if(finish<=start)discard;
         float stepSize=(finish-start)/cloudSamples;vec3 sum=vec3(0.);float alpha=0.;
+        // Stable per-pixel jitter breaks up visible horizontal raymarch bands
+        // without increasing the number of volume samples.
+        float jitter=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
         vec3 lightDir=normalize(vec3(sunDirection.x,max(sunDirection.y,.25),sunDirection.z));
         // Warm clouds toward sunset; keep shaded portions cooler for contrast.
         // Cloud colors come directly from the same sky gradient uniform.
@@ -59,7 +62,7 @@ export function createAtmosphere(scene,lighting){
         float backlight=pow(max(dot(d,normalize(sunDirection)),0.),5.)*lowSun*sunVisible;
         for(int i=0;i<24;i++){
           if(float(i)>=cloudSamples)break;
-          vec3 p=d*(start+(float(i)+.5)*stepSize);
+          vec3 p=d*(start+(float(i)+jitter)*stepSize);
           float den=density(p);float a=1.-exp(-den*stepSize*.006);
           if(a<.002)continue;
           float shade=exp(-density(p+lightDir*150.)*1.8-density(p+lightDir*330.)*.9);
@@ -71,7 +74,9 @@ export function createAtmosphere(scene,lighting){
         }
         float haze=smoothstep(.035,.22,d.y);
         vec3 color=mix(skyHorizon,sum/max(alpha,.001),haze);
-        gl_FragColor=vec4(color,alpha*haze*.92);
+        // Subtle 8-bit output dithering; avoid a separate noise texture.
+        float dither=(jitter-.5)/255.;
+        gl_FragColor=vec4(color+vec3(dither),alpha*haze*.92);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`
