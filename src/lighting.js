@@ -93,8 +93,8 @@ export function createLighting(scene,ocean,camera){
     if(overviewCelestials){
       for(const dir of [sun,moon]){
         const horizontal=Math.hypot(dir.x,dir.z);
-        dir.x=horizontal*.96;
-        dir.z=horizontal*.28;
+        dir.x=-horizontal*.96;
+        dir.z=-horizontal*.28;
         dir.normalize();
       }
     }
