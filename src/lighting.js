@@ -36,7 +36,7 @@ export function horizonGradientStrength(hour){
   return .5+.5*THREE.MathUtils.smoothstep(Math.abs(hour-12),0,1);
 }
 export function createLighting(scene,ocean,camera){
-  const uniforms={horizonStrength:{value:1},cloudCover:{value:.5},cloudSamples:{value:32},cloudDetail:{value:.5},zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0},moonTint:{value:0}};
+  const uniforms={horizonStrength:{value:1},cloudCover:{value:.5},cloudSamples:{value:32},cloudDetail:{value:.5},zenith:{value:new THREE.Color()},skyHorizon:{value:new THREE.Color()},sunColor:{value:new THREE.Color()},sunDirection:{value:new THREE.Vector3()},daylight:{value:1},sunVisible:{value:1},moonDirection:{value:new THREE.Vector3()},moonVisible:{value:0},moonTint:{value:0},dawnTint:{value:0}};
   Object.assign(ocean.uniforms,uniforms);
   const sky=new THREE.Mesh(new THREE.SphereGeometry(24000,32,20),new THREE.ShaderMaterial({uniforms,side:THREE.BackSide,depthWrite:false,
     vertexShader:`varying vec3 dir;void main(){dir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
@@ -112,6 +112,8 @@ export function createLighting(scene,ocean,camera){
     uniforms.sunVisible.value=visibility.sun;uniforms.moonVisible.value=visibility.moon;
     // Cool blue moonlight peaks around midnight and fades toward dawn/dusk.
     uniforms.moonTint.value=Math.pow(Math.max(0,Math.cos((t%24)*Math.PI/12)),2);
+    // Purple dawn clouds peak just before sunrise and fade into daylight.
+    uniforms.dawnTint.value=THREE.MathUtils.smoothstep(t,4.7,5.7)*(1.-THREE.MathUtils.smoothstep(t,6.6,8.));
     sunlight.castShadow=visibility.sun>0;moonlight.castShadow=visibility.moon>0;
     uniforms.daylight.value=THREE.MathUtils.lerp(a[4],b[4],f);
     const night=1.-THREE.MathUtils.smoothstep(uniforms.daylight.value,.1,.55);
