@@ -192,7 +192,7 @@ export function createOcean(){
           vec2 delta=world.xz-trail.xy;
           float radius=length(delta);
           if(radius>2.6)continue;
-          float age=trail.z;
+          float age=max(0.,time-trail.z);
           float fade=1.-smoothstep(.6,2.8,age);
           float width=.35+age*.24;
           float ring=exp(-pow((radius-(.35+age*.52))/width,2.));
