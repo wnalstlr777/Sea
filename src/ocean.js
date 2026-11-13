@@ -70,6 +70,7 @@ export function createOcean(){
     near:{value:new THREE.Color('#105064')},deep:{value:new THREE.Color('#062839')},
     surfaceMap:{value:surfaceMap},
     swimmerNormalMap:{value:createSwimmerNormalTexture()},
+    swimmerVelocities:{value:Array.from({length:4},()=>new THREE.Vector2())},
     swimmerRipples:{value:Array.from({length:4},()=>new THREE.Vector4(0,0,-100,0))},
   };
   // Band-limit displacement to the mesh spacing. Shading evaluates the same
@@ -119,6 +120,7 @@ export function createOcean(){
       uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,moonTint,normalStrength,curvature,waveSize,horizonStrength,overviewOpaque;
       uniform vec2 transparencyCenter;
       uniform vec4 swimmerRipples[4];
+      uniform vec2 swimmerVelocities[4];
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
       uniform sampler2D surfaceMap,swimmerNormalMap;
       varying vec3 world;
@@ -161,7 +163,14 @@ export function createOcean(){
           float distanceToSwimmer=length(offset);
           if(distanceToSwimmer>4.5)continue;
           float age=swimmer.z;
-          float falloff=1.-smoothstep(2.2,4.5,distanceToSwimmer);
+          vec2 velocity=swimmerVelocities[i];
+          float motion=length(velocity);
+          vec2 heading=velocity/max(motion,.001);
+          // When moving, extend the disturbance behind the swimmer and
+          // suppress it ahead; stationary swimmers keep circular ripples.
+          float behind=dot(offset,-heading);
+          float wakeMask=mix(1.,smoothstep(-.7,1.3,behind),smoothstep(.08,.55,motion));
+          float falloff=(1.-smoothstep(2.2,4.5,distanceToSwimmer))*wakeMask;
           // Repeat 3-4 rings, advancing ~3m/sec rather than one slow ring.
           float phase=distanceToSwimmer*8.-time*12.+float(i)*1.7;
           float ring=cos(phase)*(.5+.5*cos(phase*.33));
