@@ -186,6 +186,15 @@ export function createOcean(){
         float sunAngle=acos(clamp(dot(-v,sunDirection),-1.,1.));
         horizonSky+=sunColor*exp(-sunAngle*12.)*.45*sunVisible*smoothstep(-.04,.02,-v.y);
         color=mix(color,horizonSky,max(haze*horizonStrength,horizonHaze));
+        // Cheap hull occlusion: a soft, elongated shadow painted into the water
+        // shader. No extra mesh, draw call, reflection pass or shadow map.
+        // Centered beneath the imported ship (SHIP_CENTER_Z = -24).
+        vec2 hullLocal=world.xz-vec2(0.,-24.);
+        float hullEllipse=length(hullLocal/vec2(10.,26.));
+        float hullShadow=1.-smoothstep(.65,1.2,hullEllipse);
+        // Stronger in overview where the formerly mirrored hull looked too bright.
+        float shadowStrength=mix(.19,.38,overviewOpaque);
+        color*=1.-hullShadow*shadowStrength;
         float radius=length(world.xz-transparencyCenter);
         float waterAlpha=mix(.85,1.,smoothstep(10.,15.,radius));
         gl_FragColor=vec4(color,mix(waterAlpha,1.,overviewOpaque));
