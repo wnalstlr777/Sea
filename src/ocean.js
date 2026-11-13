@@ -47,6 +47,7 @@ export function createOcean(){
     horizon:{value:new THREE.Color('#52798b')},mid:{value:new THREE.Color('#17455c')},
     near:{value:new THREE.Color('#105064')},deep:{value:new THREE.Color('#062839')},
     surfaceMap:{value:surfaceMap},
+    swimmerRipples:{value:Array.from({length:4},()=>new THREE.Vector4(0,0,-100,0))},
   };
   // Band-limit displacement to the mesh spacing. Shading evaluates the same
   // waves per pixel, so sparse radial triangles cannot create reflected spokes.
@@ -94,6 +95,7 @@ export function createOcean(){
     fragmentShader:`
       uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,moonTint,normalStrength,curvature,waveSize,horizonStrength,overviewOpaque;
       uniform vec2 transparencyCenter;
+      uniform vec4 swimmerRipples[4];
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
       uniform sampler2D surfaceMap;
       varying vec3 world;
@@ -207,6 +209,20 @@ export function createOcean(){
         float shade=contactShadow*.13+castShadow*castStrength;
         shade*=mix(.65,1.,overviewOpaque);
         color*=1.-clamp(shade,0.,.55);
+        // Four cheap surface interactions: one local swimmer and up to three
+        // nearby remote swimmers. No normal texture, particles or draw calls.
+        for(int i=0;i<4;i++){
+          vec4 swimmer=swimmerRipples[i];
+          if(swimmer.w<.001)continue;
+          float distanceToSwimmer=length(world.xz-swimmer.xy);
+          float entryAge=swimmer.z;
+          float impact=1.-smoothstep(0.,1.7,entryAge);
+          float impactRing=exp(-pow((distanceToSwimmer-(.5+entryAge*2.1))/.24,2.))*impact;
+          float wakeRing=exp(-pow((distanceToSwimmer-(.85+mod(time*.85+float(i)*.37,2.5)))/.22,2.));
+          float foam=exp(-pow(distanceToSwimmer/1.15,2.))*(.10+.16*impact);
+          float strength=swimmer.w;
+          color+=vec3(.48,.76,.81)*(impactRing*.40+wakeRing*.11+foam)*strength;
+        }
         float radius=length(world.xz-transparencyCenter);
         float waterAlpha=mix(.85,1.,smoothstep(10.,15.,radius));
         gl_FragColor=vec4(color,mix(waterAlpha,1.,overviewOpaque));
