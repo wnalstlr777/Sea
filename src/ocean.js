@@ -71,6 +71,7 @@ export function createOcean(){
     surfaceMap:{value:surfaceMap},
     swimmerNormalMap:{value:createSwimmerNormalTexture()},
     swimmerVelocities:{value:Array.from({length:4},()=>new THREE.Vector2())},
+    swimmerWake:{value:Array.from({length:10},()=>new THREE.Vector4(0,0,-100,0))},
     swimmerRipples:{value:Array.from({length:4},()=>new THREE.Vector4(0,0,-100,0))},
   };
   // Band-limit displacement to the mesh spacing. Shading evaluates the same
@@ -121,6 +122,7 @@ export function createOcean(){
       uniform vec2 transparencyCenter;
       uniform vec4 swimmerRipples[4];
       uniform vec2 swimmerVelocities[4];
+      uniform vec4 swimmerWake[10];
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
       uniform sampler2D surfaceMap,swimmerNormalMap;
       varying vec3 world;
@@ -180,6 +182,24 @@ export function createOcean(){
           swimmerNormal.xz+=(-direction*ring*.18+texNormal*.13)*falloff*swimmer.w;
           float impact=(1.-smoothstep(0.,1.1,age));
           swimmerFoam+=falloff*(.045+.085*max(ring,0.)+.18*impact*exp(-distanceToSwimmer*1.3))*swimmer.w;
+        }
+        // Persistent swimmer trail: successive foam patches remain in world
+        // space as the character moves, unlike a ripple locked to the avatar.
+        float wakeFoam=0.;
+        for(int j=0;j<10;j++){
+          vec4 trail=swimmerWake[j];
+          if(trail.w<.01)continue;
+          vec2 delta=world.xz-trail.xy;
+          float radius=length(delta);
+          if(radius>2.6)continue;
+          float age=trail.z;
+          float fade=1.-smoothstep(.6,2.8,age);
+          float width=.35+age*.24;
+          float ring=exp(-pow((radius-(.35+age*.52))/width,2.));
+          float foam=exp(-radius*radius/(.48+age*.55));
+          float strength=fade*trail.w;
+          wakeFoam+=strength*(ring*.22+foam*.36);
+          swimmerNormal.xz+=delta/max(radius,.12)*ring*strength*.13;
         }
         vec3 n=normalize(baseNormal+vec3(-ripple.x,0.,-ripple.y)*rippleGain*normalStrength+swimmerNormal);
         vec3 v=normalize(cameraPosition-world),r=reflect(-v,n);
@@ -263,6 +283,7 @@ export function createOcean(){
         float shade=contactShadow*.13+castShadow*castStrength;
         shade*=mix(.65,1.,overviewOpaque);
         color*=1.-clamp(shade,0.,.55);
+        color=mix(color,vec3(.72,.85,.88),clamp(wakeFoam,0.,.38));
         float radius=length(world.xz-transparencyCenter);
         float waterAlpha=mix(.85,1.,smoothstep(10.,15.,radius));
         gl_FragColor=vec4(color,mix(waterAlpha,1.,overviewOpaque));
