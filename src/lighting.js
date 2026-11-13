@@ -95,7 +95,7 @@ export function createLighting(scene,ocean,camera){
         const horizontal=Math.hypot(dir.x,dir.z);
         // On portrait mobile, nudge the disc left in the unchanged overview frame.
         // Camera looks from +X toward the ship, so screen-left is toward +Z.
-        const azimuthZ=camera.aspect<.8?.08:-.28;
+        const azimuthZ=camera.aspect<.8?-.10:-.28;
         dir.x=-horizontal*Math.sqrt(1.-azimuthZ*azimuthZ);
         dir.z=horizontal*azimuthZ;
         dir.normalize();
