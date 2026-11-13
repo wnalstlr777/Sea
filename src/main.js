@@ -232,6 +232,32 @@ const multiplayer=createMultiplayer({scene,camera,controls,character,url:import.
 const aquaculture=createAquaculture({scene,camera,character,multiplayer,ocean,isAvailable:()=>introFinished&&!overviewActive});
 const rippleSlots=ocean.uniforms.swimmerRipples.value;
 const rippleVelocities=ocean.uniforms.swimmerVelocities.value;
+const wakeSlots=ocean.uniforms.swimmerWake.value;
+let wakeIndex=0,lastWakeTime=-10;
+let lastWakeX=character.player.position.x,lastWakeZ=character.player.position.z;
+function updateWakeTrail(){
+  const now=ocean.uniforms.time.value;
+  const state=character.getNetworkState(),position=character.player.position;
+  const dx=position.x-lastWakeX,dz=position.z-lastWakeZ;
+  const moved=Math.hypot(dx,dz);
+  if(state.inWater&&!state.returning&&state.moving&&moved>.23&&now-lastWakeTime>.14){
+    // Leave actual world-space marks behind the moving swimmer.
+    const slot=wakeSlots[wakeIndex];
+    slot.set(position.x-dx*.65,position.z-dz*.65,now,Math.min(1,moved*2));
+    wakeIndex=(wakeIndex+1)%wakeSlots.length;
+    lastWakeTime=now;lastWakeX=position.x;lastWakeZ=position.z;
+  }else if(!state.inWater||state.returning||!state.moving){
+    lastWakeX=position.x;lastWakeZ=position.z;
+  }
+  for(const slot of wakeSlots){
+    if(slot.w>0){
+      const age=now-slot.z;
+      if(age>2.8)slot.w=0;
+      else slot.z=now-age; // Keep the birth timestamp for shader age calculation.
+    }
+  }
+}
+
 const rippleStates=Array.from({length:4},()=>({wet:false,entered:0,x:0,z:0,id:null}));
 function updateSwimmerRipples(dt){
   const now=ocean.uniforms.time.value;
@@ -376,6 +402,6 @@ if(!overviewActive&&!character.isLying()&&!character.isTitanicPosing()&&Math.hyp
   }
   }
 }
-ocean.uniforms.transparencyCenter.value.set(character.player.position.x,character.player.position.z);ocean.setOverviewOpaque(overviewActive||!introFinished);camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);updateSwimmerRipples(dt);aquaculture.update(dt,params.hour);aquaculture.setOverview(overviewActive);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
+ocean.uniforms.transparencyCenter.value.set(character.player.position.x,character.player.position.z);ocean.setOverviewOpaque(overviewActive||!introFinished);camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);updateSwimmerRipples(dt);updateWakeTrail();aquaculture.update(dt,params.hour);aquaculture.setOverview(overviewActive);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
 // Read-only diagnostics for smoke checks and performance inspection.
 window.oceanCruise={renderer,scene,camera,controls,ship,player:character.player,lighting,params,uniforms:ocean.uniforms};
