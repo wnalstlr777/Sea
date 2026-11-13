@@ -230,6 +230,29 @@ const BOW_POSE_RADIUS=1.35;
 const bowPoseProjection=new THREE.Vector3();
 const multiplayer=createMultiplayer({scene,camera,controls,character,url:import.meta.env.VITE_MULTIPLAYER_URL?.trim()});
 const aquaculture=createAquaculture({scene,camera,character,multiplayer,ocean,isAvailable:()=>introFinished&&!overviewActive});
+const rippleSlots=ocean.uniforms.swimmerRipples.value;
+const rippleStates=Array.from({length:4},()=>({wet:false,entered:0}));
+function updateSwimmerRipples(){
+  const now=ocean.uniforms.time.value;
+  const local=character.getNetworkState();
+  const swimmers=[{position:character.player.position,inWater:local.inWater&&!local.returning,moving:local.moving}];
+  multiplayer.forEachRemote(remote=>{
+    const sample=remote.samples[remote.samples.length-1];
+    if(sample?.inWater&&!sample.returning)swimmers.push({position:remote.root.position,inWater:true,moving:sample.moving});
+  });
+  // Reserve the first slot for the local player; prioritize nearby remote swimmers.
+  const localPosition=character.player.position;
+  const nearby=swimmers.slice(1).sort((a,b)=>a.position.distanceToSquared(localPosition)-b.position.distanceToSquared(localPosition));
+  const active=[swimmers[0],...nearby.slice(0,3)];
+  for(let i=0;i<4;i++){
+    const swimmer=active[i],state=rippleStates[i],wet=!!swimmer?.inWater;
+    if(wet&&!state.wet)state.entered=now;
+    state.wet=wet;
+    if(wet)rippleSlots[i].set(swimmer.position.x,swimmer.position.z,now-state.entered,swimmer.moving?1:.7);
+    else rippleSlots[i].set(0,0,-100,0);
+  }
+}
+
 multiplayer.onFirework((color,remote)=>fireworks.launchRemote(color,remote));
 const emotes=createEmoteWheel({scene,camera,renderer,controls,player:character.player,isAvailable:()=>introFinished&&!overviewActive,onChoose:icon=>multiplayer.sendEmote(icon)});
 controls.maxDistance=320;
@@ -347,6 +370,6 @@ if(!overviewActive&&!character.isLying()&&!character.isTitanicPosing()&&Math.hyp
   }
   }
 }
-ocean.uniforms.transparencyCenter.value.set(character.player.position.x,character.player.position.z);ocean.setOverviewOpaque(overviewActive||!introFinished);camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);aquaculture.update(dt,params.hour);aquaculture.setOverview(overviewActive);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
+ocean.uniforms.transparencyCenter.value.set(character.player.position.x,character.player.position.z);ocean.setOverviewOpaque(overviewActive||!introFinished);camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);updateSwimmerRipples();aquaculture.update(dt,params.hour);aquaculture.setOverview(overviewActive);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
 // Read-only diagnostics for smoke checks and performance inspection.
 window.oceanCruise={renderer,scene,camera,controls,ship,player:character.player,lighting,params,uniforms:ocean.uniforms};
