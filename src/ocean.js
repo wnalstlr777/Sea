@@ -172,7 +172,7 @@ export function createOcean(){
           float wakeMask=mix(1.,smoothstep(-.7,1.3,behind),smoothstep(.08,.55,motion));
           float falloff=(1.-smoothstep(2.2,4.5,distanceToSwimmer))*wakeMask;
           // Repeat 3-4 rings, advancing ~3m/sec rather than one slow ring.
-          float phase=distanceToSwimmer*8.-time*12.+float(i)*1.7;
+          float phase=distanceToSwimmer*6.-time*9.+float(i)*1.7;
           float ring=cos(phase)*(.5+.5*cos(phase*.33));
           vec2 normalUV=offset/9.+.5;
           vec2 texNormal=texture2D(swimmerNormalMap,normalUV).rg*2.-1.;
