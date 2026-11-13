@@ -163,7 +163,7 @@ export function createOcean(){
           float age=swimmer.z;
           float falloff=1.-smoothstep(2.2,4.5,distanceToSwimmer);
           // Repeat 3-4 rings, advancing ~3m/sec rather than one slow ring.
-          float phase=distanceToSwimmer*8.-time*24.+float(i)*1.7;
+          float phase=distanceToSwimmer*8.-time*12.+float(i)*1.7;
           float ring=cos(phase)*(.5+.5*cos(phase*.33));
           vec2 normalUV=offset/9.+.5;
           vec2 texNormal=texture2D(swimmerNormalMap,normalUV).rg*2.-1.;
@@ -254,7 +254,6 @@ export function createOcean(){
         float shade=contactShadow*.13+castShadow*castStrength;
         shade*=mix(.65,1.,overviewOpaque);
         color*=1.-clamp(shade,0.,.55);
-        color+=vec3(.38,.66,.72)*min(swimmerFoam,.32);
         float radius=length(world.xz-transparencyCenter);
         float waterAlpha=mix(.85,1.,smoothstep(10.,15.,radius));
         gl_FragColor=vec4(color,mix(waterAlpha,1.,overviewOpaque));
