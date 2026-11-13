@@ -5,9 +5,10 @@ const stops=[
   [0,'#091832','#223955','#b3d1ff',.085,.23],
   [6,'#524968','#ec9b78','#ffc18c',.4,.6],
   [12,'#428fbd','#a3d1db','#fff3d6',1,2.5],
-  [17,'#525a8f','#f2ab77','#ffba68',.75,1.7],
-  [18,'#343c6b','#d87b60','#ff9c43',.5,1.1],
-  [19,'#182242','#785368','#f47b4b',.18,.35],
+  [17,'#63527e','#ee8669','#ffad63',.75,1.7],
+  [17.7,'#603c67','#df6657','#ff754f',.62,1.35],
+  [18.25,'#422c59','#b84454','#f14e48',.42,.85],
+  [19,'#182242','#78405e','#e96357',.18,.35],
   [21,'#091832','#223955','#b3d1ff',.085,.23],
   [24,'#091832','#223955','#b3d1ff',.085,.23],
 ];
@@ -18,7 +19,11 @@ export function celestialDirections(hour){
   // Raise the midnight peak to roughly twice the previous stylized altitude.
   const nightPhase=(hour-18)/12*Math.PI;
   const moonAngle=Math.PI-.22*Math.sin(nightPhase);
-  return {sun:direction((hour-6)/12*Math.PI),moon:direction(moonAngle)};
+  const sun=direction((hour-6)/12*Math.PI);
+  // Keep the sun closer to the horizon so it can enter the mobile overview frame.
+  sun.y*=.68;
+  sun.normalize();
+  return {sun,moon:direction(moonAngle)};
 }
 export function celestialVisibility(hour){
   // Separate fade windows leave a brief twilight gap: never two discs at once.
