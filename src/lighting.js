@@ -68,7 +68,12 @@ export function createLighting(scene,ocean,camera){
     scene.add(light.target);
   }
   const atmosphere=createAtmosphere(scene,{uniforms,camera});
-  let previousHour=-1,displayHour=18;
+  let previousHour=-1,displayHour=18,overviewCelestials=false;
+  function setOverviewCelestials(enabled){
+    if(overviewCelestials===enabled)return;
+    overviewCelestials=enabled;
+    previousHour=-1;
+  }
   function update(hour,dt){
     if(dt!==undefined){
       const delta=((hour-displayHour+36)%24)-12;
@@ -83,6 +88,16 @@ export function createLighting(scene,ocean,camera){
     for(const [key,column] of [['zenith',1],['skyHorizon',2],['sunColor',3]])uniforms[key].value.set(a[column]).lerp(new THREE.Color(b[column]),f);
     uniforms.horizonStrength.value=horizonGradientStrength(t);
     const {sun,moon}=celestialDirections(t);
+    // Overview camera stays fixed on the ship's starboard side (+X).
+    // Rotate only the celestial azimuth toward the visible sky; preserve altitude.
+    if(overviewCelestials){
+      for(const dir of [sun,moon]){
+        const horizontal=Math.hypot(dir.x,dir.z);
+        dir.x=horizontal*.96;
+        dir.z=horizontal*.28;
+        dir.normalize();
+      }
+    }
     uniforms.sunDirection.value.copy(sun);
     uniforms.moonDirection.value.copy(moon);
     const visibility=celestialVisibility(t);
@@ -106,5 +121,5 @@ export function createLighting(scene,ocean,camera){
       light.position.copy(position).add(offset);light.target.position.copy(position);light.target.updateMatrixWorld();
     }
   }
-  update(18);return {update,follow,uniforms,sunlight,moonlight,ambient};
+  update(18);return {update,follow,setOverviewCelestials,uniforms,sunlight,moonlight,ambient};
 }
