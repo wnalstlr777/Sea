@@ -28,7 +28,7 @@ export function createAtmosphere(scene,lighting){
     uniforms:{...lighting.uniforms,time},side:THREE.BackSide,transparent:true,depthWrite:false,
     vertexShader:`varying vec3 direction;void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
     fragmentShader:`
-      uniform float time,daylight,sunVisible,cloudCover,cloudSamples,cloudDetail,dawnTint;uniform vec3 sunDirection,sunColor,skyHorizon;varying vec3 direction;
+      uniform float time,daylight,sunVisible,cloudCover,cloudSamples,cloudDetail;uniform vec3 sunDirection,sunColor,skyHorizon;varying vec3 direction;
       float hash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
       float noise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
         return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
@@ -49,16 +49,14 @@ export function createAtmosphere(scene,lighting){
         float stepSize=(finish-start)/cloudSamples;vec3 sum=vec3(0.);float alpha=0.;
         vec3 lightDir=normalize(vec3(sunDirection.x,max(sunDirection.y,.25),sunDirection.z));
         // Warm clouds toward sunset; keep shaded portions cooler for contrast.
+        // Cloud colors come directly from the same sky gradient uniform.
+        // No separate dawn/sunset tint clocks: cloud and sky change together.
+        vec3 ambient=skyHorizon*mix(.24,.56,daylight);
+        vec3 directBase=skyHorizon*mix(.52,1.15,daylight);
+        // Sun-facing rims inherit the current sky hue, including dawn violet
+        // and sunset crimson, rather than holding a tint after the sky changes.
         float lowSun=1.-smoothstep(.12,.48,max(sunDirection.y,0.));
-        float sunset=lowSun*sunVisible*smoothstep(.15,.55,daylight);
-        vec3 ambient=mix(vec3(.045,.065,.12),vec3(.44,.56,.70),daylight);
-        ambient=mix(ambient,vec3(.37,.23,.34),sunset*.65);
-        ambient=mix(ambient,vec3(.23,.16,.43),dawnTint*.8);
-        vec3 directBase=mix(vec3(.12,.18,.29),sunColor,daylight)*(.2+sunVisible*.85);
-        directBase=mix(directBase,vec3(1.05,.24,.19),sunset*.85);
-        directBase=mix(directBase,vec3(.65,.39,.95),dawnTint*.85);
-        // Backlit silhouette: strongest when looking near the sun through cloud edges.
-        float backlight=pow(max(dot(d,normalize(sunDirection)),0.),5.)*max(sunset,dawnTint*.65);
+        float backlight=pow(max(dot(d,normalize(sunDirection)),0.),5.)*lowSun*sunVisible;
         for(int i=0;i<24;i++){
           if(float(i)>=cloudSamples)break;
           vec3 p=d*(start+(float(i)+.5)*stepSize);
@@ -67,7 +65,7 @@ export function createAtmosphere(scene,lighting){
           float shade=exp(-density(p+lightDir*150.)*1.8-density(p+lightDir*330.)*.9);
           // Density gradient approximates a thin rim without extra cloud samples.
           float rim=(1.-smoothstep(.12,.55,den))*backlight;
-          vec3 rimColor=mix(vec3(1.2,.43,.24),vec3(.77,.52,1.15),dawnTint)*rim*.65;
+          vec3 rimColor=skyHorizon*rim*.85;
           sum+=(1.-alpha)*a*(ambient+directBase*shade+rimColor);alpha+=(1.-alpha)*a;
           if(alpha>.98)break;
         }
