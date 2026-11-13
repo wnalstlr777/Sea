@@ -27,6 +27,28 @@ function createSurfaceTexture(){
   return texture;
 }
 
+
+// Tiny procedural normal texture (64x64 RGBA): no external asset/download.
+function createSwimmerNormalTexture(){
+  const size=64,data=new Uint8Array(size*size*4);
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+    const u=(x+.5)/size*2-1,v=(y+.5)/size*2-1;
+    const radius=Math.hypot(u,v),angle=Math.atan2(v,u);
+    const height=Math.sin(radius*31+Math.sin(angle*7)*.38)*Math.exp(-radius*1.6);
+    const slope=31*Math.cos(radius*31+Math.sin(angle*7)*.38)*Math.exp(-radius*1.6)-1.6*height;
+    const nx=radius>.001?u/radius*slope*.045:0,nz=radius>.001?v/radius*slope*.045:0;
+    const i=(y*size+x)*4;
+    data[i]=Math.round(127.5+127.5*Math.max(-1,Math.min(1,nx)));
+    data[i+1]=Math.round(127.5+127.5*Math.max(-1,Math.min(1,nz)));
+    data[i+2]=255;data[i+3]=255;
+  }
+  const texture=new THREE.DataTexture(data,size,size,THREE.RGBAFormat);
+  texture.wrapS=texture.wrapT=THREE.ClampToEdgeWrapping;
+  texture.magFilter=THREE.LinearFilter;texture.minFilter=THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps=true;texture.needsUpdate=true;
+  return texture;
+}
+
 export function createOcean(){
   const compact=typeof matchMedia==='function'&&matchMedia('(max-width: 600px)').matches;
   const rings=compact?180:240,sectors=compact?192:320,positions=[0,0,0],indices=[];
@@ -47,6 +69,7 @@ export function createOcean(){
     horizon:{value:new THREE.Color('#52798b')},mid:{value:new THREE.Color('#17455c')},
     near:{value:new THREE.Color('#105064')},deep:{value:new THREE.Color('#062839')},
     surfaceMap:{value:surfaceMap},
+    swimmerNormalMap:{value:createSwimmerNormalTexture()},
     swimmerRipples:{value:Array.from({length:4},()=>new THREE.Vector4(0,0,-100,0))},
   };
   // Band-limit displacement to the mesh spacing. Shading evaluates the same
@@ -97,7 +120,7 @@ export function createOcean(){
       uniform vec2 transparencyCenter;
       uniform vec4 swimmerRipples[4];
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
-      uniform sampler2D surfaceMap;
+      uniform sampler2D surfaceMap,swimmerNormalMap;
       varying vec3 world;
       varying vec2 water;
       varying vec4 mirrorCoord;
@@ -127,7 +150,29 @@ export function createOcean(){
         float pixelSpacing=max(length(dFdx(water)),length(dFdy(water)));
         vec3 surfacePosition,baseNormal;
         sampleSurface(water,water+vec2(0.,travel),pixelSpacing,surfacePosition,baseNormal);
-        vec3 n=normalize(baseNormal+vec3(-ripple.x,0.,-ripple.y)*rippleGain*normalStrength);
+        vec3 swimmerNormal=vec3(0.);
+        float swimmerFoam=0.;
+        // Several fast outward-moving wavefronts per swimmer. Only sample the
+        // 64px normal map within a small local radius to protect mobile GPUs.
+        for(int i=0;i<4;i++){
+          vec4 swimmer=swimmerRipples[i];
+          if(swimmer.w<.001)continue;
+          vec2 offset=world.xz-swimmer.xy;
+          float distanceToSwimmer=length(offset);
+          if(distanceToSwimmer>4.5)continue;
+          float age=swimmer.z;
+          float falloff=1.-smoothstep(2.2,4.5,distanceToSwimmer);
+          // Repeat 3-4 rings, advancing ~3m/sec rather than one slow ring.
+          float phase=distanceToSwimmer*8.-time*24.+float(i)*1.7;
+          float ring=cos(phase)*(.5+.5*cos(phase*.33));
+          vec2 normalUV=offset/9.+.5;
+          vec2 texNormal=texture2D(swimmerNormalMap,normalUV).rg*2.-1.;
+          vec2 direction=offset/max(distanceToSwimmer,.05);
+          swimmerNormal.xz+=(-direction*ring*.18+texNormal*.13)*falloff*swimmer.w;
+          float impact=(1.-smoothstep(0.,1.1,age));
+          swimmerFoam+=falloff*(.045+.085*max(ring,0.)+.18*impact*exp(-distanceToSwimmer*1.3))*swimmer.w;
+        }
+        vec3 n=normalize(baseNormal+vec3(-ripple.x,0.,-ripple.y)*rippleGain*normalStrength+swimmerNormal);
         vec3 v=normalize(cameraPosition-world),r=reflect(-v,n);
         float nv=max(dot(n,v),0.);
         // Water reflects strongly at low viewing angles while retaining deep body colour.
@@ -209,20 +254,7 @@ export function createOcean(){
         float shade=contactShadow*.13+castShadow*castStrength;
         shade*=mix(.65,1.,overviewOpaque);
         color*=1.-clamp(shade,0.,.55);
-        // Four cheap surface interactions: one local swimmer and up to three
-        // nearby remote swimmers. No normal texture, particles or draw calls.
-        for(int i=0;i<4;i++){
-          vec4 swimmer=swimmerRipples[i];
-          if(swimmer.w<.001)continue;
-          float distanceToSwimmer=length(world.xz-swimmer.xy);
-          float entryAge=swimmer.z;
-          float impact=1.-smoothstep(0.,1.7,entryAge);
-          float impactRing=exp(-pow((distanceToSwimmer-(.5+entryAge*2.1))/.24,2.))*impact;
-          float wakeRing=exp(-pow((distanceToSwimmer-(.85+mod(time*.85+float(i)*.37,2.5)))/.22,2.));
-          float foam=exp(-pow(distanceToSwimmer/1.15,2.))*(.10+.16*impact);
-          float strength=swimmer.w;
-          color+=vec3(.48,.76,.81)*(impactRing*.40+wakeRing*.11+foam)*strength;
-        }
+        color+=vec3(.38,.66,.72)*min(swimmerFoam,.32);
         float radius=length(world.xz-transparencyCenter);
         float waterAlpha=mix(.85,1.,smoothstep(10.,15.,radius));
         gl_FragColor=vec4(color,mix(waterAlpha,1.,overviewOpaque));
