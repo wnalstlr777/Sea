@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import {Water} from 'three/addons/objects/Water.js';
 import {ImprovedNoise} from 'three/addons/math/ImprovedNoise.js';
 import {oceanHeightAt} from './ocean-height.js';
 
@@ -43,26 +42,11 @@ export function createOcean(){
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setIndex(indices);
   const surfaceMap=createSurfaceTexture();
-  // Reuse Three.js Water's mirrored camera and oblique clipping for scene reflections.
-  // The capture plane stays flat; the visible mesh retains the curved horizon.
-  // Water keeps its render target private. Cache the five selectable sizes so
-  // repeated UI changes reuse targets instead of allocating new GPU resources.
-  const reflectionSizes=[64,128,256,512,1024],mirrors=new Map();
-  const mirrorGeometry=new THREE.PlaneGeometry(1,1);
-  function getMirror(size){
-    if(!mirrors.has(size)){
-      const water=new Water(mirrorGeometry,{textureWidth:size,textureHeight:size});
-      water.rotation.x=-Math.PI/2;water.updateMatrixWorld();mirrors.set(size,water);
-    }
-    return mirrors.get(size);
-  }
-  let mirror=getMirror(256);
   const uniforms={
     time:{value:0},travel:{value:0},transparencyCenter:{value:new THREE.Vector2()},overviewOpaque:{value:0},curvature:{value:1},height:{value:.825},waveSize:{value:1},normalStrength:{value:0},speed:{value:16},wake:{value:.65},
     horizon:{value:new THREE.Color('#52798b')},mid:{value:new THREE.Color('#17455c')},
     near:{value:new THREE.Color('#105064')},deep:{value:new THREE.Color('#062839')},
-    surfaceMap:{value:surfaceMap},mirrorSampler:{value:mirror.material.uniforms.mirrorSampler.value},
-    textureMatrix:{value:mirror.material.uniforms.textureMatrix.value},
+    surfaceMap:{value:surfaceMap},
   };
   // Band-limit displacement to the mesh spacing. Shading evaluates the same
   // waves per pixel, so sparse radial triangles cannot create reflected spokes.
@@ -94,10 +78,8 @@ export function createOcean(){
   const material=new THREE.ShaderMaterial({name:'OceanSurface',uniforms,side:THREE.DoubleSide,transparent:true,depthWrite:false,
     vertexShader:`
       uniform float time,travel,curvature,height,waveSize;
-      uniform mat4 textureMatrix;
       varying vec3 world;
       varying vec2 water;
-      varying vec4 mirrorCoord;
       ${surfaceField}
       void main(){
         water=position.xz-vec2(0.,travel);
@@ -106,14 +88,14 @@ export function createOcean(){
         float angularStep=radius*6.2831853/${sectors.toFixed(1)};
         vec3 p,unusedNormal;
         sampleSurface(water,position.xz,max(radialStep,angularStep),p,unusedNormal);
-        world=p;mirrorCoord=textureMatrix*vec4(p.x,0.,p.z,1.);
+        world=p;
         gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
       }`,
     fragmentShader:`
       uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,moonTint,normalStrength,curvature,waveSize,horizonStrength,overviewOpaque;
       uniform vec2 transparencyCenter;
       uniform vec3 horizon,mid,near,deep,zenith,skyHorizon,sunColor,sunDirection,moonDirection;
-      uniform sampler2D surfaceMap,mirrorSampler;
+      uniform sampler2D surfaceMap;
       varying vec3 world;
       varying vec2 water;
       varying vec4 mirrorCoord;
@@ -149,21 +131,8 @@ export function createOcean(){
         // Water reflects strongly at low viewing angles while retaining deep body colour.
         float fresnel=.035+.965*pow(1.-nv,5.);
         vec3 sky=mix(zenith,skyHorizon,(1.-smoothstep(.015,.65,max(r.y,0.)))*horizonStrength);
-        vec2 uv=mirrorCoord.xy/mirrorCoord.w;
-        uv+=n.xz*.004/(1.+dist*.008);
-        vec3 sceneReflection=texture2D(mirrorSampler,clamp(uv,vec2(.002),vec2(.998))).rgb;
-        float valid=step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.)*step(0.,mirrorCoord.w);
-        // Keep overview sharp; blur the mirror texture only in character view.
-        // Five taps, no extra post-processing render pass.
-        if(overviewOpaque<.5){
-          vec2 blurStep=vec2(2.0/256.0);
-          sceneReflection=(sceneReflection*4.
-            +texture2D(mirrorSampler,clamp(uv+vec2(blurStep.x,0.),vec2(.002),vec2(.998))).rgb
-            +texture2D(mirrorSampler,clamp(uv-vec2(blurStep.x,0.),vec2(.002),vec2(.998))).rgb
-            +texture2D(mirrorSampler,clamp(uv+vec2(0.,blurStep.y),vec2(.002),vec2(.998))).rgb
-            +texture2D(mirrorSampler,clamp(uv-vec2(0.,blurStep.y),vec2(.002),vec2(.998))).rgb)/8.;
-        }
-        vec3 reflection=mix(sky,sceneReflection,valid*.8);
+        // Procedural sky reflection only: no extra camera or texture samples.
+        vec3 reflection=sky;
         vec3 body=mix(deep,near,clamp(.38+world.y*.16+tex.b*.22,0.,1.));
         body=mix(body,mid,smoothstep(100.,1200.,dist)*.32);
         body=mix(body,horizon,smoothstep(900.,7000.,dist)*.22*horizonStrength);
@@ -234,35 +203,8 @@ export function createOcean(){
     material.depthWrite=enabled;
     material.needsUpdate=true;
   }
-  let reflectStars=true;
-  let lastReflectionAt=-Infinity;
-  mesh.onBeforeRender=(renderer,scene,camera)=>{
-    // Both views need the mirror capture; character view samples it blurred.
-    // Reflection is more expensive than sampling its cached texture.
-    // Refresh at most 30 times per second, while retaining the previous capture.
-    const now=performance.now();
-    if(now-lastReflectionAt<1000/30)return;
-    lastReflectionAt=now;
-    mesh.visible=false;
-    // Mirror pass: keep the ship and sky dome (including sun/moon),
-    // but exclude characters and other world objects.
-    const hidden=[];
-    for(const object of scene.children){
-      if(object===mesh||object.name==='imported-ship'||object.name==='ocean-reflection-sky'||object.isLight)continue;
-      if(object.visible){hidden.push(object);object.visible=false;}
-    }
-    try{mirror.onBeforeRender(renderer,scene,camera);}
-    finally{
-      for(const object of hidden)object.visible=true;
-      mesh.visible=true;
-    }
-  };
-  function setReflectionResolution(size){
-    if(!reflectionSizes.includes(size))return;
-    mirror=getMirror(size);
-    lastReflectionAt=-Infinity;
-    uniforms.mirrorSampler.value=mirror.material.uniforms.mirrorSampler.value;
-    uniforms.textureMatrix.value=mirror.material.uniforms.textureMatrix.value;
-  }
-  return {mesh,uniforms,setOverviewOpaque,heightAt:(x,z)=>oceanHeightAt(uniforms,x,z,rings,sectors),setReflectionResolution,setStarReflectionEnabled:enabled=>{reflectStars=enabled;}};
+  // Compatibility with existing quality controls; reflection capture is disabled.
+  function setReflectionResolution(size){}
+  function setStarReflectionEnabled(enabled){}
+  return {mesh,uniforms,setOverviewOpaque,heightAt:(x,z)=>oceanHeightAt(uniforms,x,z,rings,sectors),setReflectionResolution,setStarReflectionEnabled};
 }
