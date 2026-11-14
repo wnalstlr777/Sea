@@ -197,9 +197,16 @@ function beginIntro(){
   character.setEnabled(false);
   camera.position.copy(introSide);controls.target.copy(introTarget);controls.update();
 }
+function introCharacterPose(){
+  const pose=character.deckViewPose();
+  // Keep the overview's side-on direction (+X) throughout the zoom.
+  // Only change the opening camera, not the regular deck camera preset.
+  pose.position.copy(pose.target).add(new THREE.Vector3(12,3.7,0));
+  return pose;
+}
 function finishIntro(){
   intro=null;introFinished=true;character.setEnabled(true);
-  const pose=character.deckViewPose();camera.position.copy(pose.position);
+  const pose=introCharacterPose();camera.position.copy(pose.position);
   controls.target.copy(pose.target);controls.update();
 }
 function updateIntro(dt){
@@ -207,7 +214,7 @@ function updateIntro(dt){
   if(!intro){if(deckCollision.ready()&&character.isSpawnReady())beginIntro();return;}
   intro.elapsed+=dt;
   if(intro.elapsed>=7.5){finishIntro();return;}
-  const pose=character.deckViewPose();
+  const pose=introCharacterPose();
   const t=Math.max(0,Math.min(1,(intro.elapsed-3)/4.5));
   const eased=t*t*(3-2*t);
   camera.position.copy(intro.fromPosition).lerp(pose.position,eased);
