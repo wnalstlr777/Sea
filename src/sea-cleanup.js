@@ -34,7 +34,7 @@ export function createSeaCleanup({scene,ocean,player,camera}){
   // only above a nearby piece of trash.
   const hud=document.createElement('div');
   hud.id='cleanup-hud';
-  hud.style.cssText='position:fixed;right:16px;top:76px;z-index:18;padding:9px 13px;border-radius:12px;background:rgba(12,29,41,.7);color:#fff;font:600 14px system-ui,sans-serif;pointer-events:none';
+  hud.style.cssText='position:fixed;right:max(16px,env(safe-area-inset-right));top:max(70px,calc(env(safe-area-inset-top) + 58px));z-index:18;padding:9px 13px;border-radius:12px;background:rgba(12,29,41,.7);color:#fff;font:600 14px system-ui,sans-serif;pointer-events:none';
   const counter=document.createElement('span');counter.textContent='바다 청소 0 / 30';
   hud.append(counter);document.body.append(hud);
   const button=document.createElement('button');
@@ -42,20 +42,39 @@ export function createSeaCleanup({scene,ocean,player,camera}){
   button.style.cssText='position:fixed;z-index:22;display:none;transform:translate(-50%,-100%);padding:10px 14px;border:1px solid #9ac7cb;border-radius:12px;background:rgba(32,77,88,.9);color:white;font:600 14px system-ui;cursor:pointer;touch-action:manipulation';
   document.body.append(button);
   const projection=new THREE.Vector3();
-  let count=0,netUntil=0,nearest=-1,now=0,nextCollectAt=0;
+  let count=0,netUntil=0,nearest=-1,now=0,collecting=-1,collectStarted=0;
   function collect(){
-    if(nearest<0||now<nextCollectAt||pieces[nearest].collected)return;
-    pieces[nearest].collected=true;count++;counter.textContent=`바다 청소 ${count} / ${TOTAL}`;
-    netUntil=now+1.1;net.visible=true;
-    nextCollectAt=now+3;
-    nearest=-1;button.style.display='none';
+    if(nearest<0||collecting>=0||pieces[nearest].collected)return;
+    collecting=nearest;collectStarted=now;
+    net.visible=true;netUntil=now+3;
   }
   button.addEventListener('click',collect);
   function onKey(e){if(e.code==='KeyE'&&!e.repeat&&nearest>=0){e.preventDefault();collect();}}
   window.addEventListener('keydown',onKey);
+  function overlapsUI(rect){
+    // Never obscure movement/actions or existing UI, even in narrow viewports.
+    const blocked=document.querySelectorAll('button, input, select, .joystick, [id*="joystick"], [class*="joystick"]');
+    for(const el of blocked){
+      if(el===button||!el.isConnected)continue;
+      const style=getComputedStyle(el);
+      if(style.display==='none'||style.visibility==='hidden'||style.pointerEvents==='none')continue;
+      const r=el.getBoundingClientRect();
+      if(r.width<1||r.height<1)continue;
+      if(rect.left<r.right+10&&rect.right>r.left-10&&rect.top<r.bottom+10&&rect.bottom>r.top-10)return true;
+    }
+    const r=hud.getBoundingClientRect();
+    return rect.left<r.right+10&&rect.right>r.left-10&&rect.top<r.bottom+10&&rect.bottom>r.top-10;
+  }
   function update(time,enabled){
     now=time;
     let min=4.5;nearest=-1;
+    if(collecting>=0&&(!enabled||Math.hypot(pieces[collecting].x-player.position.x,pieces[collecting].z-player.position.z)>4.5)){
+      collecting=-1;net.visible=false;
+    }
+    if(collecting>=0&&now-collectStarted>=3){
+      pieces[collecting].collected=true;count++;counter.textContent=`바다 청소 ${count} / ${TOTAL}`;
+      collecting=-1;net.visible=false;
+    }
     for(let i=0;i<TOTAL;i++){
       const p=pieces[i];
       if(p.collected){dummy.position.set(0,-10000,0);dummy.scale.setScalar(.00001);}
@@ -73,20 +92,26 @@ export function createSeaCleanup({scene,ocean,player,camera}){
     }
     trash.instanceMatrix.needsUpdate=true;
     button.style.display='none';
-    if(nearest>=0&&enabled){
-      const p=pieces[nearest];
+    const focus=collecting>=0?collecting:nearest;
+    if(focus>=0&&enabled){
+      const p=pieces[focus];
       projection.set(p.x,ocean.heightAt(p.x,p.z)+p.scale*1.2,p.z).project(camera);
       if(projection.z>-1&&projection.z<1&&Math.abs(projection.x)<.9&&Math.abs(projection.y)<.9){
         const x=(projection.x*.5+.5)*window.innerWidth;
         const y=(-projection.y*.5+.5)*window.innerHeight;
-        // Avoid placing the action over the lower movement controls.
-        if(y<window.innerHeight*.72){
-          button.style.left=`${x}px`;button.style.top=`${y}px`;
+        const remaining=collecting>=0?Math.max(0,3-(now-collectStarted)):0;
+        button.textContent=collecting>=0?`수거 중 ${remaining.toFixed(1)}초`:'잠자리채로 줍기 (E)';
+        button.disabled=collecting>=0;
+        button.style.opacity=collecting>=0?'.85':'1';
+        // Clamp to safe margins; keep clear of both the bottom control strip
+        // and every existing interactive element.
+        const width=collecting>=0?135:158,height=46,margin=20;
+        const left=Math.max(margin+width/2,Math.min(window.innerWidth-margin-width/2,x));
+        const top=Math.max(margin+height,Math.min(window.innerHeight*.65,y-8));
+        const rect={left:left-width/2,right:left+width/2,top:top-height,bottom:top};
+        if(!overlapsUI(rect)){
+          button.style.left=`${left}px`;button.style.top=`${top}px`;
           button.style.display='block';
-          const wait=Math.max(0,nextCollectAt-now);
-          button.disabled=wait>0;
-          button.textContent=wait>0?`다음 수거 ${wait.toFixed(1)}초`:'잠자리채로 줍기 (E)';
-          button.style.opacity=wait>0?'.7':'1';
         }
       }
     }
