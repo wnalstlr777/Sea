@@ -18,6 +18,7 @@ import {createJellyfish} from './jellyfish.js';
 import {createEmoteWheel} from './emote-wheel.js';
 import {createFireworks} from './fireworks.js';
 import {createRain} from './rain.js';
+import {createSeaCleanup} from './sea-cleanup.js';
 
 const app=document.querySelector('#app');
 // Touch-capable tablets may report a fine primary pointer when a trackpad is connected.
@@ -71,6 +72,7 @@ function setView(overview){
 }
 document.querySelector('#camera-toggle').onclick=()=>setView(!overviewActive);
 const ocean=createOcean();scene.add(ocean.mesh);
+const seaCleanup=createSeaCleanup({scene,ocean,player:character.player});
 const lighting=createLighting(scene,ocean,camera);
 const seaAudio=createSeaAudio(document.querySelector('#music-toggle'));
 const seagulls=createSeagulls(scene,camera,seaAudio);
@@ -409,6 +411,6 @@ if(!overviewActive&&!character.isLying()&&!character.isTitanicPosing()&&Math.hyp
   }
   }
 }
-ocean.uniforms.transparencyCenter.value.set(character.player.position.x,character.player.position.z);ocean.setOverviewOpaque(overviewActive||!introFinished);camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);updateSwimmerRipples(dt);updateWakeTrail();aquaculture.update(dt,params.hour);aquaculture.setOverview(overviewActive);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
+ocean.uniforms.transparencyCenter.value.set(character.player.position.x,character.player.position.z);ocean.setOverviewOpaque(overviewActive||!introFinished);camera.updateMatrixWorld();multiplayer.update(dt,introFinished&&!overviewActive);updateSwimmerRipples(dt);updateWakeTrail();seaCleanup.update(ocean.uniforms.time.value,introFinished&&!overviewActive);aquaculture.update(dt,params.hour);aquaculture.setOverview(overviewActive);emotes.update();lighting.follow(character.player.position.clone().add(new THREE.Vector3(0,NETWORK_TO_VISUAL_Y,0)));boatMotion.render(renderer,scene,dt,params.cameraMotion,controls.getDistance());elapsed+=wallDt;frames++;if(elapsed>.5){document.querySelector('#stats').textContent=`${Math.round(frames/elapsed)} FPS · ${renderer.info.render.calls} CALLS · ${renderer.info.render.triangles.toLocaleString()} TRIANGLES`;elapsed=0;frames=0;}});
 // Read-only diagnostics for smoke checks and performance inspection.
 window.oceanCruise={renderer,scene,camera,controls,ship,player:character.player,lighting,params,uniforms:ocean.uniforms};
