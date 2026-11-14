@@ -99,16 +99,15 @@ export function createLighting(scene,ocean,camera){
     const {sun,moon}=celestialDirections(t);
     // Overview camera stays fixed on the ship's starboard side (+X).
     // Rotate only the celestial azimuth toward the visible sky; preserve altitude.
-    if(overviewCelestials){
-      for(const dir of [sun,moon]){
-        const horizontal=Math.hypot(dir.x,dir.z);
-        // On portrait mobile, nudge the disc left in the unchanged overview frame.
-        // Camera looks from +X toward the ship, so screen-left is toward +Z.
-        const azimuthZ=camera.aspect<.8?-.10:-.28;
-        dir.x=-horizontal*Math.sqrt(1.-azimuthZ*azimuthZ);
-        dir.z=horizontal*azimuthZ;
-        dir.normalize();
-      }
+    // Keep both celestial discs on the ship's side, never toward the stern.
+    // Use the same azimuth in overview and character view so zooming does
+    // not rotate the sun/moon around the boat.
+    for(const dir of [sun,moon]){
+      const horizontal=Math.hypot(dir.x,dir.z);
+      const azimuthZ=camera.aspect<.8?-.10:-.28;
+      dir.x=-horizontal*Math.sqrt(1.-azimuthZ*azimuthZ);
+      dir.z=horizontal*azimuthZ;
+      dir.normalize();
     }
     uniforms.sunDirection.value.copy(sun);
     uniforms.moonDirection.value.copy(moon);
