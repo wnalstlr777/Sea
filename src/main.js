@@ -173,7 +173,7 @@ function updateOverviewSway(dt,seconds){
 const deckCollision=createDeckCollision(ship);
 const jellyfish=createJellyfish(scene);
 const character=createPlayer(scene,camera,controls,deckCollision);
-const seaCleanup=createSeaCleanup({scene,ocean,player:character.player});
+const seaCleanup=createSeaCleanup({scene,ocean,player:character.player,camera});
 // Step-on launch pads on the deck. Targets are UCX_Bottom05 (cabin roof)
 // and UCX_Bottom06 (mast lookout) from the supplied Ship.glb.
 const launchPads=[];
