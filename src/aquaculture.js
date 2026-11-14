@@ -127,6 +127,7 @@ export function createAquaculture({scene,camera,character,multiplayer,ocean,isAv
  const showcased=new Map();
  function showFish(fishId,playerId){
   const fish=FISH.find(f=>f.id===fishId);if(!fish||!playerId)return;
+  if(playerId===character.player.userData.playerId)character.showFishPose();
   showcased.get(playerId)?.el.remove();
   const el=element('div','aqua-showcase');
   el.append(fishIcon(fish,true),element('strong','',fish.name+' 자랑 중!'));
