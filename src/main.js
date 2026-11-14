@@ -72,7 +72,6 @@ function setView(overview){
 }
 document.querySelector('#camera-toggle').onclick=()=>setView(!overviewActive);
 const ocean=createOcean();scene.add(ocean.mesh);
-const seaCleanup=createSeaCleanup({scene,ocean,player:character.player});
 const lighting=createLighting(scene,ocean,camera);
 const seaAudio=createSeaAudio(document.querySelector('#music-toggle'));
 const seagulls=createSeagulls(scene,camera,seaAudio);
@@ -174,6 +173,7 @@ function updateOverviewSway(dt,seconds){
 const deckCollision=createDeckCollision(ship);
 const jellyfish=createJellyfish(scene);
 const character=createPlayer(scene,camera,controls,deckCollision);
+const seaCleanup=createSeaCleanup({scene,ocean,player:character.player});
 // Step-on launch pads on the deck. Targets are UCX_Bottom05 (cabin roof)
 // and UCX_Bottom06 (mast lookout) from the supplied Ship.glb.
 const launchPads=[];
