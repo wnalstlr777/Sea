@@ -162,7 +162,7 @@ function split(pivot,kind,side){
 }
 const elbows=arms.map((a,i)=>split(a,'arm',i));
 const knees=legs.map((l,i)=>split(l,'leg',i));
-let walkTime=0,sitBlend=0,fireworkPoseUntil=0;
+let walkTime=0,sitBlend=0,fireworkPoseUntil=0,fishShowUntil=0;
 function raiseRightHand(){arms[1].rotation.set(Math.PI,0,0);elbows[1].rotation.x=0;}
 function fireworkPose(){fireworkPoseUntil=performance.now()+1500;raiseRightHand();}
 function rightHandWorldPosition(){hana.updateWorldMatrix(true,true);return arms[1].localToWorld(new THREE.Vector3(0,-.72,0));}
@@ -224,6 +224,14 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
       knees[i].rotation.x+=((.22+(kicking?.22*Math.max(0,-Math.sin(walkTime*15+i*Math.PI)):0))-knees[i].rotation.x)*blend;
     }
     if(firing)raiseRightHand();
+  if(performance.now()<fishShowUntil&&!inWater){
+    // Present the fish with both arms extended toward the viewer.
+    for(let i=0;i<2;i++){
+      arms[i].rotation.x=-Math.PI*.48;
+      arms[i].rotation.z=i===0?-.12:.12;
+      elbows[i].rotation.x=-.12;
+    }
+  }
     body.rotation.z=Math.sin(phase)*.015;
     head.rotation.z=-body.rotation.z*.45;
     return;
@@ -268,7 +276,8 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
   head.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.020:0;
 }
 function netPose(progress){const t=Math.max(0,Math.min(1,progress));const swing=Math.sin(t*Math.PI*2);arms[1].rotation.x=-.9-.55*swing;arms[1].rotation.z=.2;elbows[1].rotation.x=-.4-.3*Math.max(0,swing);}
-return {mesh:hana,update,fireworkPose,rightHandWorldPosition,netPose};
+function fishShowPose(){fishShowUntil=performance.now()+5000;}
+return {mesh:hana,update,fireworkPose,rightHandWorldPosition,netPose,fishShowPose};
 }
 
 export function disposeSurvivor(root){
