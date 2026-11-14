@@ -30,19 +30,16 @@ export function createSeaCleanup({scene,ocean,player,camera}){
   mesh.position.y=1.84;net.add(mesh);
   net.position.set(.65,1.0,-.18);net.rotation.z=-.24;net.scale.setScalar(.85);
   player.add(net);net.visible=false;
-  // Counter stays out of the movement joystick area; interaction appears
-  // only above a nearby piece of trash.
-  const hud=document.createElement('div');
-  hud.id='cleanup-hud';
-  hud.style.cssText='position:fixed;right:max(16px,env(safe-area-inset-right));top:max(70px,calc(env(safe-area-inset-top) + 58px));z-index:18;padding:9px 13px;border-radius:12px;background:rgba(12,29,41,.7);color:#fff;font:600 14px system-ui,sans-serif;pointer-events:none';
-  const counter=document.createElement('span');counter.textContent='바다 청소 0 / 30';
-  hud.append(counter);document.body.append(hud);
+  // Keep the screen clean: only show the running total briefly on pickup.
+  const pickupNotice=document.createElement('div');
+  pickupNotice.style.cssText='position:fixed;z-index:23;display:none;transform:translate(-50%,-100%);padding:8px 12px;border-radius:11px;background:rgba(12,45,51,.85);color:white;font:600 14px system-ui,sans-serif;pointer-events:none;white-space:nowrap';
+  document.body.append(pickupNotice);
   const button=document.createElement('button');
   button.type='button';button.textContent='잠자리채로 줍기';
   button.style.cssText='position:fixed;z-index:22;display:none;transform:translate(-50%,-100%);padding:10px 14px;border:1px solid #9ac7cb;border-radius:12px;background:rgba(32,77,88,.9);color:white;font:600 14px system-ui;cursor:pointer;touch-action:manipulation';
   document.body.append(button);
   const projection=new THREE.Vector3();
-  let count=0,netUntil=0,nearest=-1,now=0,collecting=-1,collectStarted=0;
+  let count=0,netUntil=0,nearest=-1,now=0,collecting=-1,collectStarted=0,noticeUntil=0;
   function collect(){
     if(nearest<0||collecting>=0||pieces[nearest].collected)return;
     collecting=nearest;collectStarted=now;
@@ -62,8 +59,7 @@ export function createSeaCleanup({scene,ocean,player,camera}){
       if(r.width<1||r.height<1)continue;
       if(rect.left<r.right+10&&rect.right>r.left-10&&rect.top<r.bottom+10&&rect.bottom>r.top-10)return true;
     }
-    const r=hud.getBoundingClientRect();
-    return rect.left<r.right+10&&rect.right>r.left-10&&rect.top<r.bottom+10&&rect.bottom>r.top-10;
+    return false;
   }
   function update(time,enabled){
     now=time;
@@ -72,7 +68,9 @@ export function createSeaCleanup({scene,ocean,player,camera}){
       collecting=-1;net.visible=false;
     }
     if(collecting>=0&&now-collectStarted>=3){
-      pieces[collecting].collected=true;count++;counter.textContent=`바다 청소 ${count} / ${TOTAL}`;
+      pieces[collecting].collected=true;count++;
+      pickupNotice.textContent=`수거 완료 ${count} / ${TOTAL}`;
+      noticeUntil=now+1.7;
       collecting=-1;net.visible=false;
     }
     for(let i=0;i<TOTAL;i++){
@@ -92,6 +90,7 @@ export function createSeaCleanup({scene,ocean,player,camera}){
     }
     trash.instanceMatrix.needsUpdate=true;
     button.style.display='none';
+    pickupNotice.style.display='none';
     const focus=collecting>=0?collecting:nearest;
     if(focus>=0&&enabled){
       const p=pieces[focus];
@@ -115,7 +114,15 @@ export function createSeaCleanup({scene,ocean,player,camera}){
         }
       }
     }
+    if(now<noticeUntil){
+      // Keep the total near the interaction, never in a permanent corner HUD.
+      const x=Number.parseFloat(button.style.left)||window.innerWidth*.5;
+      const y=Number.parseFloat(button.style.top)||window.innerHeight*.5;
+      pickupNotice.style.left=`${Math.max(85,Math.min(window.innerWidth-85,x))}px`;
+      pickupNotice.style.top=`${Math.max(72,Math.min(window.innerHeight*.65,y-50))}px`;
+      pickupNotice.style.display='block';
+    }
     if(net.visible){net.rotation.z=-.24+Math.sin((netUntil-time)*11)*.3;if(time>=netUntil)net.visible=false;}
   }
-  return {update,dispose(){window.removeEventListener('keydown',onKey);hud.remove();button.remove();scene.remove(trash);trash.dispose();geometry.dispose();material.dispose();}};
+  return {update,dispose(){window.removeEventListener('keydown',onKey);pickupNotice.remove();button.remove();scene.remove(trash);trash.dispose();geometry.dispose();material.dispose();}};
 }
