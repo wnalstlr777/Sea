@@ -284,6 +284,12 @@ export function createOcean(){
         shade*=mix(.65,1.,overviewOpaque);
         color*=1.-clamp(shade,0.,.55);
         color=mix(color,vec3(.72,.85,.88),clamp(wakeFoam,0.,.38));
+        // Calm, deeper ocean grade across day, sunset and night. Apply after
+        // reflections, atmospheric blending and foam so none stays overly bright.
+        // Keep the hue, but gently reduce saturation and overall luminance.
+        float oceanLuma=dot(color,vec3(.2126,.7152,.0722));
+        color=mix(vec3(oceanLuma),color,.88);
+        color*=mix(.78,.83,daylight);
         float radius=length(world.xz-transparencyCenter);
         float waterAlpha=mix(.85,1.,smoothstep(10.,15.,radius));
         gl_FragColor=vec4(color,mix(waterAlpha,1.,overviewOpaque));
