@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 // Lightweight local cleanup prototype: 30 bobbing pieces, one instanced draw call.
 // Collection state is per client until multiplayer persistence is designed.
-export function createSeaCleanup({scene,ocean,player}){
+export function createSeaCleanup({scene,ocean,player,camera}){
   const TOTAL=30;
   const geometry=new THREE.IcosahedronGeometry(.48,0);
   const material=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.9,flatShading:true});
@@ -16,7 +16,7 @@ export function createSeaCleanup({scene,ocean,player}){
     const angle=i*2.399963229728653;
     const radius=22+Math.sqrt((i+.5)/TOTAL)*55;
     const x=Math.cos(angle)*radius,z=-24+Math.sin(angle)*radius;
-    const scale=.55+(i%5)*.12;
+    const scale=(.55+(i%5)*.12)*(3+((i*17)%11)/10);
     pieces.push({x,z,scale,phase:i*1.71,collected:false});
     trash.setColorAt(i,new THREE.Color(palette[i%palette.length]));
   }
@@ -30,25 +30,32 @@ export function createSeaCleanup({scene,ocean,player}){
   mesh.position.y=1.84;net.add(mesh);
   net.position.set(.65,1.0,-.18);net.rotation.z=-.24;net.scale.setScalar(.85);
   player.add(net);net.visible=false;
+  // Counter stays out of the movement joystick area; interaction appears
+  // only above a nearby piece of trash.
   const hud=document.createElement('div');
-  hud.id='cleanup-hud';hud.style.cssText='position:fixed;left:16px;bottom:90px;z-index:18;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:14px;background:rgba(12,29,41,.72);color:#fff;font:600 14px system-ui,sans-serif;backdrop-filter:blur(8px);pointer-events:auto';
+  hud.id='cleanup-hud';
+  hud.style.cssText='position:fixed;right:16px;top:76px;z-index:18;padding:9px 13px;border-radius:12px;background:rgba(12,29,41,.7);color:#fff;font:600 14px system-ui,sans-serif;pointer-events:none';
   const counter=document.createElement('span');counter.textContent='바다 청소 0 / 30';
-  const button=document.createElement('button');button.textContent='잠자리채로 줍기';button.type='button';button.style.cssText='padding:8px 12px;border:1px solid #9ac7cb;border-radius:9px;background:#315b66;color:white;font:600 13px system-ui;cursor:pointer';
-  hud.append(counter,button);document.body.append(hud);
-  let count=0,netUntil=0,nearest=-1,now=0;
+  hud.append(counter);document.body.append(hud);
+  const button=document.createElement('button');
+  button.type='button';button.textContent='잠자리채로 줍기';
+  button.style.cssText='position:fixed;z-index:22;display:none;transform:translate(-50%,-100%);padding:10px 14px;border:1px solid #9ac7cb;border-radius:12px;background:rgba(32,77,88,.9);color:white;font:600 14px system-ui;cursor:pointer;touch-action:manipulation';
+  document.body.append(button);
+  const projection=new THREE.Vector3();
+  let count=0,netUntil=0,nearest=-1,now=0,nextCollectAt=0;
   function collect(){
-    if(nearest<0)return;
+    if(nearest<0||now<nextCollectAt||pieces[nearest].collected)return;
     pieces[nearest].collected=true;count++;counter.textContent=`바다 청소 ${count} / ${TOTAL}`;
     netUntil=now+1.1;net.visible=true;
-    button.textContent=count===TOTAL?'청소 완료':'잠자리채로 줍기';
-    nearest=-1;
+    nextCollectAt=now+3;
+    nearest=-1;button.style.display='none';
   }
   button.addEventListener('click',collect);
   function onKey(e){if(e.code==='KeyE'&&!e.repeat&&nearest>=0){e.preventDefault();collect();}}
   window.addEventListener('keydown',onKey);
   function update(time,enabled){
     now=time;
-    let min=3.5;nearest=-1;
+    let min=4.5;nearest=-1;
     for(let i=0;i<TOTAL;i++){
       const p=pieces[i];
       if(p.collected){dummy.position.set(0,-10000,0);dummy.scale.setScalar(.00001);}
@@ -65,10 +72,25 @@ export function createSeaCleanup({scene,ocean,player}){
       dummy.updateMatrix();trash.setMatrixAt(i,dummy.matrix);
     }
     trash.instanceMatrix.needsUpdate=true;
-    button.disabled=nearest<0||count===TOTAL;
-    button.style.opacity=button.disabled?'.5':'1';
-    if(count<TOTAL)button.textContent=nearest>=0?'잠자리채로 줍기 (E)':'쓰레기에 가까이 이동';
+    button.style.display='none';
+    if(nearest>=0&&enabled){
+      const p=pieces[nearest];
+      projection.set(p.x,ocean.heightAt(p.x,p.z)+p.scale*1.2,p.z).project(camera);
+      if(projection.z>-1&&projection.z<1&&Math.abs(projection.x)<.9&&Math.abs(projection.y)<.9){
+        const x=(projection.x*.5+.5)*window.innerWidth;
+        const y=(-projection.y*.5+.5)*window.innerHeight;
+        // Avoid placing the action over the lower movement controls.
+        if(y<window.innerHeight*.72){
+          button.style.left=`${x}px`;button.style.top=`${y}px`;
+          button.style.display='block';
+          const wait=Math.max(0,nextCollectAt-now);
+          button.disabled=wait>0;
+          button.textContent=wait>0?`다음 수거 ${wait.toFixed(1)}초`:'잠자리채로 줍기 (E)';
+          button.style.opacity=wait>0?'.7':'1';
+        }
+      }
+    }
     if(net.visible){net.rotation.z=-.24+Math.sin((netUntil-time)*11)*.3;if(time>=netUntil)net.visible=false;}
   }
-  return {update,dispose(){window.removeEventListener('keydown',onKey);hud.remove();scene.remove(trash);trash.dispose();geometry.dispose();material.dispose();}};
+  return {update,dispose(){window.removeEventListener('keydown',onKey);hud.remove();button.remove();scene.remove(trash);trash.dispose();geometry.dispose();material.dispose();}};
 }
