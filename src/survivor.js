@@ -195,7 +195,6 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
   const firing=performance.now()<fireworkPoseUntil;
   if(inWater){
     // Tube riding: spread both arms and rest the hands on opposite sides of the ring.
-    // Keep the pose steady while moving; netPose overrides the right arm during collection.
     walkTime+=dt;
     const phase=walkTime*2;
     const blend=1-Math.exp(-Math.min(.1,dt)*12);
@@ -275,9 +274,8 @@ function update(dt,moving,sitting=false,jumpPhase=null,inWater=false,flapping=fa
   body.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.016:0;
   head.rotation.z=id==='hina'&&moving?Math.sin(poseTime*8.4)*.020:0;
 }
-function netPose(progress){const t=Math.max(0,Math.min(1,progress));const swing=Math.sin(t*Math.PI*2);arms[1].rotation.x=-.9-.55*swing;arms[1].rotation.z=.2;elbows[1].rotation.x=-.4-.3*Math.max(0,swing);}
 function fishShowPose(){fishShowUntil=performance.now()+5000;}
-return {mesh:hana,update,fireworkPose,rightHandWorldPosition,netPose,fishShowPose};
+return {mesh:hana,update,fireworkPose,rightHandWorldPosition,fishShowPose};
 }
 
 export function disposeSurvivor(root){
