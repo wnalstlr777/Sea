@@ -170,7 +170,7 @@ function updateOverviewSway(dt,seconds){
   pivot.rotation.z=overviewSway*THREE.MathUtils.degToRad(.6)*Math.sin(phase*.83+1.3);
 }
 const deckCollision=createDeckCollision(ship);
-const jellyfish=createJellyfish(scene);
+const jellyfish=createJellyfish(scene,ocean);
 const character=createPlayer(scene,camera,controls,deckCollision);
 // Step-on launch pads on the deck. Targets are UCX_Bottom05 (cabin roof)
 // and UCX_Bottom06 (mast lookout) from the supplied Ship.glb.
@@ -375,7 +375,7 @@ function updateLoadingCover(){
     loadingCover.addEventListener('transitionend',()=>loadingCover.remove(),{once:true});
   }
 }
-renderer.setAnimationLoop(now=>{if(document.hidden){previous=now;return;}if(now-previous<1000/60-1)return;const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;updateSkyCycle(wallDt);rain.update(dt,Math.max(rainToggle.checked?1:0,THREE.MathUtils.smoothstep(params.cloudCover,.72,.95)));naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt,overviewActive);marineLife.update(wallDt);jellyfish.update(dt,params.hour,overviewActive);horn.update(wallDt);character.update(dt);
+renderer.setAnimationLoop(now=>{if(document.hidden){previous=now;return;}if(now-previous<1000/60-1)return;const wallDt=(now-previous)/1000;const dt=Math.min(wallDt,.05);previous=now;updateSkyCycle(wallDt);rain.update(dt,Math.max(rainToggle.checked?1:0,THREE.MathUtils.smoothstep(params.cloudCover,.72,.95)));naturalTime+=dt*params.naturalSpeed;travel+=dt*params.speed;for(const key of ['curvature','height','waveSize','normalStrength','speed','wake'])ocean.uniforms[key].value=params[key];ocean.uniforms.time.value=naturalTime;ocean.uniforms.travel.value=travel;lighting.update(params.hour,dt);seagulls.update(wallDt,overviewActive);marineLife.update(wallDt);jellyfish.update(dt,params.hour,overviewActive||!introFinished);horn.update(wallDt);character.update(dt);
 for(const pad of launchPads){
   pad.root.visible=!overviewActive;
   if(deckCollision.ready()){
