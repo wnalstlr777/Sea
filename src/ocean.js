@@ -138,7 +138,6 @@ export function createOcean(){
     fragmentShader:`
       uniform float overviewReflection;
       uniform sampler2D mirrorSampler;
-      varying vec4 mirrorCoord;
       uniform float time,travel,height,speed,wake,daylight,sunVisible,moonVisible,moonTint,normalStrength,curvature,waveSize,horizonStrength,overviewOpaque;
       uniform vec2 transparencyCenter;
       uniform vec4 swimmerRipples[4];
@@ -337,9 +336,11 @@ export function createOcean(){
   }
   let overviewReflection=false,reflectStars=true,lastReflectionAt=-Infinity;
   function setOverviewReflection(enabled){
-    overviewReflection=Boolean(enabled);
-    uniforms.overviewReflection.value=overviewReflection?1:0;
-    if(overviewReflection)lastReflectionAt=-Infinity;
+    enabled=Boolean(enabled);
+    if(overviewReflection===enabled)return;
+    overviewReflection=enabled;
+    uniforms.overviewReflection.value=enabled?1:0;
+    if(enabled)lastReflectionAt=-Infinity;
   }
   mesh.onBeforeRender=(renderer,scene,camera)=>{
     if(!overviewReflection)return;
