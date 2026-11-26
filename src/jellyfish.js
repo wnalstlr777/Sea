@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // Night-only bioluminescent schools. One instanced draw call, no lights/shadows.
-export function createJellyfish(scene){
+export function createJellyfish(scene,ocean){
   const group=new THREE.Group();
   group.name='night-jellyfish-schools';
   scene.add(group);
@@ -89,6 +89,7 @@ export function createJellyfish(scene){
     time+=step;
     foregroundBlend=THREE.MathUtils.damp(foregroundBlend,overview?1:0,1.4,step);
     material.uniforms.uTime.value=time;
+    mesh.renderOrder=overview?2:-1;
     const h=((hour%24)+24)%24;
     const night=h>=18?smooth(18,20,h):h<7?1-smooth(5,7,h):0;
     for(let i=0;i<count;i++){
@@ -97,7 +98,7 @@ export function createJellyfish(scene){
         const phase=phases[i];
         const x=65+(j%3)*9+Math.sin(time*.10+phase)*4;
         const z=-38+Math.floor(j/3)*28+Math.cos(time*.08+phase)*5;
-        const y=1.72+Math.sin(time*.45+phase)*.18;
+        const y=overview?1.72+Math.sin(time*.45+phase)*.18:ocean.heightAt(x,z)-.65;
         dummy.position.set(x,y,z);
         dummy.rotation.set(-Math.PI/2,0,0);
         const size=sizes[i]*(1+.06*Math.sin(time*.9+phase));
@@ -122,6 +123,7 @@ export function createJellyfish(scene){
         1.72+Math.sin(time*.8+phase)*.09,
         cz+Math.sin(angle)*radius+driftZ+Math.cos(time*.19+phase)*.65
       );
+      if(!overview)dummy.position.y=ocean.heightAt(dummy.position.x,dummy.position.z)-.45-seed(i+151)*.35+Math.sin(time*.8+phase)*.08;
       dummy.rotation.set(-Math.PI/2,0,0);
       const size=sizes[i]*(1+.045*Math.sin(time*1.4+phase));
       dummy.scale.set(size,size,size);
