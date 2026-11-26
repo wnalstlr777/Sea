@@ -297,7 +297,7 @@ const emotes=createEmoteWheel({scene,camera,renderer,controls,player:character.p
 controls.maxDistance=320;
 if(new URLSearchParams(location.search).get('view')==='ocean'){introFinished=true;setView(true);}
 const boatMotion=createBoatMotion(camera);
-const params={cameraMotion:matchMedia('(prefers-reduced-motion: reduce)').matches?0:.6,hour:0,cloudCover:.35,curvature:0,height:.825,reflectionResolution:256,waveSize:1,normalStrength:0,naturalSpeed:.6,speed:16,wake:.65};const defaults={...params};let naturalTime=0,travel=0;
+const params={cameraMotion:matchMedia('(prefers-reduced-motion: reduce)').matches?0:.6,hour:0,cloudCover:.35,curvature:0,height:1.65,reflectionResolution:256,waveSize:1,normalStrength:.25,naturalSpeed:1.3,speed:16,wake:1};const defaults={...params};let naturalTime=0,travel=0;
 const cloudInput=document.querySelector('#cloud-cover');
 lighting.uniforms.cloudCover.value=params.cloudCover;
 function setCloudCover(value){params.cloudCover=value;lighting.uniforms.cloudCover.value=value;cloudInput.value=value;document.querySelector('#cloud-label').value=`${Math.round(value*100)}%`;}
